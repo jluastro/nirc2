@@ -22,11 +22,11 @@ import numpy as np
 import os, sys
 
 # Import our own custom modules
-from jlu.nirc2.reduce import nirc2
-from jlu.nirc2.reduce import calib
-from jlu.nirc2.reduce import sky
-from jlu.nirc2.reduce import data
-from jlu.nirc2.reduce import util
+from nirc2.reduce import calib
+from nirc2.reduce import sky
+from nirc2.reduce import data
+from nirc2.reduce import util
+from nirc2.reduce import nirc2_util
 
 ##########
 # Make electronic logs
@@ -39,7 +39,7 @@ def makelog():
     @author Jessica Lu
     @author Sylvana Yelda
     """
-    nirc2.nirc2log('../raw')
+    nirc2_util.nirc2log('../raw')
 
 ###############
 # Analyze darks
