@@ -12,11 +12,13 @@ import util
 
 module_dir = os.path.dirname(__file__)
 
-# Setup SLALIB python/fortran modules
-slalib_dir = module_dir + '/slalib_pyf'
-if slalib_dir not in sys.path:
-    sys.path.append(slalib_dir)
-import refro, refco
+# # Setup SLALIB python/fortran modules
+# slalib_dir = module_dir + '/slalib_pyf'
+# if slalib_dir not in sys.path:
+#     sys.path.append(slalib_dir)
+# import refro, refco
+
+from nirc2.reduce.slalib_pyf import slalib
 
 def get_atm_conditions(year):
     """
@@ -114,7 +116,7 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
     # Should be around 0.1 %
     rh = atmHumidity[sdx[0]]
 
-    return refco.slrfco(hm, tdk, pmb, rh, lamda, phi, tlr, eps)
+    return slalib.refco(hm, tdk, pmb, rh, lamda, phi, tlr, eps)
 
 def nirc2dar(fitsFile):
     """

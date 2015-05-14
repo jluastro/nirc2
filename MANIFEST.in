@@ -6,6 +6,8 @@ include ah_bootstrap.py
 include setup.cfg
 
 recursive-include *.pyx *.c *.pxd
+recursive-include nirc2 *.dat *.fits
+recursive-include nirc2/reduce/distortion/coeffs *
 recursive-include docs *
 recursive-include licenses *
 recursive-include cextern *

@@ -76,7 +76,11 @@ package_info = get_package_info()
 
 # Add the project-global data
 package_info['package_data'].setdefault(PACKAGENAME, [])
-package_info['package_data'][PACKAGENAME].append('data/*')
+package_info['package_data'][PACKAGENAME].append('filters/*')
+package_info['package_data'][PACKAGENAME].append('reduce/weather/*')
+package_info['package_data'][PACKAGENAME].append('reduce/masks/*')
+package_info['package_data'][PACKAGENAME].append('reduce/distortion/*.fits')
+package_info['package_data'][PACKAGENAME].append('reduce/distortion/coeffs/*')
 
 # Define entry points for command-line scripts
 entry_points = {}
