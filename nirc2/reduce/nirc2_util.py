@@ -2,12 +2,12 @@
 #
 # Make an electronic log for NIRC2 data
 
-import pyfits
+from astropy.io import fits
 import sys
 import os
 import glob
-import asciidata
-from numpy import *
+from astropy.table import Table
+import numpy as np
 
 def nirc2log(directory):
     """Make an electronic NIRC2 log for all files in the specified
@@ -22,7 +22,7 @@ def nirc2log(directory):
     f = open(directory + '/nirc2.log', 'w')
     
     for file in files:
-	hdr = pyfits.getheader(file,ignore_missing_end=True)
+	hdr = fits.getheader(file,ignore_missing_end=True)
 
 	# First column is frame number
 	frame = (hdr['filename'].strip())[0:5]
@@ -59,9 +59,10 @@ if __name__ == '__main__':
     _nargs = len(sys.argv)
     
     if _nargs != 2:
-	print 'Usage: nirc2log directory'
+        print 'Usage: nirc2log directory'
     else:
-	nirc2log(sys.argv[1])
+        nirc2log(sys.argv[1])
+        
 
 def getAotsxy(hdr):
     # Note: 04jullgs does not have LSPROP or AOTSX keywords
@@ -110,6 +111,7 @@ def getAotsxy(hdr):
 
 def pix2radec():
     print 'Not done yet'
+    return
 
 def radec2pix(radec, phi, scale, posRef):
     """Determine pixel shifts from true RA and Dec positions.
@@ -223,8 +225,8 @@ def rotate_coo(x, y, phi):
 def getScale(hdr):
     # Setup NIRC2 plate scales
     scales = {"narrow": 0.009942,
-	      "medium": 0.019829,
-	      "wide": 0.039686}
+              "medium": 0.019829,
+              "wide": 0.039686}
 
     return scales[hdr['CAMNAME']]    
 
@@ -260,17 +262,17 @@ def plotKeyword(keyword1, keyword2, imgList):
     images, read out the values of the header keywords specified.
     Then plot each of the keywords against each other.
     """
-    tab = asciidata.open(imgList)
+    tab = Table.read(imgList, format='ascii', header_start=None)
 
-    files = [tab[0][i].strip() for i in range(tab.nrows)]
+    files = [tab[i][0].strip() for i in range(len(tab))]
 
-    value1 = zeros(tab.nrows, dtype=float)
-    value2 = zeros(tab.nrows, dtype=float)
+    value1 = np.zeros(len(tab), dtype=float)
+    value2 = np.zeros(len(tab), dtype=float)
 
     print keyword1, keyword2
 
     for ff in range(len(files)):
-        hdr = pyfits.getheader(files[ff],ignore_missing_end=True)
+        hdr = fits.getheader(files[ff], ignore_missing_end=True)
 
         value1[ff] = hdr[keyword1]
         value2[ff] = hdr[keyword2]

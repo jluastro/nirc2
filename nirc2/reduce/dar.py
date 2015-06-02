@@ -1,5 +1,5 @@
 from pyraf import iraf
-import asciidata, glob
+import glob
 import numpy as np
 import pylab as py
 import math
@@ -7,18 +7,13 @@ import pyfits
 import datetime
 import urllib
 import os, sys
-import nirc2
+import nirc2_util
 import util
+from nirc2.reduce import slalib
+from astropy.table import Table
 
 module_dir = os.path.dirname(__file__)
 
-# # Setup SLALIB python/fortran modules
-# slalib_dir = module_dir + '/slalib_pyf'
-# if slalib_dir not in sys.path:
-#     sys.path.append(slalib_dir)
-# import refro, refco
-
-from nirc2.reduce.slalib_pyf import slalib
 
 def get_atm_conditions(year):
     """
@@ -77,16 +72,16 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
     # Pull from atmosphere logs.
     logDir = module_dir + '/weather/'
     logFile = logDir +'cfht-wx.'+ str(year) +'.'+ str(month).zfill(2) +'.dat'
-    
-    _atm = asciidata.open(logFile)
-    atmYear = _atm[0].tonumpy()
-    atmMonth = _atm[1].tonumpy()
-    atmDay = _atm[2].tonumpy()
-    atmHour = _atm[3].tonumpy()
-    atmMin = _atm[4].tonumpy()  # HST times
-    atmTemp = _atm[7].tonumpy() # Celsius
-    atmHumidity = _atm[8].tonumpy() # percent
-    atmPressure = _atm[9].tonumpy() # mb pressure
+
+    _atm = Table.read(logFile, format='ascii', header_start=None)
+    atmYear = _atm['col1']
+    atmMonth = _atm['col2']
+    atmDay = _atm['col3']
+    atmHour = _atm['col4']
+    atmMin = _atm['col5']       # HST times
+    atmTemp = _atm['col8']      # Celsius
+    atmHumidity = _atm['col9']  # percent
+    atmPressure = _atm['col10'] # mb pressure
 
     # Find the exact time match for year, month, day, hour
     idx = (np.where((atmYear == year) & (atmMonth == month) &
@@ -335,18 +330,15 @@ def applyDAR(fits, spaceStarlist, plot=False):
     # Read in the starlist
     #
     ##########
-    _list = asciidata.open(spaceStarlist)
-    names = [_list[0][ss].strip() for ss in range(_list.nrows)]
-    mag = _list[1].tonumpy()
-    date = _list[2].tonumpy()
-    x = _list[3].tonumpy() # RA in arcsec
-    y = _list[4].tonumpy() # Dec. in arcsec
-    xe = _list[5].tonumpy()
-    ye = _list[6].tonumpy()
-    f1 = _list[7].tonumpy()
-    f2 = _list[7].tonumpy()
-    f3 = _list[7].tonumpy()
-    f4 = _list[7].tonumpy()
+    _list = Table.read(spaceStarlist, format='ascii')
+    cols = _list.columns.keys()
+    names = [_list[ss][0].strip() for ss in range(len(_list))]
+    mag = _list[cols[1]]
+    date = _list[cols[2]]
+    x = _list[cols[3]] # RA in arcsec
+    y = _list[cols[4]]
+    xe = _list[cols[5]]
+    ye = _list[cols[6]]
 
     # Magnify everything in the y (zenith) direction. Do it relative to
     # the first star. Even though dR depends on dzObs (ground observed dz),

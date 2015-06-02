@@ -1,6 +1,7 @@
+from astropy.io import fits
+from astropy.table import Table
 import os, sys
 import util
-import pyfits, asciidata
 import numpy as np
 from pyraf import iraf as ir
 
@@ -116,9 +117,7 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
     ir.hselect('@' + _nlis, "$I,ROTPPOSN", 'yes', Stdout=_skyRot) 
 
     # Read in the list of files and rotation angles
-    rotTab = asciidata.open(_skyRot)
-    files = rotTab[0].tonumpy()
-    angles = rotTab[1].tonumpy()
+    files, angles = read_sky_rot_file(_skyRot)
 
     # Fix angles to be between -180 and 180
     angles[angles > 180] -= 360.0
@@ -222,9 +221,7 @@ def makesky_lp2(files, nite, wave):
     ir.hselect('@' + _nlis, "$I,ROTPPOSN", 'yes', Stdout=_skyRot) 
 
     # Read in the list of files and rotation angles
-    rotTab = asciidata.open(_skyRot)
-    files = rotTab[0].tonumpy()
-    angles = rotTab[1].tonumpy()
+    files, angles = read_sky_rot_file(_skyRot)
 
     # Fix angles to be between -180 and 180
     angles[angles > 180] -= 360.0
@@ -385,9 +382,7 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
     ir.hselect('@' + _nlis, "$I,ROTPPOSN", 'yes', Stdout=_skyRot) 
 
     # Read in the list of files and rotation angles
-    rotTab = asciidata.open(_skyRot)
-    files = rotTab[0].tonumpy()
-    angles = rotTab[1].tonumpy()
+    files, angles = read_sky_rot_file(_skyRot)
 
     # Fix angles to be between -180 and 180
     angles[angles > 180] -= 360.0
@@ -461,3 +456,13 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
     f_log.close()
 
 
+def read_sky_rot_file(sky_rot_file):
+    """Read in the list of files and rotation angles."""
+    
+    rotTab = Table.read(sky_rot_file, format='ascii', header_start=None)
+    cols = rotTab.columns.keys()
+    files = rotTab[cols[0]]
+    angles = rotTab[cols[1]]
+
+    return files, angles
+    

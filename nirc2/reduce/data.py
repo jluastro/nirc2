@@ -1,8 +1,10 @@
 import os, sys
-import pyfits, math
-import user, asciidata
+from astropy.io import fits
+from astropy.table import Table
+import math
+import user
 from pyraf import iraf as ir
-import nirc2
+import nirc2_util
 import util
 import time
 import pdb
@@ -126,9 +128,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # Determine the reference coordinates for the first image.
         # This is the image for which refSrc is relevant.
         firstFile = rawDir + '/n' + str(files[0]).zfill(4) + '.fits'
-        hdr1 = pyfits.getheader(firstFile,ignore_missing_end=True)
+        hdr1 = fits.getheader(firstFile,ignore_missing_end=True)
         radecRef = [float(hdr1['RA']), float(hdr1['DEC'])]
-        aotsxyRef = nirc2.getAotsxy(hdr1)
+        aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
         # Setup a Sky object that will figure out the sky subtraction
         skyDir = waveDir + 'sky_' + nite + '/'
@@ -237,8 +239,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             ### Make the *.coo file and update headers ###
             # First check if PA is not zero
             tmp = rootDir + 'raw/n' + root + '.fits'
-            hdr = pyfits.getheader(tmp,ignore_missing_end=True)
-            phi = nirc2.getPA(hdr)
+            hdr = fits.getheader(tmp,ignore_missing_end=True)
+            phi = nirc2_util.getPA(hdr)
 
             clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef,
                           clean)
@@ -270,7 +272,7 @@ def clean_get_supermask(_statmask, _supermask, badColumns):
     _statmask -- output file containing supermask + bad columns
     """
 
-    maskFits = pyfits.open(_supermask)
+    maskFits = fits.open(_supermask)
 
     # Check that we have some valid bad columns.
     if badColumns != None and len(badColumns) != 0:
@@ -297,15 +299,15 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave):
     _mask can be directly passed into drizzle
     """
     # Get the masks to combine
-    staticMask = pyfits.getdata(_mask_static)
-    cosmicMask = pyfits.getdata(_mask_cosmic)
+    staticMask = fits.getdata(_mask_static)
+    cosmicMask = fits.getdata(_mask_cosmic)
 
     mask = staticMask + cosmicMask
 
     # check subarray
     if ('lp' in wave or 'ms' in wave) and (mask.shape[0] > 512): 
         _lpmask = '/u/ghezgroup/code/python/masks/nirc2_lp_edgemask.fits'
-        lpmask = pyfits.getdata(_lpmask)
+        lpmask = fits.getdata(_lpmask)
         mask += lpmask
 
     # Set to 0 or 1 -- note they are inverted
@@ -323,7 +325,7 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave):
     outMask[0:12,0:1024] = 0
 
     # Write out to file
-    pyfits.writeto(_mask, outMask, output_verify=outputVerify)
+    fits.writeto(_mask, outMask, output_verify=outputVerify)
     #outMask[0].writeto(_mask, output_verify=outputVerify)
 
 
@@ -513,7 +515,7 @@ def rot_img(root, phi, cleanDir):
     else:
 	ir.imcopy(inCln, outCln, verbose='no')
 
-def gcSourceXY(name):
+def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
     """Queries label.dat for the xy offset from Sgr A* (in arcsec)
     for the star given as an input
 
@@ -525,21 +527,21 @@ def gcSourceXY(name):
     """
     
     # Read in label.dat
-    _labels = '/u/jlu/gc/source_list/label.dat'
-    table = asciidata.open(_labels)
+    table = Table.read(label_file, format='ascii')
+    cols = table.columns.keys()
 
-    nameCol = (table['column1']).tonumpy().tolist()
+    nameCol = table[cols[0]]
     names = [n.strip() for n in nameCol]
     
     try:
-	id = names.index(name)
+        id = names.index(name)
 
-	x = table['column3'][id]
-	y = table['column4'][id]
+        x = table[cols[2]][id]
+        y = table[cols[3]][id]
     except ValueError, e:
-	print 'Could not find source ' + name + ' in label.dat.'
-	x = 0
-	y = 0
+        print 'Could not find source ' + name + ' in label.dat.'
+        x = 0
+        y = 0
 
     return [x,y]
     
@@ -581,7 +583,7 @@ def calcStrehl(files, wave, field=None):
         _fits = cleanDir + 'c' + root + '.fits'
 
         # Read xstrehl, ystrehl coordinates from header
-        hdr = pyfits.getheader(_fits,ignore_missing_end=True)
+        hdr = fits.getheader(_fits,ignore_missing_end=True)
         xystr = [float(hdr['XSTREHL']), float(hdr['YSTREHL'])]
 
         _coord = cleanDir + 'c' + root + '.coord'
@@ -603,14 +605,16 @@ def calcStrehl(files, wave, field=None):
     # Check that the number of lines in the resulting strehl file
     # matches the number of images we have. If not, some of the images
     # are bad and were dropped.
-    strehlTable = asciidata.open(_strehl)
-    if len(roots) != strehlTable.nrows:
-        print len(roots), strehlTable.nrows
+    strehlTable = Table.read(_strehl, format='ascii')
+    cols = strehlTable.columns.keys()
+    
+    if len(roots) != len(strehlTable):
+        print len(roots), len(strehlTable)
         # Figure out the dropped files.
         droppedFiles = []
         for rr in roots:
             foundIt = False
-            for ss in strehlTable[0]._data:
+            for ss in strehlTable[cols[0]]:
                 if rr in ss:
                     foundIt = True
                     continue
@@ -682,7 +686,7 @@ def readWeightsFile(roots, weightFile):
     column2 = weights.
     """
     
-    weightsTable = asciidata_open_trimmed(roots, weightFile)
+    weightsTable = trim_table_by_name(roots, weightFile)
 
     weights = weightsTable[1].tonumpy()
 
@@ -710,7 +714,7 @@ def loadStrehl(cleanDir, roots):
     _strehl = cleanDir + 'strehl_source.txt'
 
     # Read in file and get strehls and FWHMs
-    strehlTable = asciidata_open_trimmed(roots, _strehl)
+    strehlTable = trim_table_by_name(roots, _strehl)
     strehls = strehlTable[1].tonumpy()
     fwhm = strehlTable[3].tonumpy()
 
@@ -721,22 +725,22 @@ def loadStrehl(cleanDir, roots):
 
     return (strehls, fwhm)
 
-def asciidata_open_trimmed(outroots, tableFileName):
+def trim_table_by_name(outroots, tableFileName):
     """
     Takes a list of values (listed in tableFileName) and trim them down based on
     the desired output list of root files names (outroots).
     """
-    table = asciidata.open(tableFileName)
-    newtable = asciidata.create(table.ncols, len(outroots))
+    table = Table.read(tableFileName, format='ascii', header_start=None)
+
+    good = np.zeros(len(table), dtype=bool)
      
     for rr in range(len(outroots)):
-        for ii in range(table.nrows):
-            if outroots[rr] in table[0][ii]:
-                for cc in range(table.ncols):
-                    newtable[cc][rr] = table[cc][ii]
-                table.delete(ii)
-                break
+        for ii in range(len(table)):
+            if outroots[rr] in table[ii][0]:
+                good[ii] = True
 
+    newtable = table[good]
+    
     return newtable
  
 
@@ -797,8 +801,8 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
         ysh = shifts[2][i]
 
         # Read in PA of each file to feed into drizzle for rotation
-        hdr = pyfits.getheader(_c,ignore_missing_end=True)
-        phi = nirc2.getPA(hdr)
+        hdr = fits.getheader(_c,ignore_missing_end=True)
+        phi = nirc2_util.getPA(hdr)
         if (diffPA == 1):
             ir.drizzle.rot = phi
 
@@ -827,12 +831,12 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
         ir.drizzle(_cdwt_ir, _tmpfits, Stdout=f_dlog)
 
-        # Create .max file with saturation level for final combined image 
+        # Read .max file with saturation level for final combined image 
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         _max = cleanDir + 'c' + roots[i] + '.max'
-        getsatLvl = asciidata.open(_max)
-        satLvl = getsatLvl[0].tonumpy()
+        getsatLvl = Table.read(_max, format='ascii', header_start=None)
+        satLvl = getsatLvl[0][0]
         satLvl_wt = satLvl * weights[i]
         satLvl_combo += satLvl_wt[0]
 
@@ -853,7 +857,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     sci_mean = float(vals[0])
     sci_stddev = float(vals[1])
 
-    fits = pyfits.open(_tmpfits)
+    fits = fits.open(_tmpfits)
 
     # Find and fix really bad pixels
     idx = np.where(fits[0].data < (sci_mean - 10*sci_stddev))
@@ -940,8 +944,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 	log = f_log[sub]
 
         # Read in PA of each file to feed into drizzle for rotation
-        hdr = pyfits.getheader(_c,ignore_missing_end=True)
-        phi = nirc2.getPA(hdr)
+        hdr = fits.getheader(_c,ignore_missing_end=True)
+        phi = nirc2_util.getPA(hdr)
         if (diffPA == 1):
             ir.drizzle.rot = phi
 
@@ -949,8 +953,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         max_indiv = cleanDir + 'c' + roots[i] + '.max'
-        getsatLvl = asciidata.open(max_indiv)
-        satLvl = getsatLvl[0].tonumpy()
+        getsatLvl = Table.read(max_indiv, format='ascii', header_start=None)
+        satLvl = getsatLvl[0][0]
         satLvl_wt = satLvl * weights[i]
         satLvl_tot[sub] += satLvl_wt[0]
 
@@ -1001,7 +1005,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         sci_mean = float(vals[0])
         sci_stddev = float(vals[1])
 
-	fits = pyfits.open(_tmp[s])
+	fits = fits.open(_tmp[s])
 
         # Find and fix really bad pixels
         idx = np.where(fits[0].data < (sci_mean - 10*sci_stddev))
@@ -1045,13 +1049,13 @@ def combine_rotation(cleanDir, roots):
     """
     diffPA = 0
     firstFile = cleanDir + 'c' + roots[0] + '.fits'
-    hdr = pyfits.getheader(firstFile,ignore_missing_end=True)
-    phiRef = nirc2.getPA(hdr)
+    hdr = fits.getheader(firstFile,ignore_missing_end=True)
+    phiRef = nirc2_util.getPA(hdr)
 
     for root in roots:
 	_fits = cleanDir + 'c' + root + '.fits'
-        hdr = pyfits.getheader(_fits,ignore_missing_end=True)
-        phi = nirc2.getPA(hdr)
+        hdr = fits.getheader(_fits,ignore_missing_end=True)
+        phi = nirc2_util.getPA(hdr)
         diff = phi - phiRef
 
         if (diff != 0.0):
@@ -1062,8 +1066,8 @@ def combine_rotation(cleanDir, roots):
     if (diffPA == 1):
         for root in roots:
 	    _fits = cleanDir + 'c' + root + '.fits'
-            hdr = pyfits.getheader(_fits,ignore_missing_end=True)
-            phi = nirc2.getPA(hdr)
+            hdr = fits.getheader(_fits,ignore_missing_end=True)
+            phi = nirc2_util.getPA(hdr)
             rot_img(root, phi, cleanDir)
 
     return (diffPA)
@@ -1097,8 +1101,8 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
     shiftsY = np.concatenate([shiftsY[gidx], shiftsY[bidx]])
     roots = goodroots + badroots
 
-    newShiftsTab = asciidata.create(shiftsTab.ncols, shiftsTab.nrows)
-    for rr in range(newShiftsTab.nrows):
+    newShiftsTab = shiftsTab.copy()
+    for rr in range(len(newShiftsTab)):
         newShiftsTab[0][rr] = roots[rr]
         newShiftsTab[1][rr] = shiftsX[rr]
         newShiftsTab[2][rr] = shiftsY[rr]
@@ -1118,12 +1122,12 @@ def combine_ref(coofile, cleanDir, roots, diffPA):
     _allCoo = open(coofile, 'w')
 
     # write reference source coordinates
-    hdr = pyfits.getheader(cFits[0],ignore_missing_end=True)
+    hdr = fits.getheader(cFits[0],ignore_missing_end=True)
     _allCoo.write(' ' + hdr['XREF'] + '   ' + hdr['YREF'] + '\n')
 
     # write all coordinates, including reference frame
     for i in range(len(roots)):
-        hdr = pyfits.getheader(cFits[i],ignore_missing_end=True)
+        hdr = fits.getheader(cFits[i],ignore_missing_end=True)
         _allCoo.write(' ' + hdr['XREF'] + '   ' + hdr['YREF'] + '\n')
 
     _allCoo.close()
@@ -1204,11 +1208,17 @@ def combine_register(outroot, refImage, diffPA):
     print 'regions = ', regions
     print 'shiftFile = ', shiftFile
 
-    fileNames = asciidata.open(input[1:])
-    coords = asciidata.open(outroot + '.coo')
-    shiftsTable = asciidata.create(3, fileNames.nrows)
+    fileNames = Table.read(input[1:], format='ascii', header_start=None)
+    coords = Table.read(outroot + '.coo', format='ascii', header_start=None)
+    shiftsTable_empty = np.zeros((len(fileNames), 3), dtype=float)
+    shiftsTable = Table(shiftsTable_empty, dtypes=(float, float, 'S50'))
     
-    for ii in range(fileNames.nrows):
+    # fileNames = asciidata.open(input[1:])
+    # coords = asciidata.open(outroot + '.coo')
+    # shiftsTable = asciidata.create(3, fileNames.nrows)
+    
+    
+    for ii in range(len(fileNames)):
         inFile = fileNames[0][ii]
 
         tmpCooFile = outroot + '_tmp.coo'
@@ -1222,10 +1232,11 @@ def combine_register(outroot, refImage, diffPA):
         ir.xregister.coords = tmpCooFile
         ir.xregister(inFile, refImage, regions, shiftFile)
 
-        _shifts = asciidata.open(shiftFile)
-        shiftsTable[0][ii] = _shifts[0][0]
-        shiftsTable[1][ii] = _shifts[1][0]
-        shiftsTable[2][ii] = _shifts[2][0]
+        # _shifts = asciidata.open(shiftFile)
+        _shifts = Table.read(shiftFile, format='ascii', header_start=None)
+        shiftsTable[ii][0] = _shifts[0][0]
+        shiftsTable[ii][1] = _shifts[0][1]
+        shiftsTable[ii][2] = _shifts[0][2]
 
     # # Read in the shifts file. Column format is:
     # # Filename.fits  xshift  yshift
@@ -1277,13 +1288,13 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
     # Might require some extra padding on one side.
     maxoffset = max([xlo, xhi, ylo, yhi])
 
-    orig_img = pyfits.getdata(refImage)
+    orig_img = fits.getdata(refImage)
     orig_size = (orig_img.shape)[0]
     padd = 8.0
 
     # Read in 16C's position in the ref image and translate
     # it into the coordinates of the final main and sub maps.
-    hdr = pyfits.getheader(refImage,ignore_missing_end=True)
+    hdr = fits.getheader(refImage,ignore_missing_end=True)
     xrefSrc = float(hdr['XREF'])
     yrefSrc = float(hdr['YREF'])
 
@@ -1439,13 +1450,13 @@ def clean_cosmicrays2(_ff, _ff_cr, _mask, wave):
 
     
     from jlu.util import cosmics
-    img, hdr = pyfits.getdata(_ff, header=True)
+    img, hdr = fits.getdata(_ff, header=True)
     c = cosmics.cosmicsimage(img, gain=gain, readnoise=readnoise,
                              sigclip=10, sigfrac=0.5, objlim=5.0)
     c.run(maxiter=3)
-    pyfits.writeto(_ff_cr, c.cleanarray, hdr,
+    fits.writeto(_ff_cr, c.cleanarray, hdr,
                    clobber=True, output_verify=outputVerify)
-    pyfits.writeto(_mask, np.where(c.mask==True, 1, 0), hdr,
+    fits.writeto(_mask, np.where(c.mask==True, 1, 0), hdr,
                    clobber=True, output_verify=outputVerify)
 
 def clean_persistance(_n, _pers):
@@ -1454,7 +1465,7 @@ def clean_persistance(_n, _pers):
     later on.
     """
     # Read in image
-    fits = pyfits.open(_n)
+    fits = fits.open(_n)
     img = fits[0].data
     
     # Define the high pixels
@@ -1484,7 +1495,7 @@ def clean_bkgsubtract(_ff_f, _bp):
     #      (sci_mean, sci_stddev, bkg, _ff_f)
     
     # Open old, subtract BKG
-    fits = pyfits.open(_ff_f)
+    fits = fits.open(_ff_f)
 
     # Find really bad pixels
     idx = np.where(fits[0].data < (sci_mean - 10*sci_stddev))
@@ -1525,20 +1536,20 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     @param clean: The clean directory.
     @type clean: string
     """
-    hdr = pyfits.getheader(_ce,ignore_missing_end=True)
+    hdr = fits.getheader(_ce,ignore_missing_end=True)
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
-    aotsxy = nirc2.getAotsxy(hdr)
+    aotsxy = nirc2_util.getAotsxy(hdr)
 
     # Determine the image's PA and plate scale
-    phi = nirc2.getPA(hdr)
-    scale = nirc2.getScale(hdr)
+    phi = nirc2_util.getPA(hdr)
+    scale = nirc2_util.getScale(hdr)
 
     # Calculate the pixel offsets from the reference image
     # We've been using aotsxy2pix, but the keywords are wrong
     # for 07maylgs and 07junlgs
-    #d_xy = nirc2.radec2pix(radec, phi, scale, radecRef)
-    d_xy = nirc2.aotsxy2pix(aotsxy, scale, aotsxyRef)
+    #d_xy = nirc2_util.radec2pix(radec, phi, scale, radecRef)
+    d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
 
     # In the new image, find the REF and STRL coords
     xref = refSrc[0] + d_xy[0]
@@ -1559,7 +1570,7 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     ystr = float(values[4])
 
     # write reference star x,y to fits header
-    fits = pyfits.open(_ce)
+    fits = fits.open(_ce)
     fits[0].header.update('XREF', "%.3f" %xref,
                           'Cross Corr Reference Src x')
     fits[0].header.update('YREF', "%.3f" %yref,
@@ -1574,11 +1585,11 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
 
     # Make a temporary rotated coo file, in case there are any data sets
     # with various PAs; needed for xregister; remove later
-    xyRef_rot = nirc2.rotate_coo(xref, yref, phi)
+    xyRef_rot = nirc2_util.rotate_coo(xref, yref, phi)
     xref_r = xyRef_rot[0]
     yref_r = xyRef_rot[1]
 
-    xyStr_rot = nirc2.rotate_coo(xstr, ystr, phi)
+    xyStr_rot = nirc2_util.rotate_coo(xstr, ystr, phi)
     xstr_r = xyStr_rot[0]
     ystr_r = xyStr_rot[1]
 
@@ -1601,12 +1612,12 @@ def mosaic_ref(outFile, cleanDir, roots, diffPA):
     else: 
 	fileNames = [cleanDir + 'c' + root + '.fits' for root in roots]
 
-    hdrRef = pyfits.getheader(fileNames[0],ignore_missing_end=True)
-    aotsxyRef = nirc2.getAotsxy(hdrRef)
+    hdrRef = fits.getheader(fileNames[0],ignore_missing_end=True)
+    aotsxyRef = nirc2_util.getAotsxy(hdrRef)
 
     # Determine the image's PA and plate scale
-    phi = nirc2.getPA(hdrRef)
-    scale = nirc2.getScale(hdrRef)
+    phi = nirc2_util.getPA(hdrRef)
+    scale = nirc2_util.getScale(hdrRef)
 
     _out = open(outFile, 'w')
 
@@ -1615,13 +1626,13 @@ def mosaic_ref(outFile, cleanDir, roots, diffPA):
     _out.write('%7.2f  %7.2f\n' % (0.0, 0.0))
 
     for rr in range(len(roots)):
-	hdr = pyfits.getheader(fileNames[rr],ignore_missing_end=True)
-	aotsxy = nirc2.getAotsxy(hdr)
+	hdr = fits.getheader(fileNames[rr],ignore_missing_end=True)
+	aotsxy = nirc2_util.getAotsxy(hdr)
 
 	# Calculate the pixel offsets from the reference image
 	# We've been using aotsxy2pix, but the keywords are wrong
 	# for 07maylgs and 07junlgs
-	d_xy = nirc2.aotsxy2pix(aotsxy, scale, aotsxyRef)
+	d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
 
 	_out.write('%7.2f  %7.2f\n' % (d_xy[0], d_xy[1]))
     
@@ -1653,22 +1664,25 @@ class Sky(object):
 
         # Read skies from manual sky file (format: raw_science   sky)
         if (self.skyFile):
-            skyTab = asciidata.open(self.skyDir + self.skyFile)
-            self.images = skyTab[0].tonumpy()
-            skies = skyTab[1].tonumpy()
+            skyTab = Table.read(self.skyDir + self.skyFile,
+                                format='ascii', header_start=None)
+            # skyTab = asciidata.open(self.skyDir + self.skyFile)
+            self.images = skyTab[skyTab.colnames[0]]
+            skies = skyTab[skyTab.colnames[1]]
 
             skyAng = np.zeros([len(skies)], Float64)
             for i in range(0,len(skies)):
                 sky = skies[i].strip()
-                hdr = pyfits.getheader(self.skyDir + sky,ignore_missing_end=True)
+                hdr = fits.getheader(self.skyDir + sky, ignore_missing_end=True)
                 skyAng[i] = float(hdr['ROTPPOSN'])
 
         else:
             # Read in the sky table. Determine the effective K-mirror
             # angle for each sky.
-            skyTab = asciidata.open(self.skyDir + 'rotpposn.txt')
-            skies = skyTab[0].tonumpy()
-            skyAng = skyTab[1].tonumpy()
+            skyTab = Table.read(self.skyDir + 'rotpposn.txt',
+                                format='ascii', header_start=None)
+            skies = skyTab[skyTab.colnames[0]]
+            skyAng = skyTab[skyTab.colnames[1]]
 
         # The optimal sky angle to use is skyAng = A + B*sciAng
         self.angFitA = self.angleOffset
@@ -1985,11 +1999,11 @@ def mosiac_ref(coofile, cleanDir, roots, rootDir):
 
     # Read the AOTSX coords from the first file
     firstFile = rootDir + 'raw/n' + roots[0] + '.fits'
-    hdr1 = pyfits.getheader(firstFile,ignore_missing_end=True)
-    scaleRef = nirc2.getScale(hdr1)
-    aotsxyRef = nirc2.getAotsxy(hdr1)
+    hdr1 = fits.getheader(firstFile,ignore_missing_end=True)
+    scaleRef = nirc2_util.getScale(hdr1)
+    aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
-    d_xyRef = nirc2.aotsxy2pix(aotsxyRef, scaleRef, aotsxyRef)
+    d_xyRef = nirc2_util.aotsxy2pix(aotsxyRef, scaleRef, aotsxyRef)
 
     # Write combined *.coo file containing the offsets.
     _allCoo = file(coofile, 'w')
@@ -1998,14 +2012,14 @@ def mosiac_ref(coofile, cleanDir, roots, rootDir):
     for root in roots:
         # Compute the relative offsets.
 	_fits = cleanDir + 'c' + root + '.fits'
-        hdr = pyfits.getheader(_fits,ignore_missing_end=True)
-        aotsxy = nirc2.getAotsxy(hdr)
+        hdr = fits.getheader(_fits,ignore_missing_end=True)
+        aotsxy = nirc2_util.getAotsxy(hdr)
 
-        phi = nirc2.getPA(hdr)
-        scale = nirc2.getScale(hdr)
+        phi = nirc2_util.getPA(hdr)
+        scale = nirc2_util.getScale(hdr)
 
         # Calculate the pixel offsets from the reference image
-        d_xy = nirc2.aotsxy2pix(aotsxy, scale, aotsxyRef)
+        d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
 
         _allCoo.write('%7.2f  %7.2f\n' % (d_xy[0], d_xy[1]))
 
@@ -2048,7 +2062,7 @@ def mosaic_register(outroot, refImage, diffPA):
 
     # Read in the shifts file. Column format is:
     # Filename.fits  xshift  yshift
-    shiftsTable = asciidata.open(shiftFile)
+    shiftsTable = Table.read(shiftFile, format='ascii', header_start=None)
 
     return (shiftsTable)
 
@@ -2081,7 +2095,7 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
     # Might require some extra padding on one side.
     maxoffset = max([xlo, xhi, ylo, yhi])
 
-    orig_img = pyfits.getdata(refImage)
+    orig_img = fits.getdata(refImage)
     orig_size = (orig_img.shape)[0]
     padd = 8.0
 
@@ -2093,7 +2107,7 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
 
     # Read in 16C's position in the ref image and translate
     # it into the coordinates of the final main and sub maps.
-    hdr = pyfits.getheader(refImage,ignore_missing_end=True)
+    hdr = fits.getheader(refImage,ignore_missing_end=True)
     xrefSrc = float(hdr['XREF'])
     yrefSrc = float(hdr['YREF'])
 
