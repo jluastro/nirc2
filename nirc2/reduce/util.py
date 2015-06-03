@@ -1,4 +1,4 @@
-import asciidata
+from astropy.table import Table
 import os, errno, shutil
 import pyfits
 import pdb
@@ -7,7 +7,8 @@ def rmall(files):
     """Remove list of files without confirmation."""
     for file in files:
         if os.access(file, os.F_OK): os.remove(file)
-
+            
+    return
 
 def mkdir(dir):
     """Make directory if it doesn't already exist."""
@@ -18,6 +19,8 @@ def mkdir(dir):
             pass
         else:
             raise
+
+    return
 
 def getcwd():
     """
@@ -64,6 +67,7 @@ def cp_change_prefix(arg1,arg2):
             newFile = arg2 + suf
             shutil.copy(files[ff], newFile)
 
+    return
 
 def cp_change_suffix(arg1,arg2):
     """
@@ -85,7 +89,7 @@ def cp_change_suffix(arg1,arg2):
             newFile = pre + arg2 
             shutil.copy(files[ff], newFile)
 
-
+    return
 
 def update_header_coords(fileList):
     """
@@ -95,21 +99,24 @@ def update_header_coords(fileList):
     fileList : list of files to update
     """
 
-    _files = asciidata.open(fileList)
-    files = _files[0].tonumpy()
+    _files = Table.read(fileList, format='ascii', header_start=None)
+    cols = _files.columns.keys()
+    files = _files[cols[0]]
     files = [files[ff].split('.')[0] for ff in range(len(files))]
     
 
     for ff in range(len(files)):
         # Open .coo file and read 16C's coordinates
-        coo = asciidata.open(files[ff]+'.coo')
-        xref = coo[0].tonumpy()
-        yref = coo[1].tonumpy()
+        coo = Table.read(files[ff]+'.coo', format='ascii', header_start=None)
+        coo_cols = coo.columns.keys()
+        xref = coo[coo_cols[0]]
+        yref = coo[coo_cols[1]]
 
         # Open .coord file and read strehl source's coordinates
-        coord = asciidata.open(files[ff]+'.coord')
-        xstr = coord[0].tonumpy()
-        ystr = coord[1].tonumpy()
+        coord = Table.read(files[ff]+'.coord', format='ascii', header_start=None)
+        coord_cols = coord.columns.keys()
+        xstr = coord[coord_cols[0]]
+        ystr = coord[coord_cols[1]]
  
         # Open image and write reference star x,y to fits header
         fits = pyfits.open(files[ff]+'.fits')
@@ -127,3 +134,4 @@ def update_header_coords(fileList):
         _out = 'new_hdr/' + files[ff] + '.fits'
         fits[0].writeto(_out, output_verify='silentfix')
 
+    return
