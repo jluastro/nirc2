@@ -8,6 +8,7 @@ import os
 import glob
 from astropy.table import Table
 import numpy as np
+import math
 
 def nirc2log(directory):
     """Make an electronic NIRC2 log for all files in the specified
