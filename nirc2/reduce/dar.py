@@ -158,7 +158,7 @@ def nirc2dar(fitsFile):
                             3.0 * refB * (tanz + 2.0*tanz**3))
 
     # Convert DAR coefficients for use with units of NIRC2 pixels
-    scale = nirc2.getScale(hdr)
+    scale = nirc2_util.getScale(hdr)
     darCoeffL *= 1.0
     darCoeffQ *= 1.0 * scale / 206265.0
     
