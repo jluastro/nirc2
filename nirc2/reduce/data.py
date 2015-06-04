@@ -857,28 +857,28 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     sci_mean = float(vals[0])
     sci_stddev = float(vals[1])
 
-    fits = fits.open(_tmpfits)
+    fits_f = fits.open(_tmpfits)
 
     # Find and fix really bad pixels
-    idx = np.where(fits[0].data < (sci_mean - 10*sci_stddev))
-    fits[0].data[idx] = sci_mean - 10*sci_stddev
+    idx = np.where(fits_f[0].data < (sci_mean - 10*sci_stddev))
+    fits_f[0].data[idx] = sci_mean - 10*sci_stddev
 
     # Set the ROTPOSN value for the combined image.
     if (diffPA == 1):
         phi = 0.7
-        fits[0].header.update('ROTPOSN', "%.5f" % phi,
+        fits_f[0].header.update('ROTPOSN', "%.5f" % phi,
                               'rotator user position')
 
     # Add keyword with distortion image information
-    fits[0].header.update('DISTCOEF', "%s" % distCoef,
+    fits_f[0].header.update('DISTCOEF', "%s" % distCoef,
                           'Distortion Coefficients File')
-    fits[0].header.update('DISTORTX', "%s" % distXgeoim,
+    fits_f[0].header.update('DISTORTX', "%s" % distXgeoim,
                           'X Distortion Image')
-    fits[0].header.update('DISTORTY', "%s" % distYgeoim,
+    fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
                           'Y Distortion Image')
 
     # Save to final fits file.
-    fits[0].writeto(_fits, output_verify=outputVerify)
+    fits_f[0].writeto(_fits, output_verify=outputVerify)
     util.rmall([_tmpfits, _cdwt])
 
 def combine_submaps(imgsize, cleanDir, roots, outroot, weights, 
@@ -1005,33 +1005,33 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         sci_mean = float(vals[0])
         sci_stddev = float(vals[1])
 
-	fits = fits.open(_tmp[s])
+        fits_f = fits.open(_tmp[s])
 
         # Find and fix really bad pixels
-        idx = np.where(fits[0].data < (sci_mean - 10*sci_stddev))
-        fits[0].data[idx] = 0.0
+        idx = np.where(fits_f[0].data < (sci_mean - 10*sci_stddev))
+        fits_f[0].data[idx] = 0.0
 
         # Normalize properly
-	fits[0].data = fits[0].data / weightsTot[s]
+        fits_f[0].data = fits_f[0].data / weightsTot[s]
 
         # Fix the ITIME header keyword so that it matches (weighted).
-        itime = fits[0].header.get('ITIME')
+        itime = fits_f[0].header.get('ITIME')
         itime /= weightsTot[s]
-        fits[0].header.update('ITIME', '%.5f' % itime)
+        fits_f[0].header.update('ITIME', '%.5f' % itime)
         
         # Set the ROTPOSN value for the combined submaps. 
         if (diffPA == 1):
             phi = 0.7
-            fits[0].header.update('ROTPOSN', "%.5f" % phi,
+            fits_f[0].header.update('ROTPOSN', "%.5f" % phi,
                                   'rotator user position')
 
         # Add keyword with distortion image information
-        fits[0].header.update('DISTORTX', "%s" % distXgeoim,
+        fits_f[0].header.update('DISTORTX', "%s" % distXgeoim,
                               'X Distortion Image')
-        fits[0].header.update('DISTORTY', "%s" % distYgeoim,
+        fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
                               'Y Distortion Image')
 
-	fits[0].writeto(_fits[s], output_verify=outputVerify)
+	fits_f[0].writeto(_fits[s], output_verify=outputVerify)
 
 
     util.rmall(_tmp)
@@ -1465,18 +1465,18 @@ def clean_persistance(_n, _pers):
     later on.
     """
     # Read in image
-    fits = fits.open(_n)
-    img = fits[0].data
+    fits_f = fits.open(_n)
+    img = fits_f[0].data
     
     # Define the high pixels
     persPixels = where(img > 12000)
 
     # Set saturated pixels to 0, good pixels to 1
-    fits[0].data[persPixels] = 0
-    fits[0].data = fits[0].data / fits[0].data
+    fits_f[0].data[persPixels] = 0
+    fits_f[0].data = fits_f[0].data / fits_f[0].data
 
     # Save to an image
-    fits[0].writeto(_pers, output_verify=outputVerify)
+    fits_f[0].writeto(_pers, output_verify=outputVerify)
 
 
 def clean_bkgsubtract(_ff_f, _bp):
@@ -1536,6 +1536,8 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     @param clean: The clean directory.
     @type clean: string
     """
+    from astropy.io import fits
+    
     hdr = fits.getheader(_ce,ignore_missing_end=True)
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
@@ -1570,16 +1572,16 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     ystr = float(values[4])
 
     # write reference star x,y to fits header
-    fits = fits.open(_ce)
-    fits[0].header.update('XREF', "%.3f" %xref,
+    fits_f = fits.open(_ce)
+    fits_f[0].header.update('XREF', "%.3f" %xref,
                           'Cross Corr Reference Src x')
-    fits[0].header.update('YREF', "%.3f" %yref,
+    fits_f[0].header.update('YREF', "%.3f" %yref,
                           'Cross Corr Reference Src y')
-    fits[0].header.update('XSTREHL', "%.3f" %xstr,
+    fits_f[0].header.update('XSTREHL', "%.3f" %xstr,
                           'Strehl Reference Src x')
-    fits[0].header.update('YSTREHL', "%.3f" %ystr,
+    fits_f[0].header.update('YSTREHL', "%.3f" %ystr,
                           'Strehl Reference Src y')
-    fits[0].writeto(_cc, output_verify=outputVerify)
+    fits_f[0].writeto(_cc, output_verify=outputVerify)
 
     file('c'+root+'.coo', 'w').write('%7.2f  %7.2f\n' % (xref, yref))
 
