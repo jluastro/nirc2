@@ -1495,19 +1495,19 @@ def clean_bkgsubtract(_ff_f, _bp):
     #      (sci_mean, sci_stddev, bkg, _ff_f)
     
     # Open old, subtract BKG
-    fits = fits.open(_ff_f)
+    fits_f = fits.open(_ff_f)
 
     # Find really bad pixels
-    idx = np.where(fits[0].data < (sci_mean - 10*sci_stddev))
+    idx = np.where(fits_f[0].data < (sci_mean - 10*sci_stddev))
 
     # Subtract background
-    fits[0].data -= bkg
+    fits_f[0].data -= bkg
 
     # Fix really bad negative pixels.
-    fits[0].data[idx] = 0.0
+    fits_f[0].data[idx] = 0.0
 
     # Write to new file
-    fits[0].writeto(_bp, output_verify=outputVerify)
+    fits_f[0].writeto(_bp, output_verify=outputVerify)
 
     # Return the background we subtracted off
     return bkg
