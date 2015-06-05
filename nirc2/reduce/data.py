@@ -1213,11 +1213,6 @@ def combine_register(outroot, refImage, diffPA):
     shiftsTable_empty = np.zeros((len(fileNames), 3), dtype=float)
     shiftsTable = Table(shiftsTable_empty, dtypes=(float, float, 'S50'))
     
-    # fileNames = asciidata.open(input[1:])
-    # coords = asciidata.open(outroot + '.coo')
-    # shiftsTable = asciidata.create(3, fileNames.nrows)
-    
-    
     for ii in range(len(fileNames)):
         inFile = fileNames[0][ii]
 
@@ -1232,15 +1227,13 @@ def combine_register(outroot, refImage, diffPA):
         ir.xregister.coords = tmpCooFile
         ir.xregister(inFile, refImage, regions, shiftFile)
 
-        # _shifts = asciidata.open(shiftFile)
+        # # Read in the shifts file. Column format is:
+        # # Filename.fits  xshift  yshift
         _shifts = Table.read(shiftFile, format='ascii', header_start=None)
         shiftsTable[ii][0] = _shifts[0][0]
         shiftsTable[ii][1] = _shifts[0][1]
         shiftsTable[ii][2] = _shifts[0][2]
 
-    # # Read in the shifts file. Column format is:
-    # # Filename.fits  xshift  yshift
-    # shiftsTable = asciidata.open(shiftFile)
 
     util.rmall([shiftFile])
     shiftsTable.writeto(shiftFile)
@@ -1264,7 +1257,7 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
     shifts stored in the shiftsTable.
 
     @param shiftsTable: Table with x and y shifts for each image
-    @type shiftsTable: asciidata table
+    @type shiftsTable: ascii table
     @param refImage: The reference image from which the shifts are
         calculated from.
     @type refImage: string
@@ -1667,7 +1660,6 @@ class Sky(object):
         if (self.skyFile):
             skyTab = Table.read(self.skyDir + self.skyFile,
                                 format='ascii', header_start=None)
-            # skyTab = asciidata.open(self.skyDir + self.skyFile)
             self.images = skyTab[skyTab.colnames[0]]
             skies = skyTab[skyTab.colnames[1]]
 

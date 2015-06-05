@@ -1,5 +1,5 @@
 from pyraf import iraf
-import asciidata, glob, os
+import glob, os
 import numpy as np
 import pylab as py
 import math, datetime
