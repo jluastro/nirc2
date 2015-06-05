@@ -1536,7 +1536,6 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     @param clean: The clean directory.
     @type clean: string
     """
-    from astropy.io import fits
     
     hdr = fits.getheader(_ce,ignore_missing_end=True)
 
