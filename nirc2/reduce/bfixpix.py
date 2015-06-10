@@ -1,6 +1,6 @@
 from pyraf import iraf as ir
 from scipy import ndimage
-import pyfits
+from astropy.io import fits
 import numpy as np
 import util
 
@@ -33,8 +33,8 @@ def bfixpix(image_file, mask_file, outsuffix='_f', msksuffix='_s'):
     print("bfixpix: {0} -> {1}".format(image_file, outf))
 
     # fetch the image, fetch the mask
-    img, hdr = pyfits.getdata(image_file, header=True)
-    msk = pyfits.getdata(mask_file)
+    img, hdr = fits.getdata(image_file, header=True)
+    msk = fits.getdata(mask_file)
 
     # median the image
     medimg = ndimage.median_filter(img, 3, mode='nearest')
@@ -43,5 +43,5 @@ def bfixpix(image_file, mask_file, outsuffix='_f', msksuffix='_s'):
     outf_img = np.where(msk == 0, img, medimg)
     outm_img = np.where(msk == 1, (img - medimg), 0)
 
-    pyfits.writeto(outf, outf_img, hdr)
-    pyfits.writeto(outm, outm_img, hdr)
+    fits.writeto(outf, outf_img, hdr)
+    fits.writeto(outm, outm_img, hdr)
