@@ -305,8 +305,8 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave):
     mask = staticMask + cosmicMask
 
     # check subarray
-    if ('lp' in wave or 'ms' in wave) and (mask.shape[0] > 512): 
-        _lpmask = '/u/ghezgroup/code/python/masks/nirc2_lp_edgemask.fits'
+    if ('lp' in wave or 'ms' in wave) and (mask.shape[0] > 512):
+        _lpmask = module_dir + '/masks/nirc2_lp_edgemask.fits'
         lpmask = fits.getdata(_lpmask)
         mask += lpmask
 
