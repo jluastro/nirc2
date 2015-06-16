@@ -259,9 +259,10 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             os.rename(_coo, clean + _coo)
 
             # This just closes out any sky logging files.
-            skyObj.close()
+            #skyObj.close()
     finally: 
         # Move back up to the original directory
+        skyObj.close()
         ir.cd('../')
 
 def clean_get_supermask(_statmask, _supermask, badColumns):
@@ -600,7 +601,13 @@ def calcStrehl(files, wave, field=None):
     batchFile.write("exit\n")
     batchFile.close()
 
-    os.system('idl < idl.strehl.batch > idl.strehl.batch.log')
+    #os.system('idl < idl.strehl.batch > idl.strehl.batch.log')
+
+    import subprocess
+
+    #subprocess.Popen('setenv', shell=True, executable = '/bin/tcsh')
+    subprocess.Popen('idl < idl.strehl.batch > idl.strehl.batch.log', shell = True, executable = '/bin/tcsh')
+
 
     # Check that the number of lines in the resulting strehl file
     # matches the number of images we have. If not, some of the images
@@ -1780,7 +1787,7 @@ class Sky(object):
 
         foo = '%s - %s  %6.1f  %6.1f' % \
               (_n, self.skies[skyidx], sciAng, self.skyAng[skyidx])
-            
+ 
         self.f_skylog.write( foo )
 
         return sky
