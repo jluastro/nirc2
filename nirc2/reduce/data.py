@@ -11,6 +11,7 @@ import pdb
 import numpy as np
 import dar
 import bfixpix
+import subprocess
 
 module_dir = os.path.dirname(__file__)
 
@@ -596,18 +597,19 @@ def calcStrehl(files, wave, field=None):
 
     # Now call Marcos's strehl widget in a command line format.
     batchFile = open(_idl, 'w')
+    batchFile.write("print, \"Hello World\"\n")
     batchFile.write("cmd_strehl_widget, '" + clisFile + "', /list, ")
     batchFile.write("output='" + _strehl + "', aper=0.3, /silent\n")
     batchFile.write("exit\n")
     batchFile.close()
 
-    #os.system('idl < idl.strehl.batch > idl.strehl.batch.log')
 
-    import subprocess
+    util.rmall(['idl.strehl.batch.log'])
 
     #subprocess.Popen('setenv', shell=True, executable = '/bin/tcsh')
-    subprocess.Popen('idl < idl.strehl.batch > idl.strehl.batch.log', shell = True, executable = '/bin/tcsh')
-
+    exec_str = 'idl < idl.strehl.batch > idl.strehl.batch.log'
+    subp = subprocess.Popen(exec_str, shell=True, executable="/bin/tcsh")
+    tmp = subp.communicate()
 
     # Check that the number of lines in the resulting strehl file
     # matches the number of images we have. If not, some of the images
@@ -695,7 +697,7 @@ def readWeightsFile(roots, weightFile):
     
     weightsTable = trim_table_by_name(roots, weightFile)
 
-    weights = weightsTable[1].tonumpy()
+    weights = weightsTable['col2']
 
     # Renormalize so that weights add up to 1.0
     weights /= weights.sum()
@@ -722,8 +724,8 @@ def loadStrehl(cleanDir, roots):
 
     # Read in file and get strehls and FWHMs
     strehlTable = trim_table_by_name(roots, _strehl)
-    strehls = strehlTable[1].tonumpy()
-    fwhm = strehlTable[3].tonumpy()
+    strehls = strehlTable['col2']
+    fwhm = strehlTable['col4']
 
     # Double check that we have the same number of 
     # lines in the strehlTable as files.
@@ -1087,9 +1089,9 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
     fwhm = fwhm[sidx]
     weights = weights[sidx]
     roots = [roots[i] for i in sidx]
-    shiftsX = shiftsTab[1].tonumpy()
+    shiftsX = shiftsTab['col1']
     shiftsX = shiftsX[sidx]
-    shiftsY = shiftsTab[2].tonumpy()
+    shiftsY = shiftsTab['col2']
     shiftsY = shiftsY[sidx]
     
     # Move all the ones with fwhm = -1 to the end
