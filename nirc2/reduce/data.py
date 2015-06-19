@@ -1217,10 +1217,10 @@ def combine_register(outroot, refImage, diffPA):
     print 'regions = ', regions
     print 'shiftFile = ', shiftFile
 
-    fileNames = Table.read(input[1:], format='ascii', header_start=None)
+    fileNames = Table.read(input[1:], format='ascii') #, header_start=None
     coords = Table.read(outroot + '.coo', format='ascii', header_start=None)
     shiftsTable_empty = np.zeros((len(fileNames), 3), dtype=float)
-    shiftsTable = Table(shiftsTable_empty, dtypes=(float, float, 'S50'))
+    shiftsTable = Table(shiftsTable_empty, dtype=('S50', float, 'S50')) #dtype=(float, float, 'S50')
     
     for ii in range(len(fileNames)):
         inFile = fileNames[0][ii]
@@ -1238,7 +1238,7 @@ def combine_register(outroot, refImage, diffPA):
 
         # # Read in the shifts file. Column format is:
         # # Filename.fits  xshift  yshift
-        _shifts = Table.read(shiftFile, format='ascii', header_start=None)
+        _shifts = Table.read(shiftFile, format='ascii') #, header_start=None
         shiftsTable[ii][0] = _shifts[0][0]
         shiftsTable[ii][1] = _shifts[0][1]
         shiftsTable[ii][2] = _shifts[0][2]
