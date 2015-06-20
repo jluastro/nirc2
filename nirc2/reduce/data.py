@@ -806,8 +806,8 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
         ir.hedit(_cdwt_ir, 'ITIME', itime, verify='no', show='no')
 
         # Get pixel shifts
-        xsh = shifts[1][i]
-        ysh = shifts[2][i]
+        xsh = shifts[i][1]
+        ysh = shifts[i][2]
 
         # Read in PA of each file to feed into drizzle for rotation
         hdr = fits.getheader(_c,ignore_missing_end=True)
