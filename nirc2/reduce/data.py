@@ -1205,6 +1205,7 @@ def combine_register(outroot, refImage, diffPA):
     ir.xregister.databasefmt = 'no'
     ir.xregister.verbose = 'no'
 
+    
     print 'combine: registering images'
     if (diffPA == 1):
         input = '@' + outroot + '.lis_r'
@@ -1217,18 +1218,22 @@ def combine_register(outroot, refImage, diffPA):
     print 'regions = ', regions
     print 'shiftFile = ', shiftFile
 
-    fileNames = Table.read(input[1:], format='ascii') #, header_start=None
+    fileNames = Table.read(input[1:], format='ascii', header_start = None) #, header_start=None
+    print fileNames
+    fileNames = np.array(fileNames)
+    fileNames = np.array(fileNames, dtype='S')
     coords = Table.read(outroot + '.coo', format='ascii', header_start=None)
     shiftsTable_empty = np.zeros((len(fileNames), 3), dtype=float)
-    shiftsTable = Table(shiftsTable_empty, dtype=('S50', float, 'S50')) #dtype=(float, float, 'S50')
-    
+    shiftsTable = Table(shiftsTable_empty, dtype=('S50', float, float)) #dtype=(float, float, 'S50')
+
+
     for ii in range(len(fileNames)):
-        inFile = fileNames[0][ii]
+        inFile = fileNames[ii]
 
         tmpCooFile = outroot + '_tmp.coo'
         _coo = open(tmpCooFile, 'w')
         _coo.write('%.2f  %.2f\n' % (coords[0][0], coords[1][0]))
-        _coo.write('%.2f  %.2f\n' % (coords[0][ii+1], coords[1][ii+1]))
+        _coo.write('%.2f  %.2f\n' % (coords[ii+1][0], coords[ii+1][1])) #Changed from [0][ii+1] to [ii+1][0]
         _coo.close()
 
         util.rmall([shiftFile])
@@ -1245,7 +1250,7 @@ def combine_register(outroot, refImage, diffPA):
 
 
     util.rmall([shiftFile])
-    shiftsTable.writeto(shiftFile)
+    shiftsTable.write(shiftFile, format = 'ascii')
 
     return (shiftsTable)
 
@@ -1278,8 +1283,9 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
     @param submaps: number of submaps
     @type sbumaps: int
     """
-    x_allShifts = shiftsTable[1].tonumpy()
-    y_allShifts = shiftsTable[2].tonumpy()
+    x_allShifts = shiftsTable['col1']
+    y_allShifts = shiftsTable['col2']
+
 
     xhi = abs(x_allShifts.max())
     xlo = abs(x_allShifts.min())
@@ -2085,8 +2091,8 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
     @param submaps:
     @type submaps:
     """
-    x_allShifts = shiftsTable[1].tonumpy()
-    y_allShifts = shiftsTable[2].tonumpy()
+    x_allShifts = shiftsTable['col1']
+    y_allShifts = shiftsTable['col2']
 
     xhi = abs(x_allShifts.max())
     xlo = abs(x_allShifts.min())
