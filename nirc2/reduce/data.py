@@ -844,10 +844,13 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         _max = cleanDir + 'c' + roots[i] + '.max'
-        getsatLvl = Table.read(_max, format='ascii', header_start=None)
-        satLvl = getsatLvl[0][0]
+        #getsatLvl = Table.read(_max, format='ascii.no_header') #changed from , header_start=None
+        #satLvl = getsatLvl[0][0]
+        getsatLvl = open(_max)
+        satLvl = float(getsatLvl.read())
+        getsatLvl.close()
         satLvl_wt = satLvl * weights[i]
-        satLvl_combo += satLvl_wt[0]
+        satLvl_combo += satLvl_wt
 
     f_dlog.close()
 
@@ -1112,9 +1115,9 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
 
     newShiftsTab = shiftsTab.copy()
     for rr in range(len(newShiftsTab)):
-        newShiftsTab[0][rr] = roots[rr]
-        newShiftsTab[1][rr] = shiftsX[rr]
-        newShiftsTab[2][rr] = shiftsY[rr]
+        newShiftsTab[rr][0] = roots[rr]
+        newShiftsTab[rr][1] = shiftsX[rr]
+        newShiftsTab[rr][2] = shiftsY[rr]
 
     return (roots, strehls, fwhm, weights, newShiftsTab)
 
@@ -1218,8 +1221,7 @@ def combine_register(outroot, refImage, diffPA):
     print 'regions = ', regions
     print 'shiftFile = ', shiftFile
 
-    fileNames = Table.read(input[1:], format='ascii', header_start = None) #, header_start=None
-    print fileNames
+    fileNames = Table.read(input[1:], format='ascii.no_header') # removed , header_start=None
     fileNames = np.array(fileNames)
     fileNames = np.array(fileNames, dtype='S')
     coords = Table.read(outroot + '.coo', format='ascii', header_start=None)
@@ -1243,7 +1245,7 @@ def combine_register(outroot, refImage, diffPA):
 
         # # Read in the shifts file. Column format is:
         # # Filename.fits  xshift  yshift
-        _shifts = Table.read(shiftFile, format='ascii') #, header_start=None
+        _shifts = Table.read(shiftFile, format='ascii.no_header')
         shiftsTable[ii][0] = _shifts[0][0]
         shiftsTable[ii][1] = _shifts[0][1]
         shiftsTable[ii][2] = _shifts[0][2]
