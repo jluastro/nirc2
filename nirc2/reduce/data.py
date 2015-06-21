@@ -946,8 +946,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.hedit(cdwt, 'ITIME', itime, verify='no', show='no')
 
 	# Get pixel shifts
-	xsh = shifts[1][i]
-	ysh = shifts[2][i]
+	xsh = shifts[i][1]
+	ysh = shifts[i][2]
 
 	# Determine which submap we should be drizzling to.
 	sub = int(i % submaps)
@@ -965,12 +965,12 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         max_indiv = cleanDir + 'c' + roots[i] + '.max'
-        satfile = f.open(max_indiv)
-        satLvl = f.read() #changed to simple i/o because the astropy table was breaking for a textfile with a single entry
+        satfile = open(max_indiv)
+        satLvl = float(satfile.read()) #changed to simple i/o because the astropy table was breaking for a textfile with a single entry
         #getsatLvl = Table.read(max_indiv, format='ascii', header_start=None)
         #satLvl = getsatLvl[0][0]
         satLvl_wt = satLvl * weights[i]
-        satLvl_tot[sub] += satLvl_wt[0]
+        satLvl_tot[sub] += satLvl_wt
 
 	# Add up the weights that go into each submap
 	weightsTot[sub] += weights[i]
