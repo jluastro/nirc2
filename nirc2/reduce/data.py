@@ -965,8 +965,10 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         max_indiv = cleanDir + 'c' + roots[i] + '.max'
-        getsatLvl = Table.read(max_indiv, format='ascii', header_start=None)
-        satLvl = getsatLvl[0][0]
+        satfile = f.open(max_indiv)
+        satLvl = f.read() #changed to simple i/o because the astropy table was breaking for a textfile with a single entry
+        #getsatLvl = Table.read(max_indiv, format='ascii', header_start=None)
+        #satLvl = getsatLvl[0][0]
         satLvl_wt = satLvl * weights[i]
         satLvl_tot[sub] += satLvl_wt[0]
 
