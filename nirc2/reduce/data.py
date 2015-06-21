@@ -951,7 +951,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 
 	# Determine which submap we should be drizzling to.
 	sub = int(i % submaps)
-	fits = _tmp[sub]
+	fits_im = _tmp[sub]
 	wgt = _wgt[sub]
 	log = f_log[sub]
 
@@ -995,7 +995,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
         
-        ir.drizzle(cdwt, fits, Stdout=log)
+        ir.drizzle(cdwt, fits_im, Stdout=log)
 
     for f in f_log:
 	f.close()
