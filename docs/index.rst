@@ -14,13 +14,13 @@ Download
 ========
 
 The latest release can be downloaded from the github repository `here
-<https://github.com/jluastro/nirc2`_.
+<https://github.com/jluastro/nirc2>`_.
 
 Installation
 ============
 
 This pacakge depends on pyraf and astropy functionality and has been 
-tested on top of `Ureka <http://ssb.stsci.edu/ureka/`_ python/pyraf installation.
+tested on top of `Ureka <http://ssb.stsci.edu/ureka/>`_ python/pyraf installation.
 The respository can be cloned from github and by installing with
 
 python setup.py build
