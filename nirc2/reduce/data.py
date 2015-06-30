@@ -614,7 +614,7 @@ def calcStrehl(files, wave, field=None):
     # Check that the number of lines in the resulting strehl file
     # matches the number of images we have. If not, some of the images
     # are bad and were dropped.
-    strehlTable = Table.read(_strehl, format='ascii', header_start=None, data_start=1)
+    strehlTable = Table.read(_strehl, format='ascii', header_start=None)
     cols = strehlTable.columns.keys()
     
     if len(roots) != len(strehlTable):
