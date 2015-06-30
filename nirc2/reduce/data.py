@@ -614,7 +614,7 @@ def calcStrehl(files, wave, field=None):
     # Check that the number of lines in the resulting strehl file
     # matches the number of images we have. If not, some of the images
     # are bad and were dropped.
-    strehlTable = Table.read(_strehl, format='ascii')
+    strehlTable = Table.read(_strehl, format='ascii', header_start=None, data_start=1)
     cols = strehlTable.columns.keys()
     
     if len(roots) != len(strehlTable):
@@ -1236,7 +1236,7 @@ def combine_register(outroot, refImage, diffPA):
 
         tmpCooFile = outroot + '_tmp.coo'
         _coo = open(tmpCooFile, 'w')
-        _coo.write('%.2f  %.2f\n' % (coords[0][0], coords[1][0]))
+        _coo.write('%.2f  %.2f\n' % (coords[0][0], coords[0][1]))
         _coo.write('%.2f  %.2f\n' % (coords[ii+1][0], coords[ii+1][1])) #Changed from [0][ii+1] to [ii+1][0]
         _coo.close()
 
