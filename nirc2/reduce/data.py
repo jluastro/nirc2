@@ -25,6 +25,10 @@ distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
 #distCoef = module_dir + '/distortion/coeffs/nirc2_cubic_wide'
 #distXgeoim = ''
 #distYgeoim = ''
+# Wide Camera Hai Fu
+#distCoef = ' '
+#distXgeoim = module_dir + '/distortion/nirc2_wide_X_distortion.fits'
+#distYgeoim = module_dir + '/distortion/nirc2_wide_Y_distortion.fits'
 
 supermaskName = 'supermask.fits'
 outputVerify = 'ignore'
