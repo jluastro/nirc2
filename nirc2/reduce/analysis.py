@@ -4,11 +4,11 @@ import asciidata
 import numpy as np
 import pyfits
 from nirc2.reduce import nirc2_util
-import calibrate
-import pdb
+from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
 import subprocess
 import pylab as py
+import pdb
 
 class Analysis(object):
     """
@@ -240,7 +240,7 @@ class Analysis(object):
             
             # CALIBRATE
             os.chdir(self.dirComboStf)
-            
+
             cmd = 'calibrate_new %s' % self.calFlags
             cmd += '-T %.1f ' % angle
             cmd += '-I %s ' % self.calCooStar
@@ -256,7 +256,7 @@ class Analysis(object):
             cmd += ' '
 
             # Calibrate Main Map
-            if self.type == 'speckle':
+            if self.type == 'speckle':   # This stuff is left over.
                 fileMain = 'mag%s_%3.1f_stf.lis' % \
                 (self.epoch, self.corrMain)
             else:
@@ -267,9 +267,11 @@ class Analysis(object):
                     fileMain = 'mag%s%s_%s_%3.1f_stf.lis' % \
                     (self.epoch, self.imgSuffix, self.filt, self.corrMain)
             print cmd + fileMain
-            #os.system(cmd + fileMain)
-            subp = subprocess.Popen(cmd + fileMain, shell=True, executable="/bin/tcsh")
-            tmp = subp.communicate()
+
+            # Now call from within python... don't bother with command line anymore.
+            argsTmp = cmd + fileMain
+            args = argsTmp.split()[1:]
+            calibrate.main(args)
             
             # Calibrate Sub Maps
             for ss in range(self.numSubMaps):
@@ -285,9 +287,10 @@ class Analysis(object):
                         (self.epoch, self.imgSuffix, self.filt, ss+1, self.corrSub)
 
                 print cmd + fileSub
-                #os.system(cmd + fileSub)
-                subp = subprocess.Popen(cmd + fileSub, shell=True, executable="/bin/tcsh")
-                tmp = subp.communicate()
+                
+                argsTmp = cmd + fileSub
+                args = argsTmp.split()[1:]
+                calibrate.main(args)
 
             os.chdir(self.dirStart)
         except:
@@ -329,9 +332,9 @@ class Analysis(object):
 
                 # 2nd dec 2009 - changed "_out" "_log"
                 _log.write(cmd + '\n')
-                #os.system(cmd)
-                subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
-                tmp = subp.communicate()
+
+                args = cmd.split()[1:]
+                calibrate.main(args)
 
             _log.close()  # clean up
             os.chdir(self.dirStart)
