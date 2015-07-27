@@ -9,6 +9,7 @@ import glob
 from astropy.table import Table
 import numpy as np
 import math
+import pyfits
 
 def nirc2log(directory):
     """Make an electronic NIRC2 log for all files in the specified
@@ -295,3 +296,130 @@ def getPlateScale():
     in Yelda et al. 2010.
     """
     return 0.009952
+
+
+
+def get_scale(fitsInput):
+    """
+    Helper class to get the plate scale out of images from 
+    a variety of different cameras.
+    """
+    instrument = get_instrument_camera(fitsInput)
+
+    scaleInfo = {'NIRC-D79': 0.0102,
+                 'Hokupaa+QUIRC': 0.01998,
+                 'NICMOS1': 0.0431,
+                 'NICMOS2': 0.0752,
+                 'NICMOS3': 0.2017,
+                 'NIRC2narrow': 0.00994,
+                 'NIRC2medium': 0.02,
+                 'NIRC2wide': 0.04,
+                 'LGSAO': 0.00994,
+                 'OSIRIS': 0.02
+                 }
+
+    scale = scaleInfo.get(instrument)
+
+    # See if there is a WCS system for NICMOS images
+    if 'NICMOS' in instrument:
+        cd11 = hdr.get('CD1_1')
+        cd21 = hdr.get('CD2_1')
+        if cd11 != None and cd21 != None:
+            scale = math.hypot(cd11, cd21) * 3600.0
+        
+
+    # Default value
+    if scale == None:
+        scale = 0.0102
+
+    return scale
+
+def get_pos_angle(fitsInput):
+    """
+    Returns the instrument specific position angle on the sky
+    in degrees (East of North).
+    """
+    angle = 0
+    inst = get_instrument_camera(fitsInput)
+    if 'NIRC2' in inst:
+        angle = float(pyfits.getval(fitsInput, 'ROTPOSN')) - 0.7
+    else:
+        print 'get_pos_angle: Unsupported camera type %s' % (inst)
+    
+    return angle
+
+def get_align_type(fitsInput, errors=False):
+    """
+    Helper class to get the calibrate camera type from the
+    FITS header.
+    """
+    instrument = get_instrument_camera(fitsInput)
+
+
+    alignTypes = {'NIRC-D79': 2,
+                 'Hokupaa+QUIRC': 7,
+                 'NICMOS1': 10,
+                 'NIRC2narrow': 8,
+                 'NIRC2medium': 14,
+                 'NIRC2wide': 12,
+                 'LGSAO': 8,
+                 'OSIRIS': 14
+                 }
+
+    alignType = alignTypes.get(instrument)
+
+    # Default
+    if alignType == None:
+        alignType = 20  # arcseconds with +x to the west
+
+    if errors == True:
+        alignType += 1
+
+    return alignType
+
+
+def get_instrument_camera(fitsInput):
+    """
+    Get the instrument and camera names out of the header.
+    This will compound the two so that each instrument/camera
+    with a unique plate scale will have a different string.
+    """
+    # Check if input is a fits filename or a fits header object
+    if type(fitsInput) == str:
+        # First check the instrument
+        hdr = pyfits.getheader(fitsInput,ignore_missing_end=True)
+    else:
+        # Assume this is a hdr object
+        hdr = fitsInput
+
+    # Get instrument
+    instrument = hdr.get('CURRINST')
+    if (instrument == None):
+       # OLD SETUP
+       instrument = hdr.get('INSTRUME')
+       
+    if (instrument == None):
+       # OSIRIS
+       instrument = hdr.get('INSTR')
+
+       if ('imag' in instrument):
+          instrument = 'OSIRIS'
+    
+    # Default is still NIRC2
+    if (instrument == None): 
+        instrument = 'NIRC2'
+
+    # get rid of the whitespace
+    instrument = instrument.strip()
+
+    # Check NICMOS camera
+    if instrument == 'NICMOS':
+        camera = hdr.get('CAMERA')
+        instrument += camera.strip()
+        
+    # Check NIRC2 camera
+    if instrument == 'NIRC2':
+        camera = hdr.get('CAMNAME')
+        instrument += camera.strip()
+
+    return instrument

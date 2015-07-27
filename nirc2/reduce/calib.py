@@ -296,23 +296,30 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     This should be run in the reduce/calib/ directory for a particular
     run.
     """
+    redDir = os.getcwd() + '/'  # Reduce directory.
+    curDir = redDir + 'calib/'
+    darkDir = util.trimdir(curDir + 'darks/')
+    rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
+
+    util.mkdir(curDir)
+    util.mkdir(darkDir)
+    
     def printStats(frame, tint, sampmode, reads):
-	files = range(frame, frame+3)
+        files = range(frame, frame+3)
 	
-	fileName = 'dark_%ds_1ca_%d_%dsm.fits' % (tint, sampmode, reads)
+        fileName = 'dark_%ds_1ca_%d_%dsm.fits' % (tint, sampmode, reads)
 
-	if (skipcombo == False):
-	    makedark(files, fileName)
+        if (skipcombo == False):
+            makedark(files, fileName)
 
-	text_output = ir.imstatistics('darks/'+fileName, 
-				      fields="mean,stddev", 
-				      nclip=10, format=0, Stdout=1)
-	values = text_output[0].split()
-	darkMean = float(values[0])
-	darkStdv = float(values[1])
+        text_output = ir.imstatistics(darkDir + fileName, 
+                        fields="mean,stddev", 
+                        nclip=10, format=0, Stdout=1)
+        values = text_output[0].split()
+        darkMean = float(values[0])
+        darkStdv = float(values[1])
 
-	return darkMean, darkStdv
-	
+        return darkMean, darkStdv
 
     frame = firstFrame
 
@@ -355,7 +362,7 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     ##########
     # Print Stuff Out
     ##########
-    outFile = 'darks/analyzeDarkCalib.out'
+    outFile = darkDir + 'analyzeDarkCalib.out'
     util.rmall([outFile])
     _out = open(outFile,'w')
     hdr = '%8s  %5s  &9s  %9s  %4s  %6s'
@@ -375,3 +382,4 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
 
     _out.close()
 
+    return
