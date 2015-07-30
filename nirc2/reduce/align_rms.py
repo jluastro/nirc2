@@ -116,12 +116,12 @@ def run(args=None):
     
     fmt = '{name:13s}  {mag:6.3f}  {year:8.3f}  '
     fmt += '{x:9.3f}  {y:9.3f}  {xe:9.3f}  {ye:9.3f}  '
-    fmt += '{snr:20.4f}  {corr:6.2f}  {nimg:8f}  {flux:20.0f}\n'
+    fmt += '{snr:20.4f}  {corr:6.2f}  {nimg:8d}  {flux:20.0f}\n'
     
     for ss in range(len(x_avg)):
         _out.write(fmt.format(name=name[ss], mag=m_avg[ss], year=float(year),
                               x=x_avg[ss], y=y_avg[ss], xe=x_std[ss], ye=y_std[ss],
-                              snr=new_snr[ss], corr=corr_avg[ss], nimg=nimg_avg[ss],
+                              snr=new_snr[ss], corr=corr_avg[ss], nimg=int(nimg_avg[ss]),
                               flux=flux_dn_avg[ss]))
 
     _out.close()
