@@ -404,25 +404,10 @@ class Analysis(object):
             cmd += '-r align%s%s_%3.1f_named ' % (self.imgSuffix, file_ext, self.corrMain)
             cmd += alnList2
             print cmd
-            #os.system(cmd)
+
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
 
-            ### Replaced with python align_rms utility
-            ## # Now run align_rms
-            ## cmd = 'align_rms -m align%s%s_%3.1f %d %d' % \
-            ##     (self.imgSuffix, file_ext, self.corrMain, self.numSubMaps, self.minSubMaps)
-            ## print cmd
-            ## #os.system(cmd)
-            ## subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
-            ## tmp = subp.communicate()
-
-            ## cmd = 'align_rms -m align%s%s_%3.1f_named %d %d' % \
-            ##     (self.imgSuffix, file_ext, self.corrMain, self.numSubMaps, self.minSubMaps)
-            ## print cmd
-            ## #os.system(cmd)
-            ## subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
-            ## tmp = subp.communicate()
 
             align_options = 'align%s%s_%3.1f %d --refList None --stackMin 0' % \
               (self.imgSuffix, file_ext, self.corrMain, self.minSubMaps)
@@ -432,33 +417,16 @@ class Analysis(object):
               (self.imgSuffix, file_ext, self.corrMain, self.minSubMaps)
             align_rms.run(align_options.split())
 
-#             # Remove the "irs" in front of the named sources so that
-#             # cleaned files can be aligned to the main map.
-#             cmd = "sed 's/irs//' "
-#             cmd += "align%s%s_%3.1f_named_rms.out " % (self.imgSuffix, file_ext, self.corrMain)
-#             cmd += " > align%s%s_%3.1f_named_rms.tmp" % (self.imgSuffix, file_ext, self.corrMain)
-#             print cmd
-#             os.system(cmd)
 
             # Move the resulting files to their final resting place
             os.rename('align%s%s_%3.1f_rms.lis' % 
                       (self.imgSuffix, file_ext, self.corrMain),
                       '../mag%s%s%s_rms.lis' % 
                       (self.epoch, self.imgSuffix, file_ext))
-#             os.rename('align%s%s_%3.1f_named_rms.tmp' % 
-#                       (self.imgSuffix, file_ext, self.corrMain),
-#                       '../mag%s%s%s_rms_named.lis' % 
-#                       (self.epoch, self.imgSuffix, file_ext))
             os.rename('align%s%s_%3.1f_named_rms.lis' % 
                       (self.imgSuffix, file_ext, self.corrMain),
                       '../mag%s%s%s_rms_named.lis' % 
                       (self.epoch, self.imgSuffix, file_ext))
-
-            # Clean up some files
-##             junkRoot = 'align%s%s_%3.1f' % (self.imgSuffix, file_ext, self.corrMain)
-##             os.remove(junkRoot + '_rms.out2')
-## #             os.remove(junkRoot + '_named_rms.out')
-##             os.remove(junkRoot + '_named_rms.out2')
 
             # Now plot up the results
             plotSuffix = self.imgSuffix + file_ext
