@@ -282,7 +282,7 @@ class Analysis(object):
             calibrate.main(args)
 
             # Copy over the calibration list.
-            shutil.copyfile(self.calFile, fileMain.replace('.lis', '_phot_list.txt'))
+            shutil.copyfile(self.calFile, fileMain.replace('.lis', '_cal_phot_list.txt'))
             
             # Calibrate Sub Maps
             for ss in range(self.numSubMaps):
