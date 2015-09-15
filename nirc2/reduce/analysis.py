@@ -26,10 +26,14 @@ class Analysis(object):
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
+
+        self.starlist = rootDir + 'source_list/psf_central.dat'
+        self.labellist = rootDir+ 'source_list/label.dat'
+        self.orbitlist = rootDir+ 'source_list/orbits.dat'
+        self.calFile = rootDir + 'source_list/photo_calib.dat'
         
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
-        self.calFile = rootDir + 'source_list/photo_calib.dat'
         self.mapFilter2Cal = {'kp': 1, 'lp': 3, 'h': 4, 'ms': 5}
         if 'kp' in filt:
             self.calColumn = 1
@@ -45,10 +49,6 @@ class Analysis(object):
 
         self.numSubMaps = 3
         self.minSubMaps = 3
-        
-        self.starlist = rootDir + 'source_list/psf_central.dat'
-        self.labellist = rootDir+ 'source_list/label.dat'
-        self.orbitlist = rootDir+ 'source_list/orbits.dat'
         
         # Setup input parameters 
         self.epoch = epoch
@@ -178,6 +178,10 @@ class Analysis(object):
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
 
+            # Copy over the PSF starlist that was used (for posterity).
+            outPsfs = 'mag%s%s_%s_psf_list.txt' % (self.epoch, self.imgSuffix, self.filt)
+            shutil.copyfile(self.starlist, outPsfs)
+
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
@@ -212,6 +216,10 @@ class Analysis(object):
             #os.system(cmd)
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
+            
+            # Copy over the PSF starlist that was used (for posterity).
+            outPsfs = 'c_%s_%s_psf_list.txt' % (self.epoch, self.filt)
+            shutil.copyfile(self.starlist, outPsfs)
             
             os.chdir(self.dirStart)
         except:
@@ -272,6 +280,9 @@ class Analysis(object):
             argsTmp = cmd + fileMain
             args = argsTmp.split()[1:]
             calibrate.main(args)
+
+            # Copy over the calibration list.
+            shutil.copyfile(self.calFile, fileMain.replace('.lis', '_phot_list.txt'))
             
             # Calibrate Sub Maps
             for ss in range(self.numSubMaps):
@@ -337,6 +348,10 @@ class Analysis(object):
                 calibrate.main(args)
 
             _log.close()  # clean up
+
+            # Copy over the calibration list.
+            shutil.copyfile(self.calFile, 'clean_phot_list.txt')
+            
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
@@ -428,6 +443,16 @@ class Analysis(object):
                       '../mag%s%s%s_rms_named.lis' % 
                       (self.epoch, self.imgSuffix, file_ext))
 
+            # Copy over the label.dat and orbit.dat file that was used.
+            shutil.copyfile(self.labellist,
+                            'align%s%s_%3.1f_named_label_list.txt' % 
+                            (self.imgSuffix, file_ext, self.corrMain))
+                            
+            if (self.orbitlist != None) and (self.orbitlist != ''):
+                shutil.copyfile(self.orbitlist,
+                                'align%s%s_%3.1f_named_orbit_list.txt' % 
+                                (self.imgSuffix, file_ext, self.corrMain)
+
             # Now plot up the results
             plotSuffix = self.imgSuffix + file_ext
             os.chdir(self.dirComboStf)
@@ -438,7 +463,6 @@ class Analysis(object):
         except:
             os.chdir(self.dirStart)
             raise
-
 
     
     def alignClean(self):
@@ -476,6 +500,16 @@ class Analysis(object):
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
 
+
+            # Copy over the label.dat file that was used.
+            shutil.copyfile(self.labellist,
+                            'align_%s%s_%3.1f_named_label_list.txt' % 
+                            (self.imgSuffix, self.filt, self.corrClean)
+            if (self.orbitlist != None) and (self.orbitlist != ''):
+                shutil.copyfile(self.orbitlist,
+                                'align_%s%s_%3.1f_named_orbit_list.txt' % 
+                                (self.imgSuffix, self.filt, self.corrClean)
+                            
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
