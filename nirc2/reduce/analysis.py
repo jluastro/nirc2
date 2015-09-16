@@ -451,7 +451,7 @@ class Analysis(object):
             if (self.orbitlist != None) and (self.orbitlist != ''):
                 shutil.copyfile(self.orbitlist,
                                 'align%s%s_%3.1f_named_orbit_list.txt' % 
-                                (self.imgSuffix, file_ext, self.corrMain)
+                                (self.imgSuffix, file_ext, self.corrMain))
 
             # Now plot up the results
             plotSuffix = self.imgSuffix + file_ext
@@ -504,11 +504,11 @@ class Analysis(object):
             # Copy over the label.dat file that was used.
             shutil.copyfile(self.labellist,
                             'align_%s%s_%3.1f_named_label_list.txt' % 
-                            (self.imgSuffix, self.filt, self.corrClean)
+                            (self.imgSuffix, self.filt, self.corrClean))
             if (self.orbitlist != None) and (self.orbitlist != ''):
                 shutil.copyfile(self.orbitlist,
                                 'align_%s%s_%3.1f_named_orbit_list.txt' % 
-                                (self.imgSuffix, self.filt, self.corrClean)
+                                (self.imgSuffix, self.filt, self.corrClean))
                             
             os.chdir(self.dirStart)
         except:
