@@ -172,8 +172,16 @@ def trim_stars(s, options):
 def calc_error(v_msk, v_avg, cnt, options):
     v_tmp = (v_msk[options.idx_min : options.idx_max, :] - v_avg)**2
     v_tmp = v_tmp.sum(axis=0)
-    v_tmp /= cnt - 1.0
+
+    Ndof = cnt
+    if options.idx_ref == None:
+        Ndof -= 1
+        
+    v_tmp /= Ndof
     v_std = np.sqrt(v_tmp)
+
+    if options.calc_err_mean:
+        v_std /= np.sqrt(Ndof)
 
     idx = np.where(cnt <= 1)[0]
     v_std[idx] = 0.0
