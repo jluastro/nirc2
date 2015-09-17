@@ -9,6 +9,20 @@ def run(args=None):
     """
     options = parse_options(args)
 
+    _run = open(options.out_root + '.run', 'w')
+    _run.write('RUN: python nirc2.reduce.align_rms() run with args:\n')
+    _run.write(' '.join(args) + '\n\n')
+    _run.write('OPTIONS:\n')
+    _run.write('root_name = ' + options.root_name + '\n')
+    _run.write('N_required = ' + str(options.N_required) + '\n')
+    _run.write('out_root = ' + options.out_root + '\n')
+    _run.write('calc_err_mean = ' + str(options.calc_err_mean) + '\n')
+    _run.write('calc_rel_err = ' + str(options.calc_rel_err) + '\n')
+    _run.write('idx_min = ' + str(options.idx_min) + '\n')
+    _run.write('idx_max = ' + str(options.idx_max) + '\n')
+    _run.write('idx_ref = ' + str(options.idx_ref) + '\n')
+    _run.close()
+
     # Read in the align output. Determine the number of
     # individual starlists are in the stack.
     s = starset.StarSet(options.root_name)

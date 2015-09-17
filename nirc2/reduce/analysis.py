@@ -137,6 +137,8 @@ class Analysis(object):
                 # Write an IDL batch file
                 fileIDLbatch = 'idlbatch_combo_' + self.filt
                 fileIDLlog = fileIDLbatch + '.log'
+                util.rmall([fileIDLlog, fileIDLbatch])
+
                 _batch = open(fileIDLbatch, 'w')
                 _batch.write("find_stf_new, ")
                 _batch.write("'" + self.epoch + "', ")
@@ -160,6 +162,8 @@ class Analysis(object):
             elif self.type == 'speckle':
                 fileIDLbatch = 'idlbatch_combo' 
                 fileIDLlog = fileIDLbatch + '.log'
+                util.rmall([fileIDLlog, fileIDLbatch])
+                
                 _batch = open(fileIDLbatch, 'w')
                 _batch.write("find_new_speck, ")
                 _batch.write("'" + self.epoch + "', ")
@@ -197,6 +201,7 @@ class Analysis(object):
             # Write an IDL batch file
             fileIDLbatch = 'idlbatch_clean_' + self.filt
             fileIDLlog = fileIDLbatch + '.log'
+            util.rmall([fileIDLlog, fileIDLbatch])
             
             _batch = open(fileIDLbatch, 'w')
             _batch.write("find_stf_clean, ")
@@ -424,11 +429,11 @@ class Analysis(object):
             tmp = subp.communicate()
 
 
-            align_options = 'align%s%s_%3.1f %d --refList None --stackMin 0' % \
+            align_options = 'align%s%s_%3.1f %d -e' % \
               (self.imgSuffix, file_ext, self.corrMain, self.minSubMaps)
             align_rms.run(align_options.split())
 
-            align_options = 'align%s%s_%3.1f_named %d --refList None --stackMin 0' % \
+            align_options = 'align%s%s_%3.1f_named %d -e' % \
               (self.imgSuffix, file_ext, self.corrMain, self.minSubMaps)
             align_rms.run(align_options.split())
 
