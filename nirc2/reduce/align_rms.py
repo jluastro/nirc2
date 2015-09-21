@@ -79,7 +79,7 @@ def run(args=None):
         m_avg = m[options.idx_ref, :]
         f_avg = f[options.idx_ref, :]
         
-        year = s.dates[options.idx_ref]
+        year = s.years[options.idx_ref]
 
         corr_avg = corr[options.idx_ref, :]
         flux_dn_avg = flux_dn[options.idx_ref, :]

@@ -107,6 +107,10 @@ class Analysis(object):
         # Keep track of the current directory we started in
         self.dirStart = os.getcwd()
 
+        # Set the default magnitude cut for plotPosError
+        self.plotPosMagCut = 15.0
+        
+
     def analyzeCombo(self):
         self.starfinderCombo()
         self.calibrateCombo()
@@ -462,7 +466,7 @@ class Analysis(object):
             plotSuffix = self.imgSuffix + file_ext
             os.chdir(self.dirComboStf)
             plotPosError('mag%s%s%s_rms.lis' % (self.epoch, self.imgSuffix, file_ext),
-                         raw=True, suffix=plotSuffix)
+                         raw=True, suffix=plotSuffix, magCutOff=self.plotPosMagCut)
 
             os.chdir(self.dirStart)
         except:
