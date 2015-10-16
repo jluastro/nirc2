@@ -3,6 +3,14 @@ import os, errno, shutil
 import pyfits
 import pdb
 
+# Load up directory aliases
+module_dir = os.path.dirname(__file__)
+dir_alias_file = module_dir + '/../data/directory_aliases.txt'
+dir_alias = Table.read(dir_alias_file, format='ascii.fast_no_header')
+dir_alias.rename_column('col1', 'dir')
+dir_alias.rename_column('col2', 'alias')
+
+    
 def rmall(files):
     """Remove list of files without confirmation."""
     for file in files:
@@ -26,29 +34,23 @@ def getcwd():
     """
     IRAF doesn't like long file names. This reduces them.
     """
-    
     curdir = os.getcwd()
-    
-    newdir1 = curdir.replace('/net/uni/Groups/ghez/ghezgroup', '/u/ghezgroup')
-    newdir2 = newdir1.replace('/net/uni/Groups/ghez/jlu', '/u/jlu/work')
-    newdir3 = newdir2.replace('/net/dione/data0/ghez', '/u/ghezgroup')
-    newdir4 = newdir3.replace('/scr2/jlu/data', '/u/jlu/data')
-    newdir5 = newdir4.replace('/net/calla.ifa.hawaii.edu/Volumes/indicium', '')
-    newdir4 +=  '/'
 
-    return newdir4
+    for ii in range(len(dir_alias)):
+        curdir = curdir.replace(dir_alias['dir'][ii], dir_alias['alias'][ii])
+    
+    curdir += '/'
+
+    return curdir
 
 def trimdir(olddir):
     """
     IRAF doesn't like long file names. This reduces them.
     """
-    newdir1 = olddir.replace('/net/uni/Groups/ghez/ghezgroup', '/u/ghezgroup')
-    newdir2 = newdir1.replace('/net/uni/Groups/ghez/jlu', '/u/jlu/work')
-    newdir3 = newdir2.replace('/net/dione/data0/ghez', '/u/ghezgroup')
-    newdir4 = newdir3.replace('/scr2/jlu/data', '/u/jlu/data')
-    newdir5 = newdir4.replace('/net/calla.ifa.hawaii.edu/Volumes/indicium', '')
-
-    return newdir5
+    for ii in range(len(dir_alias)):
+        olddir = olddir.replace(dir_alias['dir'][ii], dir_alias['alias'][ii])
+    
+    return olddir
 
 def cp_change_prefix(arg1,arg2):
     """
