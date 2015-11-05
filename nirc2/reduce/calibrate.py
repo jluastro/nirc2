@@ -236,7 +236,7 @@ def read_photo_calib_file(options, verbose=False):
     magInfo = []
     defaultStars = []
 
-    if verbose:
+    if verbose or options.verbose:
         print ''
         print 'Photometric calibration information loaded from:'
         print '\t', options.calib_file
@@ -270,7 +270,7 @@ def read_photo_calib_file(options, verbose=False):
                 else:
                     defaultStars.append(None)
 
-                if verbose:
+                if verbose or options.verbose:
                     print '[%d]\t %s' % (colnum-4, fields[1])
 
         else:
@@ -280,7 +280,7 @@ def read_photo_calib_file(options, verbose=False):
 
     f_calib.close()
 
-    if verbose:
+    if verbose or options.verbose:
         print ''
         print 'Calibration Sources:'
         print '\t(* default if no -S flag)'
@@ -323,7 +323,7 @@ def read_photo_calib_file(options, verbose=False):
     ##########
     # Print out 
     ##########
-    if verbose:
+    if verbose or options.verbose:
         print ' %10s ' % 'Name',
         for i in range(len(magInfo)):
             print ' [%3d]  ' % (i+1),
