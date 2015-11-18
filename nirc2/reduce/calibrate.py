@@ -687,13 +687,15 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
                 # This should always work here since any issues
                 # with the calib stars should have been caught 
                 # earlier.
-                print("I got here!")
-                print(options.align_stars[c])
+                if options.verbose:
+                    print(options.align_stars[c])
+                
                 if options.align_stars[c] == options.first_star:
                     continue
 
                 ss = np.where(stars.name == options.align_stars[c])[0]
-                print(ss)
+                if options.verbose:
+                    print(ss)
 
                 if len(ss) > 0:
                     fdx.append(ss[0])
