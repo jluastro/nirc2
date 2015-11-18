@@ -254,15 +254,15 @@ def read_photo_calib_file(options, verbose=False):
             continue
 
         if line.startswith('# '):
-            # Column headers. The first four are hardcoded.
+            # Column headers. The first six are hardcoded.
             # The rest tell us how many magnitude columns
             # we have and the associated references.
             
             fields = line.split('--')
 
             colnum = int( fields[0].replace('# ', '') )
-            # Skip the first 4 columns
-            if ((len(fields) >= 2) and (colnum > 4)):
+            # Skip the first 6 columns
+            if ((len(fields) >= 2) and (colnum > 6)):
                 magInfo.append(fields[1])
 
                 if len(fields) > 2:
@@ -271,7 +271,7 @@ def read_photo_calib_file(options, verbose=False):
                     defaultStars.append(None)
 
                 if verbose or options.verbose:
-                    print '[%d]\t %s' % (colnum-4, fields[1])
+                    print '[%d]\t %s' % (colnum-6, fields[1])
 
         else:
             # Found the first line of data after the
@@ -297,13 +297,15 @@ def read_photo_calib_file(options, verbose=False):
     name = tab[0].tonumpy()
     x = tab[1].tonumpy()
     y = tab[2].tonumpy()
-    isVariable = (tab[3].tonumpy() == 1)
+    xVel = tab[3].tonumpy()
+    yVel = tab[4].tonumpy()
+    isVariable = (tab[5].tonumpy() == 1)
 
     magMatrix = np.zeros((len(magInfo), tab.nrows), dtype=float)
     isDefaultMatrix = np.zeros((len(magInfo), tab.nrows), dtype=bool)
 
     for i in range(len(magInfo)):
-        magMatrix[i,:] = tab[i+4].tonumpy()
+        magMatrix[i,:] = tab[i+6].tonumpy()
 
         # If no default stars were set, then assume
         # all stars with non-zero magnitudes are the defaults.
