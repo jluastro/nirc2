@@ -19,11 +19,11 @@ module_dir = os.path.dirname(__file__)
 # You can change them in your reduce.py file after importing data.py
 # Narrow Camera
 distCoef = ''
-#distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
-#distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
+distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
+distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
 #changing to test new distortio solutions right now
-distXgeoim = '/g/lu/data/m53/2015may/dist_sol/Leg_6r9_may_X.fits'
-distYgeoim = '/g/lu/data/m53/2015may/dist_sol/Leg_6r9_may_Y.fits'
+#distXgeoim = '/g/lu/data/m53/2015may/dist_sol/Leg_6r9_may_X.fits'
+#distYgeoim = '/g/lu/data/m53/2015may/dist_sol/Leg_6r9_may_Y.fits'
 
 
 
