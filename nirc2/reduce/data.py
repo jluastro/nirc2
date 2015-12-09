@@ -154,6 +154,27 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # rectangular, choose the larger dimension and make it square
         imgsizeX = float(hdr1['NAXIS1'])
         imgsizeY = float(hdr1['NAXIS2'])
+        date = hdr1['DATE-OBS']
+        if (float(date[0:4]) == 2015) & (float(date[5:7]) < 05):
+            #global distXgeoim
+            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
+            #global distYgeoim
+            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
+        if (float(date[0:4]) < 2015):
+            #global distXgeoim
+            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
+            #global distYgeoim
+            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
+        if (float(date[0:4]) == 2015) & (float(date[5:7]) >= 05):
+            #global distXgeoim
+            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
+            #global distYgeoim
+            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim_post20150413.fits'
+        if (float(date[0:4]) > 2015):
+            #global distXgeoim
+            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
+            #global distYgeoim
+            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim_post20150413.fits'
         if (imgsizeX >= imgsizeY):
             imgsize = imgsizeX
         else:
