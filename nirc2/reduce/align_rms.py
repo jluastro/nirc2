@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
-from jlu.gc.gcwork import starset
+# from jlu.gc.gcwork import starset
+from gcwork import starset
 import pdb
 
 def run(args=None):

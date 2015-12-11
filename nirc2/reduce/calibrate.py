@@ -161,12 +161,17 @@ def read_command_line(argv):
                  help='Specify the stars to be used as calibrators in a '+
                  'comma-separated list. The defaults are set in the '+
                  'photo_calib.dat file at the top (or see below).')
+    p.add_option('-A', dest='align_stars', metavar='[STAR1,STAR2]', default=None,
+                 help='Specify the stars to be used as align stars in a '+
+                 'comma-separated list. Used when reordering output starlist '+
+                 '(flag: -R). If not specified, the defaults are set '+
+                 'as the calibrator stars (flag: -S).')
     p.add_option('-r', dest='outroot', metavar='[ROOT]',
                  help='Rename root name for output (default: [listname]_cal)')
     p.add_option('-V', dest='verbose', action='store_true', default=False,
                  help='Print extra diagnostics.')
     p.add_option('-R', dest='reorder', action='store_true', default=False,
-                 help='Reorder the starlist so that the calibration sources'+
+                 help='Reorder the starlist so that the align stars '+
                  'are at the top. The coo star (first star) will remain first.')
     p.add_option('-s', '--snr', dest='snr_flag', default=0, metavar='[#]',
                  help='Use this flag to indicate the purpose of the SNR '+
@@ -207,7 +212,13 @@ def read_command_line(argv):
     # Set plate scale
     options.plate_scale = all_scales[options.camera_type][0]
 
-    # Parse calib stars 
+    # Parse calib and align stars 
+    if (options.align_stars != None):
+        options.align_stars = options.align_stars.split(',')
+    elif (options.calib_stars != None):
+        ## If align stars not specified, use the specified calib stars
+        options.align_stars = options.calib_stars.split(',')
+        
     if (options.calib_stars != None):
         options.calib_stars = options.calib_stars.split(',')
 
@@ -236,7 +247,7 @@ def read_photo_calib_file(options, verbose=False):
     magInfo = []
     defaultStars = []
 
-    if verbose:
+    if verbose or options.verbose:
         print ''
         print 'Photometric calibration information loaded from:'
         print '\t', options.calib_file
@@ -254,15 +265,15 @@ def read_photo_calib_file(options, verbose=False):
             continue
 
         if line.startswith('# '):
-            # Column headers. The first four are hardcoded.
+            # Column headers. The first six are hardcoded.
             # The rest tell us how many magnitude columns
             # we have and the associated references.
             
             fields = line.split('--')
 
             colnum = int( fields[0].replace('# ', '') )
-            # Skip the first 4 columns
-            if ((len(fields) >= 2) and (colnum > 4)):
+            # Skip the first 6 columns
+            if ((len(fields) >= 2) and (colnum > 6)):
                 magInfo.append(fields[1])
 
                 if len(fields) > 2:
@@ -270,8 +281,8 @@ def read_photo_calib_file(options, verbose=False):
                 else:
                     defaultStars.append(None)
 
-                if verbose:
-                    print '[%d]\t %s' % (colnum-4, fields[1])
+                if verbose or options.verbose:
+                    print '[%d]\t %s' % (colnum-6, fields[1])
 
         else:
             # Found the first line of data after the
@@ -280,7 +291,7 @@ def read_photo_calib_file(options, verbose=False):
 
     f_calib.close()
 
-    if verbose:
+    if verbose or options.verbose:
         print ''
         print 'Calibration Sources:'
         print '\t(* default if no -S flag)'
@@ -297,13 +308,15 @@ def read_photo_calib_file(options, verbose=False):
     name = tab[0].tonumpy()
     x = tab[1].tonumpy()
     y = tab[2].tonumpy()
-    isVariable = (tab[3].tonumpy() == 1)
+    xVel = tab[3].tonumpy()
+    yVel = tab[4].tonumpy()
+    isVariable = (tab[5].tonumpy() == 1)
 
     magMatrix = np.zeros((len(magInfo), tab.nrows), dtype=float)
     isDefaultMatrix = np.zeros((len(magInfo), tab.nrows), dtype=bool)
 
     for i in range(len(magInfo)):
-        magMatrix[i,:] = tab[i+4].tonumpy()
+        magMatrix[i,:] = tab[i+6].tonumpy()
 
         # If no default stars were set, then assume
         # all stars with non-zero magnitudes are the defaults.
@@ -323,7 +336,7 @@ def read_photo_calib_file(options, verbose=False):
     ##########
     # Print out 
     ##########
-    if verbose:
+    if verbose or options.verbose:
         print ' %10s ' % 'Name',
         for i in range(len(magInfo)):
             print ' [%3d]  ' % (i+1),
@@ -662,22 +675,27 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
         cdx = np.where(calibs.name == options.first_star)[0]
         fdx.append(calibs.index[cdx[0]])
 
-        if (options.calib_stars == None):
-            # Used default calibraters
+        if (options.align_stars == None):
+            # Used default calibrators
             cdx = np.where((calibs.include == True) & 
                            (calibs.index >= 0) &
                            (calibs.name != options.first_star))[0]
             fdx.extend(calibs.index[cdx])
         else:
             # Use in order specified by user.
-            for c in range(len(options.calib_stars)):
+            for c in range(len(options.align_stars)):
                 # This should always work here since any issues
                 # with the calib stars should have been caught 
-                # eralier.
-                if options.calib_stars[c] == options.first_star:
+                # earlier.
+                if options.verbose:
+                    print(options.align_stars[c])
+                
+                if options.align_stars[c] == options.first_star:
                     continue
 
-                ss = np.where(stars.name == options.calib_stars[c])[0]
+                ss = np.where(stars.name == options.align_stars[c])[0]
+                if options.verbose:
+                    print(ss)
 
                 if len(ss) > 0:
                     fdx.append(ss[0])
