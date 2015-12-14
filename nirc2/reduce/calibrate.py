@@ -310,13 +310,14 @@ def read_photo_calib_file(options, verbose=False):
     y = tab[2].tonumpy()
     xVel = tab[3].tonumpy()
     yVel = tab[4].tonumpy()
-    isVariable = (tab[5].tonumpy() == 1)
+    t0 = tab[5].tonumpy()
+    isVariable = (tab[6].tonumpy() == 1)
 
     magMatrix = np.zeros((len(magInfo), tab.nrows), dtype=float)
     isDefaultMatrix = np.zeros((len(magInfo), tab.nrows), dtype=bool)
 
     for i in range(len(magInfo)):
-        magMatrix[i,:] = tab[i+6].tonumpy()
+        magMatrix[i,:] = tab[i+7].tonumpy()
 
         # If no default stars were set, then assume
         # all stars with non-zero magnitudes are the defaults.
