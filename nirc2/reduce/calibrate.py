@@ -370,6 +370,9 @@ def read_photo_calib_file(options, verbose=False):
     calibs.name = name
     calibs.x = x
     calibs.y = y
+    calibs.xVel = xVel
+    calibs.yVel = yVel
+    calibs.t0 = t0
     # Pick out the magnitude column
     calibs.mag = magMatrix[options.calib_column - 1,:]  
     calibs.magInfo = magInfo[options.calib_column-1] # String with source info.
