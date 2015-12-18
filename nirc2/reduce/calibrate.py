@@ -410,7 +410,7 @@ def read_photo_calib_file(options, verbose=False):
 def input_data(options):
     """
     Read in a starlist and return a starlist object
-    will the following hanging off:
+    with the following hanging off:
       name
       mag
       epoch
@@ -502,11 +502,16 @@ def find_cal_stars(calibs, stars, options):
         msg += '  %s' % options.first_star
         raise Exception(msg)
 
+    # Account for velocity of stars
+    delta_t = stars.epoch[0] - calibs.t0    # Using first star's epoch as current time
+    calibs.x += delta_t * (calibs.xVel/1000.)   # Velocities in mas/yr, positions in arcsec
+    calibs.y += delta_t * (calibs.yVel/1000.)
+    
     # Change the positional offsets to be relative to 
     # the reference source.
     calibs.x -= calibs.x[fidx]
     calibs.y -= calibs.y[fidx]
-
+    
     # Determine the pixel positions for the calibrators
     cosScale = math.cos(math.radians(options.theta)) / options.plate_scale
     sinScale = math.sin(math.radians(options.theta)) / options.plate_scale
