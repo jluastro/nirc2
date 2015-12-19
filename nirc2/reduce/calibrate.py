@@ -102,13 +102,13 @@ def main(argv=None):
     options = read_command_line(argv)
     if (options == None):
         return
-
+    
     # Read in the photometric calibrators
     calibs = read_photo_calib_file(options)
     
     # Read in the starlist
     stars = input_data(options)
-
+    
     # Match up calibrator stars with stars in our starlist.
     calibs.index = find_cal_stars(calibs, stars, options)
 
@@ -272,8 +272,8 @@ def read_photo_calib_file(options, verbose=False):
             fields = line.split('--')
 
             colnum = int( fields[0].replace('# ', '') )
-            # Skip the first 6 columns
-            if ((len(fields) >= 2) and (colnum > 6)):
+            # Skip the first 7 columns
+            if ((len(fields) >= 2) and (colnum > 7)):
                 magInfo.append(fields[1])
 
                 if len(fields) > 2:
@@ -282,7 +282,7 @@ def read_photo_calib_file(options, verbose=False):
                     defaultStars.append(None)
 
                 if verbose or options.verbose:
-                    print '[%d]\t %s' % (colnum-6, fields[1])
+                    print '[%d]\t %s' % (colnum-7, fields[1])
 
         else:
             # Found the first line of data after the
@@ -504,9 +504,10 @@ def find_cal_stars(calibs, stars, options):
 
     # Account for velocity of stars
     delta_t = stars.epoch[0] - calibs.t0    # Using first star's epoch as current time
+
     calibs.x += delta_t * (calibs.xVel/1000.)   # Velocities in mas/yr, positions in arcsec
     calibs.y += delta_t * (calibs.yVel/1000.)
-    
+        
     # Change the positional offsets to be relative to 
     # the reference source.
     calibs.x -= calibs.x[fidx]
@@ -541,6 +542,8 @@ def find_cal_stars(calibs, stars, options):
         dy = stars.y - calibs.ypix[c]
         dr = np.hypot(dx, dy)
         dm = abs(stars.mag - calibs.mag[c] - magAdjust)
+        
+        
 
         # Find the matches within our tolerance.
         if (calibs.mag[c] < 12):
@@ -575,8 +578,7 @@ def find_cal_stars(calibs, stars, options):
         else:
             if options.verbose:
                 print '%10s not found' % (calibs.name[c])
-
-
+    
     return index
 
 def calc_zeropt(calibs, stars, options):
