@@ -520,8 +520,8 @@ def find_cal_stars(calibs, stars, options):
     calibs.ypix = stars.y[0] + (calibs.x * sinScale) + (calibs.y * cosScale)
     if options.verbose:
         for c in range(len(calibs.xpix)):
-            print 'Looking for %10s at (%.2f, %.2f)' % \
-                (calibs.name[c], calibs.xpix[c], calibs.ypix[c])
+            print 'Looking for %10s at (%.2f, %.2f), mag: %.2f' % \
+                (calibs.name[c], calibs.xpix[c], calibs.ypix[c], calibs.mag[c])
             
     # Create an array of indices into the starlist.
     # Set to -1 for non-matches. 
