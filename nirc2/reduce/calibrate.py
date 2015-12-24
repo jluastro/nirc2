@@ -3,7 +3,7 @@ import optparse
 import textwrap
 import numpy as np
 import pylab as py
-import asciidata
+from astropy.table import Table
 import math
 import sys
 import pyfits
@@ -22,7 +22,9 @@ all_scales = [[1.0, 'No scaling'],
               [0.01998, 'GEMINI'],
               [0.107, 'MMT PISCES'],
               [0.200, 'UKIDSS'],
-              [0.004, 'TMT/IRIS']]
+              [0.004, 'TMT/IRIS'],
+              [0.0196, 'GSAOI'],
+              [0.050, 'ACS-WFC']]
 
 ##################################################
 # 
@@ -97,7 +99,6 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
-    
     # Read options and check for errors.
     options = read_command_line(argv)
     if (options == None):
@@ -161,6 +162,11 @@ def read_command_line(argv):
                  help='Specify the stars to be used as calibrators in a '+
                  'comma-separated list. The defaults are set in the '+
                  'photo_calib.dat file at the top (or see below).')
+    p.add_option('-A', dest='align_stars', metavar='[STAR1,STAR2]', default=None,
+                 help='Specify the stars to be used as align stars in a '+
+                 'comma-separated list. Used when reordering output starlist '+
+                 '(flag: -R). If not specified, the defaults are set '+
+                 'as the calibrator stars (flag: -S).')
     p.add_option('-r', dest='outroot', metavar='[ROOT]',
                  help='Rename root name for output (default: [listname]_cal)')
     p.add_option('-V', dest='verbose', action='store_true', default=False,
@@ -175,6 +181,20 @@ def read_command_line(argv):
                  '[0] overwrite SNR column with calibration error (default)\n'+
                  '[1] add SNR in quadrature to calibration error\n'+
                  '[2] leave the SNR column alone')
+    p.add_option('--searchRadius', dest='searchRadius', default=0.25, metavar='[#]',
+                 help='Set the search radius (in arcsec) for matching the star' +
+                 'in the starlist to the calibration star (default: %default arcsec).' +
+                 'This is the search radius for the bright stars. Faint stars (below ' +
+                 'a magnitude set by the --brightLimit flag) have a search radius that ' +
+                 'is two times smaller (searchRadius / 2).')
+    p.add_option('--searchMag', dest='searchMag', default=1.5, metavar='[#]',
+                 help='Set the delta-magnitude for matching the star in the ' +
+                 'starlist to the calibration star (default: %default).')
+    p.add_option('--brightLimit', dest='brightLimit', default=12, metavar='[#]',
+                 help='Set the brightness limit above which stars are matched within ' +
+                 'a search radius set by --searchRadius and below which stars are ' +
+                 'matched within searchRadius / 2. (default: %default).')
+    
     options, args = p.parse_args(argv)
     
     # Keep a copy of the original calling parameters
@@ -207,7 +227,13 @@ def read_command_line(argv):
     # Set plate scale
     options.plate_scale = all_scales[options.camera_type][0]
 
-    # Parse calib stars 
+    # Parse calib and align stars 
+    if (options.align_stars != None):
+        options.align_stars = options.align_stars.split(',')
+    elif (options.calib_stars != None):
+        ## If align stars not specified, use the specified calib stars
+        options.align_stars = options.calib_stars.split(',')
+        
     if (options.calib_stars != None):
         options.calib_stars = options.calib_stars.split(',')
 
@@ -222,6 +248,9 @@ def read_command_line(argv):
         print 'options.calib_file = %s' % options.calib_file
         print 'options.calib_column = %d' % options.calib_column
         print 'options.theta = %6.1f' % options.theta
+        print 'options.searchRadius = %6.1f arcsec' % options.searchRadius
+        print 'options.searchMag = %6.1f' % options.searchMag
+        print 'options.brightLimit = %6.1f' % options.brightLimit
         if options.reorder:
             print 'Reordering lis file'
         else:
@@ -261,8 +290,8 @@ def read_photo_calib_file(options, verbose=False):
             fields = line.split('--')
 
             colnum = int( fields[0].replace('# ', '') )
-            # Skip the first 4 columns
-            if ((len(fields) >= 2) and (colnum > 4)):
+            # Skip the first 7 columns with pos/vel info.
+            if ((len(fields) >= 2) and (colnum > 7)):
                 magInfo.append(fields[1])
 
                 if len(fields) > 2:
@@ -292,18 +321,21 @@ def read_photo_calib_file(options, verbose=False):
     # Read in the data portion of the file.
     #
     ##########
-    tab = asciidata.open(options.calib_file)
+    tab = Table.read(options.calib_file, format='ascii')
 
-    name = tab[0].tonumpy()
-    x = tab[1].tonumpy()
-    y = tab[2].tonumpy()
-    isVariable = (tab[3].tonumpy() == 1)
+    name = tab[tab.colnames[0]]
+    x = tab[tab.colnames[1]]
+    y = tab[tab.colnames[2]]
+    xVel = tab[tab.colnames[3]]
+    yVel = tab[tab.colnames[4]]
+    t0 = tab[tab.colnames[5]]
+    isVariable = (tab[tab.colnames[6]] == 1)
 
-    magMatrix = np.zeros((len(magInfo), tab.nrows), dtype=float)
-    isDefaultMatrix = np.zeros((len(magInfo), tab.nrows), dtype=bool)
+    magMatrix = np.zeros((len(magInfo), len(tab)), dtype=float)
+    isDefaultMatrix = np.zeros((len(magInfo), len(tab)), dtype=bool)
 
     for i in range(len(magInfo)):
-        magMatrix[i,:] = tab[i+4].tonumpy()
+        magMatrix[i,:] = tab[tab.colnames[i+7]]
 
         # If no default stars were set, then assume
         # all stars with non-zero magnitudes are the defaults.
@@ -314,7 +346,7 @@ def read_photo_calib_file(options, verbose=False):
         else:
             stars = defaultStars[i].split(',')
             stars = [stars[s].strip() for s in range(len(stars))]
-            for s in range(tab.nrows):
+            for s in range(len(tab)):
                 if (name[s] in stars):
                     isDefaultMatrix[i,s] = True
                 else:
@@ -330,7 +362,7 @@ def read_photo_calib_file(options, verbose=False):
 
         print '\n'
 
-        for s in range(tab.nrows):
+        for s in range(len(tab)):
             varChar = '!' if isVariable[s] else ''
             print '%1s%13s ' % (varChar, name[s]),
             
@@ -356,6 +388,9 @@ def read_photo_calib_file(options, verbose=False):
     calibs.name = name
     calibs.x = x
     calibs.y = y
+    calibs.xVel = xVel
+    calibs.yVel = yVel
+    calibs.t0 = t0
     # Pick out the magnitude column
     calibs.mag = magMatrix[options.calib_column - 1,:]  
     calibs.magInfo = magInfo[options.calib_column-1] # String with source info.
@@ -409,30 +444,29 @@ def input_data(options):
     if options.verbose:
         print 'Opening starlist: ', options.input_file
 
-    tab = asciidata.open(options.input_file)
-
-    name = tab[0].tonumpy()
-    name = np.array(name, dtype='S13')  # pre-allocate 13 characters.
-    mag = tab[1].tonumpy()
-    epoch = tab[2].tonumpy()
-    x = tab[3].tonumpy()
-    y = tab[4].tonumpy()
+    tab = Table.read(options.input_file, format='ascii')
+    cols = tab.colnames
     
+    name = tab[cols[0]]
+    mag = tab[cols[1]]
+    epoch = tab[cols[2]]
+    x = tab[cols[3]]
+    y = tab[cols[4]]
     
     if options.data_type == 2:
-        xerr = tab[5].tonumpy()
-        yerr = tab[6].tonumpy()
-        snr = tab[7].tonumpy()
-        corr = tab[8].tonumpy()
-        nframes = tab[9].tonumpy()
-        fwhm = tab[10].tonumpy()
+        xerr = tab[cols[5]]
+        yerr = tab[cols[6]]
+        snr = tab[cols[7]]
+        corr = tab[cols[8]]
+        nframes = tab[cols[9]]
+        fwhm = tab[cols[10]]
     else:
         xerr = None
         yerr = None
-        snr = tab[5].tonumpy()
-        corr = tab[6].tonumpy()
-        nframes = tab[7].tonumpy()
-        fwhm = tab[8].tonumpy()
+        snr = tab[cols[5]]
+        corr = tab[cols[6]]
+        nframes = tab[cols[7]]
+        fwhm = tab[cols[8]]
 
         
     # Trim out stars with errors in magnitudes
@@ -454,8 +488,8 @@ def input_data(options):
             yerr = yerr[idx]
 
     if options.verbose:
-        print 'Read %d lines in the input file.' % (len(x) + len(idx))
-        print 'Skipped %d lines in the input file.' % (len(idx))
+        print 'Read %d lines in the input file.' % (len(tab))
+        print 'Skipped %d lines in the input file.' % (len(tab) - len(idx))
 
     starlist = Starlist()
     starlist.name = name
@@ -484,7 +518,14 @@ def find_cal_stars(calibs, stars, options):
         msg =  'Failed to find the first star in the calibrators:\n'
         msg += '  %s' % options.first_star
         raise Exception(msg)
+    pdb.set_trace()
 
+    # Account for velocity of stars
+    delta_t = stars.epoch[0] - calibs.t0    # Using first star's epoch as current time
+
+    calibs.x += delta_t * (calibs.xVel/1000.)   # Velocities in mas/yr, positions in arcsec
+    calibs.y += delta_t * (calibs.yVel/1000.)
+        
     # Change the positional offsets to be relative to 
     # the reference source.
     calibs.x -= calibs.x[fidx]
@@ -504,14 +545,16 @@ def find_cal_stars(calibs, stars, options):
     # Set to -1 for non-matches. 
     index = np.ones(len(calibs.name), dtype=int) * -1 
 
-    # Loop through all the calibrators and find their match in the starlist
-    # search radius = 0.25 arcsec for bright sources
-    searchRadius = 0.25 / options.plate_scale   
-    searchMag = 1.5
+    # Loop through all the calibrators and find their match in the starlist.
+    # search radius, search mag, and bright limit are set by flags.
+    # default search radius = 0.25 arcsec for bright sources
+    # default search mag = 1.5
+    # default bright limit = 12
+    options.searchRadius /= options.plate_scale   
     
     magAdjust = stars.mag[0] - calibs.mag[fidx]
     if options.verbose:
-        print 'Search dr = %d pixels, dm = %.2f' % (searchRadius, searchMag)
+        print 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, options.searchMag)
         print 'Adjusting input magnitudes by %.2f' % magAdjust
 
     for c in range(len(calibs.name)):
@@ -521,12 +564,12 @@ def find_cal_stars(calibs, stars, options):
         dm = abs(stars.mag - calibs.mag[c] - magAdjust)
 
         # Find the matches within our tolerance.
-        if (calibs.mag[c] < 12):
+        if (calibs.mag[c] < options.brightLimit):
             # For the bright stars we have the default search radius:
-            idx = np.where((dr < searchRadius) & (dm < searchMag))[0]
+            idx = np.where((dr < options.searchRadius) & (dm < options.searchMag))[0]
         else:
             # For the fainter stars, use a smaller search radius:
-            idx = np.where((dr < searchRadius/2) & (dm < searchMag))[0]
+            idx = np.where((dr < options.searchRadius/2) & (dm < options.searchMag))[0]
         
         # Default is not found
         index[c] = -1
@@ -662,7 +705,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
         cdx = np.where(calibs.name == options.first_star)[0]
         fdx.append(calibs.index[cdx[0]])
 
-        if (options.calib_stars == None):
+        if (options.align_stars == None):
             # Used default calibraters
             cdx = np.where((calibs.include == True) & 
                            (calibs.index >= 0) &
@@ -670,14 +713,17 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
             fdx.extend(calibs.index[cdx])
         else:
             # Use in order specified by user.
-            for c in range(len(options.calib_stars)):
+            for c in range(len(options.align_stars)):
                 # This should always work here since any issues
                 # with the calib stars should have been caught 
                 # eralier.
+                if options.verbose:
+                    print options.align_stars[c]
+                    
                 if options.calib_stars[c] == options.first_star:
                     continue
 
-                ss = np.where(stars.name == options.calib_stars[c])[0]
+                ss = np.where(stars.name == options.align_stars[c])[0]
 
                 if len(ss) > 0:
                     fdx.append(ss[0])
