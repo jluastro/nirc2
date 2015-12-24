@@ -519,7 +519,6 @@ def find_cal_stars(calibs, stars, options):
         msg =  'Failed to find the first star in the calibrators:\n'
         msg += '  %s' % options.first_star
         raise Exception(msg)
-    pdb.set_trace()
 
     # Account for velocity of stars
     delta_t = stars.epoch[0] - calibs.t0    # Using first star's epoch as current time
