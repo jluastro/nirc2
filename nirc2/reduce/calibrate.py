@@ -103,13 +103,13 @@ def main(argv=None):
     options = read_command_line(argv)
     if (options == None):
         return
-
+    
     # Read in the photometric calibrators
     calibs = read_photo_calib_file(options)
     
     # Read in the starlist
     stars = input_data(options)
-
+    
     # Match up calibrator stars with stars in our starlist.
     calibs.index = find_cal_stars(calibs, stars, options)
 
@@ -172,7 +172,7 @@ def read_command_line(argv):
     p.add_option('-V', dest='verbose', action='store_true', default=False,
                  help='Print extra diagnostics.')
     p.add_option('-R', dest='reorder', action='store_true', default=False,
-                 help='Reorder the starlist so that the calibration sources'+
+                 help='Reorder the starlist so that the align stars '+
                  'are at the top. The coo star (first star) will remain first.')
     p.add_option('-s', '--snr', dest='snr_flag', default=0, metavar='[#]',
                  help='Use this flag to indicate the purpose of the SNR '+
@@ -265,7 +265,7 @@ def read_photo_calib_file(options, verbose=False):
     magInfo = []
     defaultStars = []
 
-    if verbose:
+    if verbose or options.verbose:
         print ''
         print 'Photometric calibration information loaded from:'
         print '\t', options.calib_file
@@ -283,13 +283,14 @@ def read_photo_calib_file(options, verbose=False):
             continue
 
         if line.startswith('# '):
-            # Column headers. The first four are hardcoded.
+            # Column headers. The first six are hardcoded.
             # The rest tell us how many magnitude columns
             # we have and the associated references.
             
             fields = line.split('--')
 
             colnum = int( fields[0].replace('# ', '') )
+
             # Skip the first 7 columns with pos/vel info.
             if ((len(fields) >= 2) and (colnum > 7)):
                 magInfo.append(fields[1])
@@ -299,8 +300,8 @@ def read_photo_calib_file(options, verbose=False):
                 else:
                     defaultStars.append(None)
 
-                if verbose:
-                    print '[%d]\t %s' % (colnum-4, fields[1])
+                if verbose or options.verbose:
+                    print '[%d]\t %s' % (colnum-7, fields[1])
 
         else:
             # Found the first line of data after the
@@ -309,7 +310,7 @@ def read_photo_calib_file(options, verbose=False):
 
     f_calib.close()
 
-    if verbose:
+    if verbose or options.verbose:
         print ''
         print 'Calibration Sources:'
         print '\t(* default if no -S flag)'
@@ -355,7 +356,7 @@ def read_photo_calib_file(options, verbose=False):
     ##########
     # Print out 
     ##########
-    if verbose:
+    if verbose or options.verbose:
         print ' %10s ' % 'Name',
         for i in range(len(magInfo)):
             print ' [%3d]  ' % (i+1),
@@ -428,7 +429,7 @@ def read_photo_calib_file(options, verbose=False):
 def input_data(options):
     """
     Read in a starlist and return a starlist object
-    will the following hanging off:
+    with the following hanging off:
       name
       mag
       epoch
@@ -530,7 +531,7 @@ def find_cal_stars(calibs, stars, options):
     # the reference source.
     calibs.x -= calibs.x[fidx]
     calibs.y -= calibs.y[fidx]
-
+    
     # Determine the pixel positions for the calibrators
     cosScale = math.cos(math.radians(options.theta)) / options.plate_scale
     sinScale = math.sin(math.radians(options.theta)) / options.plate_scale
@@ -538,8 +539,8 @@ def find_cal_stars(calibs, stars, options):
     calibs.ypix = stars.y[0] + (calibs.x * sinScale) + (calibs.y * cosScale)
     if options.verbose:
         for c in range(len(calibs.xpix)):
-            print 'Looking for %10s at (%.2f, %.2f)' % \
-                (calibs.name[c], calibs.xpix[c], calibs.ypix[c])
+            print 'Looking for %10s at (%.2f, %.2f), mag: %.2f' % \
+                (calibs.name[c], calibs.xpix[c], calibs.ypix[c], calibs.mag[c])
             
     # Create an array of indices into the starlist.
     # Set to -1 for non-matches. 
@@ -562,6 +563,8 @@ def find_cal_stars(calibs, stars, options):
         dy = stars.y - calibs.ypix[c]
         dr = np.hypot(dx, dy)
         dm = abs(stars.mag - calibs.mag[c] - magAdjust)
+        
+        
 
         # Find the matches within our tolerance.
         if (calibs.mag[c] < options.brightLimit):
@@ -596,8 +599,7 @@ def find_cal_stars(calibs, stars, options):
         else:
             if options.verbose:
                 print '%10s not found' % (calibs.name[c])
-
-
+    
     return index
 
 def calc_zeropt(calibs, stars, options):
@@ -716,14 +718,16 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
             for c in range(len(options.align_stars)):
                 # This should always work here since any issues
                 # with the calib stars should have been caught 
-                # eralier.
+                # earlier.
                 if options.verbose:
-                    print options.align_stars[c]
-                    
-                if options.calib_stars[c] == options.first_star:
+                    print(options.align_stars[c])
+                
+                if options.align_stars[c] == options.first_star:
                     continue
 
                 ss = np.where(stars.name == options.align_stars[c])[0]
+                if options.verbose:
+                    print(ss)
 
                 if len(ss) > 0:
                     fdx.append(ss[0])
