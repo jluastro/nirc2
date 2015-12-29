@@ -4,6 +4,12 @@ import argparse
 from gcwork import starset
 import pdb
 
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    run(argv)
+    return
+
 def run(args=None):
     """
     align_rms main routine.
@@ -124,7 +130,7 @@ def run(args=None):
     hdr += '{snr:>20s}  {corr:>6s}  {nimg:>8s}  {flux:>20s}\n'
 
     _out.write(hdr.format(name='# name', mag='mag', year='year',
-                          x='x', y='y', xe='xe', ye='ye',
+                          x='x', y='y', xe='xerr', ye='yerr',
                           snr='snr', corr='corr', nimg='nimg', flux='flux'))
     
 
@@ -267,7 +273,6 @@ def parse_options(args):
     return options
 
 if __name__ == "__main__":
-    run()
-
+    main()
 
 
