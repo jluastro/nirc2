@@ -181,13 +181,13 @@ def read_command_line(argv):
                  '[0] overwrite SNR column with calibration error (default)\n'+
                  '[1] add SNR in quadrature to calibration error\n'+
                  '[2] leave the SNR column alone')
-    p.add_option('--searchRadius', dest='searchRadius', default=0.25, metavar='[#]',
+    p.add_option('--searchRadius', dest='searchRadius', default=0.20, metavar='[#]',
                  help='Set the search radius (in arcsec) for matching the star' +
                  'in the starlist to the calibration star (default: %default arcsec).' +
                  'This is the search radius for the bright stars. Faint stars (below ' +
                  'a magnitude set by the --brightLimit flag) have a search radius that ' +
                  'is two times smaller (searchRadius / 2).')
-    p.add_option('--searchMag', dest='searchMag', default=1.5, metavar='[#]',
+    p.add_option('--searchMag', dest='searchMag', default=1.0, metavar='[#]',
                  help='Set the delta-magnitude for matching the star in the ' +
                  'starlist to the calibration star (default: %default).')
     p.add_option('--brightLimit', dest='brightLimit', default=12, metavar='[#]',
@@ -547,8 +547,8 @@ def find_cal_stars(calibs, stars, options):
 
     # Loop through all the calibrators and find their match in the starlist.
     # search radius, search mag, and bright limit are set by flags.
-    # default search radius = 0.25 arcsec for bright sources
-    # default search mag = 1.5
+    # default search radius = 0.20 arcsec for bright sources
+    # default search mag = 1.0
     # default bright limit = 12
     options.searchRadius /= options.plate_scale   
     
