@@ -314,7 +314,7 @@ def clean_get_supermask(_statmask, _supermask, badColumns):
                 continue
 
             # Make column index from 0-512 n steps of 8
-            colIndex = arange(cc, 512, 8)
+            colIndex = np.arange(cc, 512, 8)
             maskFits[0].data[0:512,colIndex] = 1
 
     # Save to a temporary file.
