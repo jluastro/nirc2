@@ -665,8 +665,8 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
         idx = (np.where(r < radius))[0]
         py.plot(mag[idx], merr[idx], 'k.')
         
-    py.plot(magBins, merrMag, 'g.-')
-    py.axis([8, 22, 0, 0.15])
+    py.semilogy(magBins, merrMag, 'g.-')
+    py.axis([8, 22, 8e-4, 0.15])
     py.xlabel('K Magnitude for r < %4.1f"' % radius)
     py.ylabel('Photo. Uncertainty (mag)')
     py.title(starlist)

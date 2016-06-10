@@ -129,9 +129,9 @@ def run(args=None):
     hdr += '{x:>9s}  {y:>9s}  {xe:>9s}  {ye:>9s}  '
     hdr += '{snr:>20s}  {corr:>6s}  {nimg:>8s}  {flux:>20s}\n'
 
-    _out.write(hdr.format(name='# name', mag='mag', year='year',
-                          x='x', y='y', xe='xerr', ye='yerr',
-                          snr='snr', corr='corr', nimg='nimg', flux='flux'))
+    _out.write(hdr.format(name='# name', mag='m', year='t',
+                          x='x', y='y', xe='xe', ye='ye',
+                          snr='snr', corr='corr', nimg='N_frames', flux='flux'))
     
 
     
