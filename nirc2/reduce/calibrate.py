@@ -737,7 +737,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
     _out = open(options.outname, 'w')
     
     for ff in fdx:
-        _out.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  ' % 
+        _out.write('%13s  %9.6f  %8.3f  %10.5f  %10.5f  ' % 
                    (stars.name[ff], 
                     stars.mag[ff],
                     stars.epoch[ff],
@@ -752,7 +752,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
                     stars.nframes[ff], stars.fwhm[ff]))
 
     for ff in idx:
-        _out.write('%13s  %6.3f  %8.3f  %10.5f  %10.5f  ' % 
+        _out.write('%13s  %9.6f  %8.3f  %10.5f  %10.5f  ' % 
                    (stars.name[ff], 
                     stars.mag[ff],
                     stars.epoch[ff],
