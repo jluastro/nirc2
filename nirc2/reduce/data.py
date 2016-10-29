@@ -1,6 +1,7 @@
 import os, sys
 from astropy.io import fits
 from astropy.table import Table
+from astropy.time import Time
 import math
 import user
 from pyraf import iraf as ir
@@ -811,7 +812,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
     # Set a cleanDir variable in IRAF. This avoids the long-filename problem.
     ir.set(cleanDir=cleanDir)
-
+    
+    # Variable to store weighted sum of MJDs
+    mjd_weightedSum = 0.0
+    
     print 'combine: drizzling images together'
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
@@ -856,6 +860,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
+        
+        # Read in MJD of current file from FITS header
+        mjd = float(hdr['MJD-OBS'])
+        mjd_weightedSum += weights[i] * mjd
         
         # Drizzle this file ontop of all previous ones.
         f_dlog.write(time.ctime())
@@ -919,7 +927,17 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
                           'X Distortion Image')
     fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
                           'Y Distortion Image')
-
+    
+    # Calculate weighted MJD and store in header
+    mjd_weightedMean = mjd_weightedSum / np.sum(weights)
+    time_obs = Time(mjd_weightedMean, format='mjd')
+    
+    fits_f[0].header.update('MJD-OBS', mjd_weightedMean, 'Weighted modified julian date of combined observations')
+    
+    ## Also update date field in header
+    fits_f[0].header.update('DATE', '{0}'.format(time_obs.fits), 'Weighted observation date')
+    
+    
     # Save to final fits file.
     fits_f[0].writeto(_fits, output_verify=outputVerify)
     util.rmall([_tmpfits, _cdwt])
