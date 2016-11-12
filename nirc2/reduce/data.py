@@ -13,6 +13,7 @@ import numpy as np
 import dar
 import bfixpix
 import subprocess
+#import ml.StrehlCalculator_MS as pystrehlcalc 
 
 module_dir = os.path.dirname(__file__)
 
@@ -603,8 +604,8 @@ def calcStrehl(files, wave, field=None):
     # Make a list of all the images
     clisFile = cleanDir + 'c.lis'
     _strehl = cleanDir + 'strehl_source.txt'
-    _idl = 'idl.strehl.batch'
-    tmpFiles = [clisFile, _strehl, _idl]
+    _idl = 'idl.strehl.batch'                                                       """##IDL##"""
+    tmpFiles = [clisFile, _strehl, _idl]                                            """##IDL##"""
     util.rmall(tmpFiles)
     
     _clis = open(clisFile, 'w')
@@ -628,7 +629,7 @@ def calcStrehl(files, wave, field=None):
     _clis.close()
 
     # Now call Marcos's strehl widget in a command line format.
-    batchFile = open(_idl, 'w')
+    batchFile = open(_idl, 'w')                                                         """##IDL##"""
     batchFile.write("print, \"Hello World\"\n")
     batchFile.write("cmd_strehl_widget, '" + clisFile + "', /list, ")
     batchFile.write("output='" + _strehl + "', aper=0.3, /silent\n")
@@ -636,10 +637,10 @@ def calcStrehl(files, wave, field=None):
     batchFile.close()
 
 
-    util.rmall(['idl.strehl.batch.log'])
+    util.rmall(['idl.strehl.batch.log'])                                                """##IDL##"""
 
     #subprocess.Popen('setenv', shell=True, executable = '/bin/tcsh')
-    exec_str = 'idl < idl.strehl.batch > idl.strehl.batch.log'
+    exec_str = 'idl < idl.strehl.batch > idl.strehl.batch.log'                          """##IDL##"""
     subp = subprocess.Popen(exec_str, shell=True, executable="/bin/tcsh")
     tmp = subp.communicate()
 
