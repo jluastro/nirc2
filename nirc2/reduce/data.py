@@ -975,35 +975,38 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 
     # Final normalization factor	
     weightsTot = np.zeros(submaps, dtype=float)
+    
+    # Array to store weighted sum of MJDs in each submap
+    mjd_weightedSums = np.zeros(submaps, dtype=float)
 
     for i in range(len(roots)):
         # Cleaned image
         _c = cleanDir + 'c' + roots[i] + '.fits'
-
-	# Cleaned but distorted image
+        
+        # Cleaned but distorted image
         _cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
         cdwt = cleanDir + 'weight/cdwt.fits'
-
+        
         # Multiply each distorted image by it's weight
         util.rmall([cdwt])
         ir.imarith(_cd, '*', weights[i], cdwt)
-
+        
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
         itime_tmp = ir.hselect(cdwt, "ITIME", "yes", Stdout=1)
         itime = float(itime_tmp[0]) * weights[i]
         ir.hedit(cdwt, 'ITIME', itime, verify='no', show='no')
-
-	# Get pixel shifts
-	xsh = shifts[i][1]
-	ysh = shifts[i][2]
-
-	# Determine which submap we should be drizzling to.
-	sub = int(i % submaps)
-	fits_im = _tmp[sub]
-	wgt = _wgt[sub]
-	log = f_log[sub]
-
+        
+        # Get pixel shifts
+        xsh = shifts[i][1]
+        ysh = shifts[i][2]
+        
+        # Determine which submap we should be drizzling to.
+        sub = int(i % submaps)
+        fits_im = _tmp[sub]
+        wgt = _wgt[sub]
+        log = f_log[sub]
+        
         # Read in PA of each file to feed into drizzle for rotation
         hdr = fits.getheader(_c,ignore_missing_end=True)
         phi = nirc2_util.getPA(hdr)
@@ -1020,12 +1023,12 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         #satLvl = getsatLvl[0][0]
         satLvl_wt = satLvl * weights[i]
         satLvl_tot[sub] += satLvl_wt
-
-	# Add up the weights that go into each submap
-	weightsTot[sub] += weights[i]
-
+        
+        # Add up the weights that go into each submap
+        weightsTot[sub] += weights[i]
+        
         satLvl_sub[sub] = satLvl_tot[sub] / weightsTot[sub]
-
+        
         if (fixDAR == True):
             darRoot = cdwt.replace('.fits', 'geo')
             (xgeoim, ygeoim) = dar.darPlusDistortion(cdwt, darRoot,
@@ -1033,6 +1036,10 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
                                                      ygeoim=distYgeoim)
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
+        
+        # Read in MJD of current file from FITS header
+        mjd = float(hdr['MJD-OBS'])
+        mjd_weightedSums[sub] += weights[i] * mjd
         
         # Drizzle this file ontop of all previous ones.
         log.write(time.ctime())
@@ -1047,10 +1054,14 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.ysh = ysh
         
         ir.drizzle(cdwt, fits_im, Stdout=log)
-
+    
+    # Calculate weighted MJDs for each submap
+    mjd_weightedMeans = mjd_weightedSums / weightsTot
+    submaps_time_obs = Time(mjd_weightedMeans, format='mjd')
+    
     for f in f_log:
-	f.close()
-
+        f.close()
+        
     print 'satLevel for submaps = ', satLvl_sub
     # Write the saturation level for each submap to a file
     for l in range(submaps):
@@ -1093,10 +1104,17 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
                               'X Distortion Image')
         fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
                               'Y Distortion Image')
-
-	fits_f[0].writeto(_fits[s], output_verify=outputVerify)
-
-
+        
+        # Store weighted MJDs in header
+        fits_f[0].header.update('MJD-OBS', mjd_weightedMeans[s], 'Weighted modified julian date of combined observations')
+    
+        ## Also update date field in header
+        fits_f[0].header.update('DATE', '{0}'.format(submaps_time_obs[s].fits), 'Weighted observation date')
+        
+        # Write out final submap fits file
+        fits_f[0].writeto(_fits[s], output_verify=outputVerify)
+    
+    
     util.rmall(_tmp)
     util.rmall([cdwt])
 
