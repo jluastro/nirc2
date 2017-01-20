@@ -122,7 +122,7 @@ def run(args=None):
     # Fix up any infinities in the SNR. Set them to 0.
     new_snr[np.isinf(new_snr)] = 0.0
     ## Check if new_snr has a mask before using it
-    if new_snr.mask != False:
+    if np.ma.is_masked(new_snr):
         new_snr[new_snr.mask] = 0.0
 
     _out = open(options.out_root + '.lis', 'w')
