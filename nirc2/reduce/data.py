@@ -917,25 +917,25 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Set the ROTPOSN value for the combined image.
     if (diffPA == 1):
         phi = 0.7
-        fits_f[0].header.update('ROTPOSN', "%.5f" % phi,
+        fits_f[0].header.set('ROTPOSN', "%.5f" % phi,
                               'rotator user position')
 
     # Add keyword with distortion image information
-    fits_f[0].header.update('DISTCOEF', "%s" % distCoef,
+    fits_f[0].header.set('DISTCOEF', "%s" % distCoef,
                           'Distortion Coefficients File')
-    fits_f[0].header.update('DISTORTX', "%s" % distXgeoim,
+    fits_f[0].header.set('DISTORTX', "%s" % distXgeoim,
                           'X Distortion Image')
-    fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
+    fits_f[0].header.set('DISTORTY', "%s" % distYgeoim,
                           'Y Distortion Image')
     
     # Calculate weighted MJD and store in header
     mjd_weightedMean = mjd_weightedSum / np.sum(weights)
     time_obs = Time(mjd_weightedMean, format='mjd')
     
-    fits_f[0].header.update('MJD-OBS', mjd_weightedMean, 'Weighted modified julian date of combined observations')
+    fits_f[0].header.set('MJD-OBS', mjd_weightedMean, 'Weighted modified julian date of combined observations')
     
     ## Also update date field in header
-    fits_f[0].header.update('DATE', '{0}'.format(time_obs.fits), 'Weighted observation date')
+    fits_f[0].header.set('DATE', '{0}'.format(time_obs.fits), 'Weighted observation date')
     
     
     # Save to final fits file.
@@ -1091,25 +1091,25 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # Fix the ITIME header keyword so that it matches (weighted).
         itime = fits_f[0].header.get('ITIME')
         itime /= weightsTot[s]
-        fits_f[0].header.update('ITIME', '%.5f' % itime)
+        fits_f[0].header.set('ITIME', '%.5f' % itime)
         
         # Set the ROTPOSN value for the combined submaps. 
         if (diffPA == 1):
             phi = 0.7
-            fits_f[0].header.update('ROTPOSN', "%.5f" % phi,
+            fits_f[0].header.set('ROTPOSN', "%.5f" % phi,
                                   'rotator user position')
 
         # Add keyword with distortion image information
-        fits_f[0].header.update('DISTORTX', "%s" % distXgeoim,
+        fits_f[0].header.set('DISTORTX', "%s" % distXgeoim,
                               'X Distortion Image')
-        fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
+        fits_f[0].header.set('DISTORTY', "%s" % distYgeoim,
                               'Y Distortion Image')
         
         # Store weighted MJDs in header
-        fits_f[0].header.update('MJD-OBS', mjd_weightedMeans[s], 'Weighted modified julian date of combined observations')
+        fits_f[0].header.set('MJD-OBS', mjd_weightedMeans[s], 'Weighted modified julian date of combined observations')
     
         ## Also update date field in header
-        fits_f[0].header.update('DATE', '{0}'.format(submaps_time_obs[s].fits), 'Weighted observation date')
+        fits_f[0].header.set('DATE', '{0}'.format(submaps_time_obs[s].fits), 'Weighted observation date')
         
         # Write out final submap fits file
         fits_f[0].writeto(_fits[s], output_verify=outputVerify)
@@ -1651,13 +1651,13 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
 
     # write reference star x,y to fits header
     fits_f = fits.open(_ce)
-    fits_f[0].header.update('XREF', "%.3f" %xref,
+    fits_f[0].header.set('XREF', "%.3f" %xref,
                           'Cross Corr Reference Src x')
-    fits_f[0].header.update('YREF', "%.3f" %yref,
+    fits_f[0].header.set('YREF', "%.3f" %yref,
                           'Cross Corr Reference Src y')
-    fits_f[0].header.update('XSTREHL', "%.3f" %xstr,
+    fits_f[0].header.set('XSTREHL', "%.3f" %xstr,
                           'Strehl Reference Src x')
-    fits_f[0].header.update('YSTREHL', "%.3f" %ystr,
+    fits_f[0].header.set('YSTREHL', "%.3f" %ystr,
                           'Strehl Reference Src y')
     fits_f[0].writeto(_cc, output_verify=outputVerify)
 
