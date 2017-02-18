@@ -1,6 +1,7 @@
 import os, sys
 from astropy.io import fits
 from astropy.table import Table
+from astropy.time import Time
 import math
 import user
 from pyraf import iraf as ir
@@ -811,7 +812,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
     # Set a cleanDir variable in IRAF. This avoids the long-filename problem.
     ir.set(cleanDir=cleanDir)
-
+    
+    # Variable to store weighted sum of MJDs
+    mjd_weightedSum = 0.0
+    
     print 'combine: drizzling images together'
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
@@ -857,6 +861,12 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
 
+
+        
+        # Read in MJD of current file from FITS header
+        mjd = float(hdr['MJD-OBS'])
+        mjd_weightedSum += weights[i] * mjd
+        
         # Drizzle this file ontop of all previous ones.
         f_dlog.write(time.ctime())
 
@@ -909,17 +919,27 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Set the ROTPOSN value for the combined image.
     if (diffPA == 1):
         phi = 0.7
-        fits_f[0].header.update('ROTPOSN', "%.5f" % phi,
+        fits_f[0].header.set('ROTPOSN', "%.5f" % phi,
                               'rotator user position')
 
     # Add keyword with distortion image information
-    fits_f[0].header.update('DISTCOEF', "%s" % distCoef,
+    fits_f[0].header.set('DISTCOEF', "%s" % distCoef,
                           'Distortion Coefficients File')
-    fits_f[0].header.update('DISTORTX', "%s" % distXgeoim,
+    fits_f[0].header.set('DISTORTX', "%s" % distXgeoim,
                           'X Distortion Image')
-    fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
+    fits_f[0].header.set('DISTORTY', "%s" % distYgeoim,
                           'Y Distortion Image')
-
+    
+    # Calculate weighted MJD and store in header
+    mjd_weightedMean = mjd_weightedSum / np.sum(weights)
+    time_obs = Time(mjd_weightedMean, format='mjd')
+    
+    fits_f[0].header.set('MJD-OBS', mjd_weightedMean, 'Weighted modified julian date of combined observations')
+    
+    ## Also update date field in header
+    fits_f[0].header.set('DATE', '{0}'.format(time_obs.fits), 'Weighted observation date')
+    
+    
     # Save to final fits file.
     fits_f[0].writeto(_fits, output_verify=outputVerify)
     util.rmall([_tmpfits, _cdwt])
@@ -957,35 +977,38 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 
     # Final normalization factor
     weightsTot = np.zeros(submaps, dtype=float)
+    
+    # Array to store weighted sum of MJDs in each submap
+    mjd_weightedSums = np.zeros(submaps, dtype=float)
 
     for i in range(len(roots)):
         # Cleaned image
         _c = cleanDir + 'c' + roots[i] + '.fits'
-
-	# Cleaned but distorted image
+        
+        # Cleaned but distorted image
         _cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
         cdwt = cleanDir + 'weight/cdwt.fits'
-
+        
         # Multiply each distorted image by it's weight
         util.rmall([cdwt])
         ir.imarith(_cd, '*', weights[i], cdwt)
-
+        
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
         itime_tmp = ir.hselect(cdwt, "ITIME", "yes", Stdout=1)
         itime = float(itime_tmp[0]) * weights[i]
         ir.hedit(cdwt, 'ITIME', itime, verify='no', show='no')
-
-	# Get pixel shifts
-	xsh = shifts[i][1]
-	ysh = shifts[i][2]
-
-	# Determine which submap we should be drizzling to.
-	sub = int(i % submaps)
-	fits_im = _tmp[sub]
-	wgt = _wgt[sub]
-	log = f_log[sub]
-
+        
+        # Get pixel shifts
+        xsh = shifts[i][1]
+        ysh = shifts[i][2]
+        
+        # Determine which submap we should be drizzling to.
+        sub = int(i % submaps)
+        fits_im = _tmp[sub]
+        wgt = _wgt[sub]
+        log = f_log[sub]
+        
         # Read in PA of each file to feed into drizzle for rotation
         hdr = fits.getheader(_c,ignore_missing_end=True)
         phi = nirc2_util.getPA(hdr)
@@ -1002,12 +1025,12 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         #satLvl = getsatLvl[0][0]
         satLvl_wt = satLvl * weights[i]
         satLvl_tot[sub] += satLvl_wt
-
-	# Add up the weights that go into each submap
-	weightsTot[sub] += weights[i]
-
+        
+        # Add up the weights that go into each submap
+        weightsTot[sub] += weights[i]
+        
         satLvl_sub[sub] = satLvl_tot[sub] / weightsTot[sub]
-
+        
         if (fixDAR == True):
             darRoot = cdwt.replace('.fits', 'geo')
             (xgeoim, ygeoim) = dar.darPlusDistortion(cdwt, darRoot,
@@ -1016,6 +1039,10 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
 
+        # Read in MJD of current file from FITS header
+        mjd = float(hdr['MJD-OBS'])
+        mjd_weightedSums[sub] += weights[i] * mjd
+        
         # Drizzle this file ontop of all previous ones.
         log.write(time.ctime())
 
@@ -1029,10 +1056,14 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.ysh = ysh
 
         ir.drizzle(cdwt, fits_im, Stdout=log)
-
+    
+    # Calculate weighted MJDs for each submap
+    mjd_weightedMeans = mjd_weightedSums / weightsTot
+    submaps_time_obs = Time(mjd_weightedMeans, format='mjd')
+    
     for f in f_log:
-	f.close()
-
+        f.close()
+        
     print 'satLevel for submaps = ', satLvl_sub
     # Write the saturation level for each submap to a file
     for l in range(submaps):
@@ -1065,20 +1096,32 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         fits_f[0].header.update('ITIME', '%.5f' % itime)
 
         # Set the ROTPOSN value for the combined submaps.
+
+        fits_f[0].header.set('ITIME', '%.5f' % itime)
+        
+        # Set the ROTPOSN value for the combined submaps. 
+
         if (diffPA == 1):
             phi = 0.7
-            fits_f[0].header.update('ROTPOSN', "%.5f" % phi,
+            fits_f[0].header.set('ROTPOSN', "%.5f" % phi,
                                   'rotator user position')
 
         # Add keyword with distortion image information
-        fits_f[0].header.update('DISTORTX', "%s" % distXgeoim,
+        fits_f[0].header.set('DISTORTX', "%s" % distXgeoim,
                               'X Distortion Image')
-        fits_f[0].header.update('DISTORTY', "%s" % distYgeoim,
+        fits_f[0].header.set('DISTORTY', "%s" % distYgeoim,
                               'Y Distortion Image')
-
-	fits_f[0].writeto(_fits[s], output_verify=outputVerify)
-
-
+        
+        # Store weighted MJDs in header
+        fits_f[0].header.set('MJD-OBS', mjd_weightedMeans[s], 'Weighted modified julian date of combined observations')
+    
+        ## Also update date field in header
+        fits_f[0].header.set('DATE', '{0}'.format(submaps_time_obs[s].fits), 'Weighted observation date')
+        
+        # Write out final submap fits file
+        fits_f[0].writeto(_fits[s], output_verify=outputVerify)
+    
+    
     util.rmall(_tmp)
     util.rmall([cdwt])
 
@@ -1615,13 +1658,13 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
 
     # write reference star x,y to fits header
     fits_f = fits.open(_ce)
-    fits_f[0].header.update('XREF', "%.3f" %xref,
+    fits_f[0].header.set('XREF', "%.3f" %xref,
                           'Cross Corr Reference Src x')
-    fits_f[0].header.update('YREF', "%.3f" %yref,
+    fits_f[0].header.set('YREF', "%.3f" %yref,
                           'Cross Corr Reference Src y')
-    fits_f[0].header.update('XSTREHL', "%.3f" %xstr,
+    fits_f[0].header.set('XSTREHL', "%.3f" %xstr,
                           'Strehl Reference Src x')
-    fits_f[0].header.update('YSTREHL', "%.3f" %ystr,
+    fits_f[0].header.set('YSTREHL', "%.3f" %ystr,
                           'Strehl Reference Src y')
     fits_f[0].writeto(_cc, output_verify=outputVerify)
 
