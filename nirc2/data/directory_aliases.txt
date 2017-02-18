@@ -5,3 +5,4 @@
 "/net/calla.ifa.hawaii.edu/Volumes/indicium/" "/"
 "/Network/Servers/galaxy1.astro.ucla.edu/volume1/GhezGroup/home-directories/ghezgroup" "/u/ghezgroup"
 "/Network/Servers/galaxy1.astro.ucla.edu/volume1/GhezGroup/ghez" "/g/ghez"
+"/Users/nijaid/Microlens/data/microlens" "/microlens"

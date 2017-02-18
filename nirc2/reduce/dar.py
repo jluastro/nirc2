@@ -3,7 +3,7 @@ import glob
 import numpy as np
 import pylab as py
 import math
-import pyfits
+from astropy.io import fits as pyfits
 import datetime
 import urllib
 import os, sys

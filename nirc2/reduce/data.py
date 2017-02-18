@@ -59,7 +59,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 	    sky_nite1/
 		sky.fits
 
-    All output files will be put into reduce/../clean/ in the 
+    All output files will be put into reduce/../clean/ in the
     following structure:
 	kp/
 	    c*.fits
@@ -131,7 +131,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # exist, then use a global one.
         flatDir = redDir + 'calib/flats/'
         flat = flatDir + 'flat_' + wave + '.fits'
-        if not os.access(flat, os.F_OK): 
+        if not os.access(flat, os.F_OK):
             flat = flatDir + 'flat.fits'
 
         # Bad pixel mask
@@ -255,7 +255,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             ### Make .max file ###
             # Determine the non-linearity level. Raw data level of
             # non-linearity is 12,000 but we subtracted
-            # off a sky which changed this level. The sky is 
+            # off a sky which changed this level. The sky is
             # scaled, so the level will be slightly different
             # for every frame.
             nonlinSky = skyObj.getNonlinearCorrection(sky)
@@ -279,7 +279,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
                           clean)
 
             ### Move to the clean directory ###
-            util.rmall([clean + _cc, clean + _coo, 
+            util.rmall([clean + _cc, clean + _coo,
                         distort + _cd, weight + _wgt,
                         clean + _ce, clean + _max,
                         masks + _mask, _ce])
@@ -293,7 +293,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             # This just closes out any sky logging files.
             #skyObj.close()
-    finally: 
+    finally:
         # Move back up to the original directory
         skyObj.close()
         ir.cd('../')
@@ -390,19 +390,19 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         06jullgs_arch_f1_kp for adding field='arch_f1'
     @type outroot: string
     @kwparam field: Optional field name used to get to clean directory and
-        also affects the final output file name. 
+        also affects the final output file name.
     @type field: string
-    @kwparam outSuffix: Optional suffix used to modify final output file name. 
+    @kwparam outSuffix: Optional suffix used to modify final output file name.
     @type outSuffix: string
     @kwparam trim: Optional file trimming based on image quality. Default
         is 0. Set to 1 to turn trimming on.
     @type trim: 0 or 1
     @kwparam weight: Optional weighting. Set to 'strehl' to weight by Strehl,
-        as found in strehl_source.txt file. OR set to a file name with the 
+        as found in strehl_source.txt file. OR set to a file name with the
         first column being the file name (e.g., c0021.fits) and the second
         column being the weight. Weights will be renormalized to sum to 1.0.
         Default = None, no weighting.
-    @type weight: string  
+    @type weight: string
     @kwparam fwhm_max: The maximum allowed FWHM for keeping frames when
         trimming is turned on.
     @type fwhm_max: int
@@ -439,12 +439,12 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
 
 
     ##########
-    # Determine if we are going to trim and/or weight the files 
+    # Determine if we are going to trim and/or weight the files
     # when combining. If so, then we need to determine the Strehl
     # and FWHM for each image. We check strehl source which shouldn't
     # be saturated. *** Hard coded to strehl source ***
     ##########
- 
+
     # Load the strehl_source.txt file
     strehls, fwhm = loadStrehl(cleanDir, roots)
 
@@ -457,7 +457,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     # Trimming
     ##########
     if trim:
-        roots, strehls, fwhm, weights = trim_on_fwhm(roots, strehls, fwhm, 
+        roots, strehls, fwhm, weights = trim_on_fwhm(roots, strehls, fwhm,
                                                      fwhm_max=fwhm_max)
 
     ##########
@@ -472,7 +472,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
             raise ValueError('Weights file does not exist, %s' % weight)
 
         print 'Weights file: ', weight
- 
+
         weights = readWeightsFile(roots, weight)
 
     # Determine the reference image
@@ -492,7 +492,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     # Make a table of coordinates for the reference source.
     # These serve as initial estimates for the shifts.
     #combine_ref(_out + '.coo', cleanDir, roots, diffPA)
-    combine_coo(_out + '.coo', cleanDir, roots, diffPA) 
+    combine_coo(_out + '.coo', cleanDir, roots, diffPA)
 
     # Keep record of files that went into this combine
     combine_lis(_out + '.lis', cleanDir, roots, diffPA)
@@ -514,8 +514,8 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
 
     # Now make submaps
     if (submaps > 0):
-	combine_submaps(xysize, cleanDir, roots, _sub, weights, 
-			shiftsTab, submaps, wave, diffPA, fixDAR=fixDAR, 
+	combine_submaps(xysize, cleanDir, roots, _sub, weights,
+			shiftsTab, submaps, wave, diffPA, fixDAR=fixDAR,
                         mask=mask)
 
     # Remove *.lis_r file & rotated rcoo files, if any - these
@@ -544,7 +544,7 @@ def rot_img(root, phi, cleanDir):
     util.rmall([outCln])
 
     if (phi != 0):
-        print 'Rotating frame: ',root 
+        print 'Rotating frame: ',root
         ir.rotate(inCln, outCln, pa)
     else:
 	ir.imcopy(inCln, outCln, verbose='no')
@@ -559,14 +559,14 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
     @returns pos: x and y offset from Sgr A* in arcsec
     @rtype pos: float list (2-elements)
     """
-    
+
     # Read in label.dat
     table = Table.read(label_file, format='ascii')
     cols = table.columns.keys()
 
     nameCol = table[cols[0]]
     names = [n.strip() for n in nameCol]
-    
+
     try:
         id = names.index(name)
 
@@ -578,10 +578,10 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
         y = 0
 
     return [x,y]
-    
+
 
 def calcStrehl(files, wave, field=None):
-    """Make Strehl and FWHM table on the strehl source for all 
+    """Make Strehl and FWHM table on the strehl source for all
     cleaned files.
 
     @param cleanDir The 'clean' directory.
@@ -606,7 +606,7 @@ def calcStrehl(files, wave, field=None):
     _idl = 'idl.strehl.batch'
     tmpFiles = [clisFile, _strehl, _idl]
     util.rmall(tmpFiles)
-    
+
     _clis = open(clisFile, 'w')
     roots = [str(f).zfill(4) for f in files]
 
@@ -648,7 +648,7 @@ def calcStrehl(files, wave, field=None):
     # are bad and were dropped.
     strehlTable = Table.read(_strehl, format='ascii', header_start=None)
     cols = strehlTable.columns.keys()
-    
+
     if len(roots) != len(strehlTable):
         print len(roots), len(strehlTable)
         # Figure out the dropped files.
@@ -662,18 +662,18 @@ def calcStrehl(files, wave, field=None):
             if foundIt == False:
                 droppedFiles.append(rr)
 
-        raise RuntimeError('calcStrehl: Strehl widget lost files: ', 
+        raise RuntimeError('calcStrehl: Strehl widget lost files: ',
                            droppedFiles)
 
-def weight_by_strehl(roots, strehls):        
+def weight_by_strehl(roots, strehls):
     """
-    Calculate weights based on the strehl of each image. 
+    Calculate weights based on the strehl of each image.
     This does some intelligent handling for REALLY bad data quality.
     """
     # Set negative Strehls to the lowest detected strehl.
     bidx = (np.where(strehls <= 0))[0]
     gidx = (np.where(strehls > 0))[0]
-    if len(bidx) > 0: 
+    if len(bidx) > 0:
         badroots = [roots[i] for i in bidx]
         print 'Found files with incorrect Strehl. May be incorrectly'
         print 'weighted. Setting weights to minimum weight. '
@@ -681,7 +681,7 @@ def weight_by_strehl(roots, strehls):
 
     strehl_min = strehls[gidx].min()
     strehls[bidx] = strehl_min
-	    
+
     # Now determine a fractional weight
     wgt_tot = sum(strehls)
     weights = strehls / wgt_tot
@@ -691,9 +691,9 @@ def weight_by_strehl(roots, strehls):
 
 def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
     """
-    Take a list of files and trim based on the FWHM. All files that have a 
+    Take a list of files and trim based on the FWHM. All files that have a
     FWHM < 1.25 * FWHM.min()
-    are kept. 
+    are kept.
 
     The returned arrays contain only those files that pass the above criteria.
     """
@@ -703,17 +703,17 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
         # Determine the minimum FWHM
         idx = np.where(fwhm > 0)
         fwhm_min = fwhm[idx].min()
-        
+
         # Maximum allowed FWHM to keep frame
         fwhm_max = 1.25 * fwhm_min
-        
+
     # Pull out those we want to include in the combining
     keep = np.where((fwhm <= fwhm_max) & (fwhm > 0))[0]
     strehls = strehls[keep]
     fwhm = fwhm[keep]
     roots = [roots[i] for i in keep]
     weights = np.array( [1.0/len(roots)] * len(roots) )
-	
+
     print 'combine: Keeping %d frames with FWHM < %4.1f' \
         % (len(roots), fwhm_max)
 
@@ -726,7 +726,7 @@ def readWeightsFile(roots, weightFile):
     column1 = file name (e.g. c0001.fits).
     column2 = weights.
     """
-    
+
     weightsTable = trim_table_by_name(roots, weightFile)
 
     weights = weightsTable['col2']
@@ -734,7 +734,7 @@ def readWeightsFile(roots, weightFile):
     # Renormalize so that weights add up to 1.0
     weights /= weights.sum()
 
-    # Double check that we have the same number of 
+    # Double check that we have the same number of
     # lines in the weightsTable as files.
     if (len(weights) != len(roots)):
 	print 'Wrong number of lines in  ' + weightFile
@@ -744,8 +744,8 @@ def readWeightsFile(roots, weightFile):
 
 def loadStrehl(cleanDir, roots):
     """
-    Load Strehl and FWHM info. The file format will be 
-    column1 = name of cleaned fits file (e.g. c0001.fits). 
+    Load Strehl and FWHM info. The file format will be
+    column1 = name of cleaned fits file (e.g. c0001.fits).
               Expects single character before a 4 digit number.
     column2 = strehl
     column3 = RMS error (nm)
@@ -759,7 +759,7 @@ def loadStrehl(cleanDir, roots):
     strehls = strehlTable['col2']
     fwhm = strehlTable['col4']
 
-    # Double check that we have the same number of 
+    # Double check that we have the same number of
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
 	print 'Wrong number of lines in  ' + _strehl
@@ -774,16 +774,16 @@ def trim_table_by_name(outroots, tableFileName):
     table = Table.read(tableFileName, format='ascii', header_start=None)
 
     good = np.zeros(len(table), dtype=bool)
-     
+
     for rr in range(len(outroots)):
         for ii in range(len(table)):
             if outroots[rr] in table[ii][0]:
                 good[ii] = True
 
     newtable = table[good]
-    
+
     return newtable
- 
+
 
 def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
                     wave, diffPA, fixDAR=True, mask=True):
@@ -802,7 +802,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     setup_drizzle(imgsize)
 
     # BUG: with context... when many files are drizzled
-    # together, a new, bigger context file is created, but this 
+    # together, a new, bigger context file is created, but this
     # fails with a Bus error.
     #ir.drizzle.outcont = _ctx
     ir.drizzle.outcont = ''
@@ -860,6 +860,8 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
+
+
         
         # Read in MJD of current file from FITS header
         mjd = float(hdr['MJD-OBS'])
@@ -879,7 +881,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
         ir.drizzle(_cdwt_ir, _tmpfits, Stdout=f_dlog)
 
-        # Read .max file with saturation level for final combined image 
+        # Read .max file with saturation level for final combined image
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         _max = cleanDir + 'c' + roots[i] + '.max'
@@ -902,7 +904,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Clean up the drizzled image of any largely negative values.
     # Don't do this! See how starfinder handles really negative pixels,
     # and if all goes well...don't ever correct negative pixels to zero.
-    text = ir.imstatistics(_tmpfits, fields='mean,stddev', nclip=5, 
+    text = ir.imstatistics(_tmpfits, fields='mean,stddev', nclip=5,
                            lsigma=10, usigma=1, format=0, Stdout=1)
     vals = text[0].split()
     sci_mean = float(vals[0])
@@ -942,7 +944,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     fits_f[0].writeto(_fits, output_verify=outputVerify)
     util.rmall([_tmpfits, _cdwt])
 
-def combine_submaps(imgsize, cleanDir, roots, outroot, weights, 
+def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 		    shifts, submaps, wave, diffPA, fixDAR=True, mask=True):
     """
     Assumes the list of roots are pre-sorted based on quality. Images are then
@@ -973,7 +975,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     print 'combine: drizzling sub-images together'
     f_log = [open(log, 'a') for log in _log]
 
-    # Final normalization factor	
+    # Final normalization factor
     weightsTot = np.zeros(submaps, dtype=float)
     
     # Array to store weighted sum of MJDs in each submap
@@ -1013,7 +1015,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         if (diffPA == 1):
             ir.drizzle.rot = phi
 
-        # Calculate saturation level for submaps 
+        # Calculate saturation level for submaps
         # by weighting each individual satLevel and summing.
         # Read in each satLevel from individual .max files
         max_indiv = cleanDir + 'c' + roots[i] + '.max'
@@ -1036,7 +1038,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
                                                      ygeoim=distYgeoim)
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
-        
+
         # Read in MJD of current file from FITS header
         mjd = float(hdr['MJD-OBS'])
         mjd_weightedSums[sub] += weights[i] * mjd
@@ -1052,7 +1054,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.outweig = wgt
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
-        
+
         ir.drizzle(cdwt, fits_im, Stdout=log)
     
     # Calculate weighted MJDs for each submap
@@ -1073,7 +1075,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # Clean up the drizzled image of any largely negative values.
         # Don't do this! See how starfinder handles really negative pixels,
         # and if all goes well...don't ever correct negative pixels to zero.
-        text = ir.imstatistics(_tmp[s], fields='mean,stddev', nclip=5, 
+        text = ir.imstatistics(_tmp[s], fields='mean,stddev', nclip=5,
                                lsigma=10, usigma=1, format=0, Stdout=1)
         vals = text[0].split()
         sci_mean = float(vals[0])
@@ -1091,9 +1093,14 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # Fix the ITIME header keyword so that it matches (weighted).
         itime = fits_f[0].header.get('ITIME')
         itime /= weightsTot[s]
+        fits_f[0].header.update('ITIME', '%.5f' % itime)
+
+        # Set the ROTPOSN value for the combined submaps.
+
         fits_f[0].header.set('ITIME', '%.5f' % itime)
         
         # Set the ROTPOSN value for the combined submaps. 
+
         if (diffPA == 1):
             phi = 0.7
             fits_f[0].header.set('ROTPOSN', "%.5f" % phi,
@@ -1165,16 +1172,16 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
     shiftsX = shiftsX[sidx]
     shiftsY = shiftsTab['col2']
     shiftsY = shiftsY[sidx]
-    
+
     # Move all the ones with fwhm = -1 to the end
     gidx = (np.where(fwhm > 0))[0]
     bidx = (np.where(fwhm <= 0))[0]
     goodroots = [roots[i] for i in gidx]
     badroots = [roots[i] for i in bidx]
-    if len(bidx) > 0: 
+    if len(bidx) > 0:
 	print 'Found files with incorrect FWHM. They may be rejected.'
 	print '\t' + ','.join(badroots)
-	
+
     strehls = np.concatenate([strehls[gidx], strehls[bidx]])
     fwhm = np.concatenate([fwhm[gidx], fwhm[bidx]])
     weights = np.concatenate([weights[gidx], weights[bidx]])
@@ -1232,7 +1239,7 @@ def combine_coo(coofile, cleanDir, roots, diffPA):
     # will be used as initial estimates of the shifts (they don't necessarily
     # need to be real sources).
     _allCoo = open(coofile, 'w')
-    
+
     # First line must be the coordinates in the reference image
     _allCoo.write(open(cCoos[0], 'r').read())
 
@@ -1277,7 +1284,7 @@ def combine_register(outroot, refImage, diffPA):
     ir.xregister.databasefmt = 'no'
     ir.xregister.verbose = 'no'
 
-    
+
     print 'combine: registering images'
     if (diffPA == 1):
         input = '@' + outroot + '.lis_r'
@@ -1329,14 +1336,14 @@ def combine_register(outroot, refImage, diffPA):
 def combine_log(outroot, roots, strehls, fwhm, weights):
     _log = outroot + '.log'
     util.rmall([_log])
-    
+
     f_log = open(_log, 'w')
     for i in range(len(roots)):
-	f_log.write('c%s %6.2f %5.2f %6.3f\n' % 
+	f_log.write('c%s %6.2f %5.2f %6.3f\n' %
 		    (roots[i], fwhm[i], strehls[i], weights[i]))
 
     f_log.close()
-	
+
 def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
     """Determine the final size of the fully combined image. Use the
     shifts stored in the shiftsTable.
@@ -1363,7 +1370,7 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
     yhi = abs(y_allShifts.max())
     ylo = abs(y_allShifts.min())
 
-    # Make sure to include the edges of all images. 
+    # Make sure to include the edges of all images.
     # Might require some extra padding on one side.
     maxoffset = max([xlo, xhi, ylo, yhi])
 
@@ -1389,7 +1396,7 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
 	_allCoo = open(coo, 'w')
 	_allCoo.write('%9.3f %9.3f\n' % (xrefSrc, yrefSrc))
 	_allCoo.close()
-    
+
     xysize = float(orig_size) + ((maxoffset + padd) * 2.0)
     print 'combine: Size of output image is %d' % xysize
 
@@ -1458,13 +1465,13 @@ def clean_cosmicrays(_ff, _mask, wave):
     # Determine the threshold at which we should start looking
     # for cosmicrays. Need to figure out the mean level of the
     # background.
-    text_output = ir.imstatistics(_ff, fields='mean,stddev', 
-                                  usigma=2, lsigma=5, nclip=5, 
+    text_output = ir.imstatistics(_ff, fields='mean,stddev',
+                                  usigma=2, lsigma=5, nclip=5,
                                   format=0, Stdout=1)
     values = text_output[0].split()
     mean = float(values[0])
     stddev = float(values[1])
-    
+
     # CR candidates are those that exceed surrounding pixels by
     # this threshold amount.
     crthreshold = 5.0*stddev
@@ -1484,8 +1491,8 @@ def clean_cosmicrays(_ff, _mask, wave):
     ir.module.load('crutil', doprint=0, hush=1)
     ir.unlearn('cosmicrays')
 
-    ir.cosmicrays(_ff, ' ', crmasks=_mask, thresho=crthreshold, 
-                  fluxrat=fluxray, npasses=10., window=7, 
+    ir.cosmicrays(_ff, ' ', crmasks=_mask, thresho=crthreshold,
+                  fluxrat=fluxray, npasses=10., window=7,
                   interac='no', train='no', answer='NO')
 
     ir.imcopy(_mask+'.pl', _mask, verbose='no')
@@ -1510,8 +1517,8 @@ def clean_cosmicrays2(_ff, _ff_cr, _mask, wave):
     # Determine the threshold at which we should start looking
     # for cosmicrays. Need to figure out the mean level of the
     # background.
-    text_output = ir.imstatistics(_ff, fields='mean,stddev', 
-                                  usigma=2, lsigma=5, nclip=5, 
+    text_output = ir.imstatistics(_ff, fields='mean,stddev',
+                                  usigma=2, lsigma=5, nclip=5,
                                   format=0, Stdout=1)
     values = text_output[0].split()
     mean = float(values[0])
@@ -1527,7 +1534,7 @@ def clean_cosmicrays2(_ff, _ff_cr, _mask, wave):
     else:
         readnoise = 15.0 * (16.0 / multisam)**0.5
 
-    
+
     from jlu.util import cosmics
     img, hdr = fits.getdata(_ff, header=True)
     c = cosmics.cosmicsimage(img, gain=gain, readnoise=readnoise,
@@ -1546,7 +1553,7 @@ def clean_persistance(_n, _pers):
     # Read in image
     fits_f = fits.open(_n)
     img = fits_f[0].data
-    
+
     # Define the high pixels
     persPixels = where(img > 12000)
 
@@ -1562,7 +1569,7 @@ def clean_bkgsubtract(_ff_f, _bp):
     """Do additional background subtraction of any excess background
     flux. This isn't strictly necessary since it just removes a constant."""
     # Calculate mean and STD for science image
-    text = ir.imstatistics(_ff_f, fields='mean,stddev', nclip=20, 
+    text = ir.imstatistics(_ff_f, fields='mean,stddev', nclip=20,
                            lsigma=10, usigma=1, format=0, Stdout=1)
     vals = text[0].split()
     sci_mean = float(vals[0])
@@ -1572,7 +1579,7 @@ def clean_bkgsubtract(_ff_f, _bp):
     bkg = sci_mean - (2.0 * sci_stddev)
     #print 'Bkg mean = %5d +/- %5d   bkg = %5d  Name = %s' % \
     #      (sci_mean, sci_stddev, bkg, _ff_f)
-    
+
     # Open old, subtract BKG
     fits_f = fits.open(_ff_f)
 
@@ -1615,7 +1622,7 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     @param clean: The clean directory.
     @type clean: string
     """
-    
+
     hdr = fits.getheader(_ce,ignore_missing_end=True)
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
@@ -1689,7 +1696,7 @@ def mosaic_ref(outFile, cleanDir, roots, diffPA):
     """
     if (diffPA == 1):
 	fileNames = [cleanDir + 'r' + root + '.fits' for root in roots]
-    else: 
+    else:
 	fileNames = [cleanDir + 'c' + root + '.fits' for root in roots]
 
     hdrRef = fits.getheader(fileNames[0],ignore_missing_end=True)
@@ -1715,7 +1722,7 @@ def mosaic_ref(outFile, cleanDir, roots, diffPA):
 	d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
 
 	_out.write('%7.2f  %7.2f\n' % (d_xy[0], d_xy[1]))
-    
+
     _out.close()
 
 
@@ -1730,7 +1737,7 @@ class Sky(object):
         self.skyFile = skyfile
         self.scale = scale
         self.angleOffset = angleOffset
-        
+
         self.defaultSky = skyDir + 'sky_' + wave + '.fits'
 
         if (wave == 'lp' or wave == 'ms'):
@@ -1740,7 +1747,7 @@ class Sky(object):
         self.skyName = skyDir + 'sky_scaled.fits'
 
     def __initLp__(self):
-	print 'Initializing Lp Sky skyfile=%s' % (self.skyFile) 
+	print 'Initializing Lp Sky skyfile=%s' % (self.skyFile)
 
         # Read skies from manual sky file (format: raw_science   sky)
         if (self.skyFile):
@@ -1797,21 +1804,21 @@ class Sky(object):
     def scaleSky(self, _n, _sky):
         """Scale the mean level of the sky so that it matches the
         science image.
-        
+
         @param _n: name of science frame
         @type _n: string
         @param _sky: name of sky frame
         @type _sky: string
         """
         util.rmall([self.skyName])
-        
+
         # scale sky to science frame
         if self.scale:
-            text = ir.imstat(_n, fields='mean,stddev', nclip=20, 
+            text = ir.imstat(_n, fields='mean,stddev', nclip=20,
                              lsigma=10, usigma=1.0, format=0, Stdout=1)
             vals = text[0].split()
             sci_mean = float(vals[0])
-            text = ir.imstat(_sky, fields='mean,stddev', nclip=5, 
+            text = ir.imstat(_sky, fields='mean,stddev', nclip=5,
                              lsigma=5, usigma=5, format=0, Stdout=1)
             vals = text[0].split()
             sky_mean = float(vals[0])
@@ -1866,7 +1873,7 @@ class Sky(object):
 
         foo = '%s - %s  %6.1f  %6.1f' % \
               (_n, self.skies[skyidx], sciAng, self.skyAng[skyidx])
- 
+
         self.f_skylog.write( foo )
 
         return sky
@@ -1874,7 +1881,7 @@ class Sky(object):
     def getNonlinearCorrection(self, sky):
         """Determine the non-linearity level. Raw data level of
         non-linearity is 12,000 but we subtracted
-        off a sky which changed this level. The sky is 
+        off a sky which changed this level. The sky is
         scaled, so the level will be slightly different
         for every frame.
 
@@ -1884,8 +1891,8 @@ class Sky(object):
             be subtracted off of the saturation count level.
         @rtype float
         """
-        text_output = ir.imstatistics(sky, fields='mean,stddev', 
-                                      usigma=4, lsigma=4, nclip=4, 
+        text_output = ir.imstatistics(sky, fields='mean,stddev',
+                                      usigma=4, lsigma=4, nclip=4,
                                       format=0, Stdout=1)
         values = text_output[0].split()
         sky_mean = float(values[0])
@@ -1898,7 +1905,7 @@ class Sky(object):
             foo = ' %7d %7d\n' % (sky_mean, sky_stddev)
 
             self.f_skylog.write( foo )
-	    
+
         return sky_mean + sky_stddev
 
     def close(self):
@@ -1932,7 +1939,7 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
     @type field: string
     @kwparam trim: Optional file trimming based on image quality. Default
         is 0. Set to 1 to turn trimming on.
-    @kwparam outSuffix: Optional suffix used to modify final output file name. 
+    @kwparam outSuffix: Optional suffix used to modify final output file name.
     @type outSuffix: string
     @type trim: 0 or 1
     @kwparam weight: Optional weighting based on Strehl. Set to 1 to
@@ -1975,12 +1982,12 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
     _sub = comboDir + 'm' + outroot + '_' + wave
 
     ##########
-    # Determine if we are going to trim and/or weight the files 
+    # Determine if we are going to trim and/or weight the files
     # when combining. If so, then we need to determine the Strehl
     # and FWHM for each image. We check strehl source which shouldn't
     # be saturated. *** Hard coded to strehl source ***
     ##########
- 
+
     # Load Strehls and FWHM for sorting and trimming
     strehls, fwhm = loadStrehl(cleanDir, roots)
 
@@ -2045,11 +2052,11 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
     print 'Calling mosaic_drizzle'
     combine_drizzle(xysize, cleanDir, roots, _out, weights, shiftsTab,
                     wave, diffPA, fixDAR=fixDAR)
-    
+
     # Now make submaps
     if (submaps > 0):
-    	combine_submaps(xysize, cleanDir, roots, _sub, weights, 
-    			shiftsTab, submaps, wave, diffPA, 
+    	combine_submaps(xysize, cleanDir, roots, _sub, weights,
+    			shiftsTab, submaps, wave, diffPA,
                         fixDAR=fixDAR, mask=maskSubmap)
 
     # Remove *.lis_r file & rotated rcoo files, if any - these
@@ -2207,4 +2214,3 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
     print 'combine: Size of output image is %d' % xysize
 
     return xysize
-
