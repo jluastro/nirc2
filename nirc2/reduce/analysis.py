@@ -14,10 +14,10 @@ class Analysis(object):
     """
     Object that will perform our standard post-data-reduction analysis.
     This includes running starfinder, calibrating, and extracting positional
-    and photometric errors via align_rms. 
+    and photometric errors via align_rms.
     """
 
-    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
+    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp',
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis'):
 
@@ -31,7 +31,7 @@ class Analysis(object):
         self.labellist = rootDir+ 'source_list/label.dat'
         self.orbitlist = rootDir+ 'source_list/orbits.dat'
         self.calFile = rootDir + 'source_list/photo_calib.dat'
-        
+
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
         self.mapFilter2Cal = {'kp': 1, 'lp': 3, 'h': 4, 'ms': 5}
@@ -40,7 +40,7 @@ class Analysis(object):
         else: # case for Maser mosaic, deep mosaic
             self.calColumn = self.mapFilter2Cal[filt]
         self.calCooStar = '16C'
-        
+
         self.cooStar = 'irs16C'
 
         self.deblend = None
@@ -49,16 +49,16 @@ class Analysis(object):
 
         self.numSubMaps = 3
         self.minSubMaps = 3
-        
-        # Setup input parameters 
+
+        # Setup input parameters
         self.epoch = epoch
 
         self.rootDir = rootDir
         if not self.rootDir.endswith('/'):
-            self.rootDir += '/'     
+            self.rootDir += '/'
 
         self.filt = filt
-        
+
         if epochDirSuffix != None:
             self.suffix = '_' + epochDirSuffix
         else:
@@ -109,7 +109,7 @@ class Analysis(object):
 
         # Set the default magnitude cut for plotPosError
         self.plotPosMagCut = 15.0
-        
+
 
     def analyzeCombo(self):
         self.starfinderCombo()
@@ -134,9 +134,9 @@ class Analysis(object):
         try:
             print 'COMBO starfinder'
             print 'Coo Star: ' + self.cooStar
-            
+
             os.chdir(self.dirComboStf)
-            
+
             if self.type == 'ao':
                 # Write an IDL batch file
                 fileIDLbatch = 'idlbatch_combo_' + self.filt
@@ -158,16 +158,16 @@ class Analysis(object):
                 _batch.write("starlist='" + self.starlist + "', ")
                 if oldPsf:
                     _batch.write("/oldPsf, ")
-                
+
                 _batch.write("rootDir='" + self.rootDir + "'")
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
             elif self.type == 'speckle':
-                fileIDLbatch = 'idlbatch_combo' 
+                fileIDLbatch = 'idlbatch_combo'
                 fileIDLlog = fileIDLbatch + '.log'
                 util.rmall([fileIDLlog, fileIDLbatch])
-                
+
                 _batch = open(fileIDLbatch, 'w')
                 _batch.write("find_new_speck, ")
                 _batch.write("'" + self.epoch + "', ")
@@ -180,8 +180,8 @@ class Analysis(object):
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
-            
-            cmd = 'idl < ' + fileIDLbatch + ' >& ' + fileIDLlog            
+
+            cmd = 'idl < ' + fileIDLbatch + ' >& ' + fileIDLlog
             #os.system(cmd)
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
@@ -194,19 +194,19 @@ class Analysis(object):
         except:
             os.chdir(self.dirStart)
             raise
-            
-        
+
+
     def starfinderClean(self):
         try:
             print 'CLEAN starfinder'
-            
+
             os.chdir(self.dirCleanStf)
-            
+
             # Write an IDL batch file
             fileIDLbatch = 'idlbatch_clean_' + self.filt
             fileIDLlog = fileIDLbatch + '.log'
             util.rmall([fileIDLlog, fileIDLbatch])
-            
+
             _batch = open(fileIDLbatch, 'w')
             _batch.write("find_stf_clean, ")
             _batch.write("'" + self.epoch + "', ")
@@ -220,16 +220,16 @@ class Analysis(object):
             _batch.write("\n")
             _batch.write("exit\n")
             _batch.close()
-            
+
             cmd = 'idl < ' + fileIDLbatch + ' >& ' + fileIDLlog
             #os.system(cmd)
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
-            
+
             # Copy over the PSF starlist that was used (for posterity).
             outPsfs = 'c_%s_%s_psf_list.txt' % (self.epoch, self.filt)
             shutil.copyfile(self.starlist, outPsfs)
-            
+
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
@@ -238,7 +238,7 @@ class Analysis(object):
     def calibrateCombo(self):
         try:
             print 'COMBO calibrate'
-            
+
             # Get the position angle from the *.fits header
             # We assume that the submaps have the same PA as the main maps
             os.chdir(self.dirCombo)
@@ -247,14 +247,14 @@ class Analysis(object):
             if self.type == 'ao':
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
                 angle = float(pyfits.getval(fitsFile, 'ROTPOSN')) - 0.7
-                
+
                 # Check for wide camera
                 calCamera = calibrate.get_camera_type(fitsFile)
             elif self.type == 'speckle':
                 angle = 0.0
                 fitsFile = 'mag%s.fits' % self.epoch
 
-            
+
             # CALIBRATE
             os.chdir(self.dirComboStf)
 
@@ -292,7 +292,7 @@ class Analysis(object):
 
             # Copy over the calibration list.
             shutil.copyfile(self.calFile, fileMain.replace('.lis', '_cal_phot_list.txt'))
-            
+
             # Calibrate Sub Maps
             for ss in range(self.numSubMaps):
                 if self.type == 'speckle':
@@ -307,7 +307,7 @@ class Analysis(object):
                         (self.epoch, self.imgSuffix, self.filt, ss+1, self.corrSub)
 
                 print cmd + fileSub
-                
+
                 argsTmp = cmd + fileSub
                 args = argsTmp.split()[1:]
                 calibrate.main(args)
@@ -360,7 +360,7 @@ class Analysis(object):
 
             # Copy over the calibration list.
             shutil.copyfile(self.calFile, 'clean_phot_list.txt')
-            
+
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
@@ -406,7 +406,7 @@ class Analysis(object):
                     _list.write('../m%s%s%s_%d_%3.1f_stf_cal.lis %d\n' %
                                 (self.epoch, self.imgSuffix, file_ext, ss+1, self.corrSub, alignType))
 
-                    
+
             _list.close()
 
             shutil.copyfile(alnList1, alnList2)
@@ -443,23 +443,23 @@ class Analysis(object):
 
 
             # Move the resulting files to their final resting place
-            os.rename('align%s%s_%3.1f_rms.lis' % 
+            os.rename('align%s%s_%3.1f_rms.lis' %
                       (self.imgSuffix, file_ext, self.corrMain),
-                      '../mag%s%s%s_rms.lis' % 
+                      '../mag%s%s%s_rms.lis' %
                       (self.epoch, self.imgSuffix, file_ext))
-            os.rename('align%s%s_%3.1f_named_rms.lis' % 
+            os.rename('align%s%s_%3.1f_named_rms.lis' %
                       (self.imgSuffix, file_ext, self.corrMain),
-                      '../mag%s%s%s_rms_named.lis' % 
+                      '../mag%s%s%s_rms_named.lis' %
                       (self.epoch, self.imgSuffix, file_ext))
 
             # Copy over the label.dat and orbit.dat file that was used.
             shutil.copyfile(self.labellist,
-                            'align%s%s_%3.1f_named_label_list.txt' % 
+                            'align%s%s_%3.1f_named_label_list.txt' %
                             (self.imgSuffix, file_ext, self.corrMain))
-                            
+
             if (self.orbitlist != None) and (self.orbitlist != ''):
                 shutil.copyfile(self.orbitlist,
-                                'align%s%s_%3.1f_named_orbit_list.txt' % 
+                                'align%s%s_%3.1f_named_orbit_list.txt' %
                                 (self.imgSuffix, file_ext, self.corrMain))
 
             # Now plot up the results
@@ -473,7 +473,7 @@ class Analysis(object):
             os.chdir(self.dirStart)
             raise
 
-    
+
     def alignClean(self):
         try:
             os.chdir(self.dirClean)
@@ -489,7 +489,7 @@ class Analysis(object):
             _list = open(alnList, 'w')
 
             # copy main map into it
-            _list.write('%smag%s%s_%s_rms.lis %d ref\n' % 
+            _list.write('%smag%s%s_%s_rms.lis %d ref\n' %
                         (self.dirComboStf, self.epoch, self.imgSuffix, self.filt, alignCombo))
             # Add each clean file
             for ff in self.cleanFiles:
@@ -512,30 +512,30 @@ class Analysis(object):
 
             # Copy over the label.dat file that was used.
             shutil.copyfile(self.labellist,
-                            'align_%s%s_%3.1f_named_label_list.txt' % 
+                            'align_%s%s_%3.1f_named_label_list.txt' %
                             (self.imgSuffix, self.filt, self.corrClean))
             if (self.orbitlist != None) and (self.orbitlist != ''):
                 shutil.copyfile(self.orbitlist,
-                                'align_%s%s_%3.1f_named_orbit_list.txt' % 
+                                'align_%s%s_%3.1f_named_orbit_list.txt' %
                                 (self.imgSuffix, self.filt, self.corrClean))
-                            
+
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
             raise
-    
 
 
 
 
-        
+
+
 
 
 def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
                  title=True):
     """
-    Make three standard figures that show the data quality 
-    from a *_rms.lis file. 
+    Make three standard figures that show the data quality
+    from a *_rms.lis file.
 
     1. astrometric error as a function of magnitude.
     2. photometric error as a function of magnitude.
@@ -548,7 +548,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
 
     # Assume this is NIRC2 data.
     scale = 0.00995
-    
+
     name = lis[0]._data
     mag = lis[1].tonumpy()
     x = lis[3].tonumpy()
@@ -577,7 +577,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     radStep = 1.0
     magBins = np.arange(10.0, 20.0, magStep)
     radBins = np.arange(0.5, 9.5, radStep)
-    
+
     errMag = np.zeros(len(magBins), float)
     errRad = np.zeros(len(radBins), float)
     merrMag = np.zeros(len(magBins), float)
@@ -585,7 +585,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
 
     ##########
     # Compute errors in magnitude bins
-    ########## 
+    ##########
     #print '%4s  %s' % ('Mag', 'Err (mas)')
     for mm in range(len(magBins)):
         mMin = magBins[mm] - (magStep / 2.0)
@@ -595,13 +595,13 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
         if (len(idx) > 0):
             errMag[mm] = np.median(err[idx])
             merrMag[mm] = np.median(merr[idx])
-        
+
         #print '%4.1f  %5.2f' % (magBins[mm], errMag[mm])
-        
-                       
+
+
     ##########
     # Compute errors in radius bins
-    ########## 
+    ##########
     for rr in range(len(radBins)):
         rMin = radBins[rr] - (radStep / 2.0)
         rMax = radBins[rr] + (radStep / 2.0)
@@ -620,7 +620,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     # Plot astrometry errors
     #
     ##########
- 
+
     # Remove figures if they exist -- have to do this
     # b/c sometimes the file won't be overwritten and
     # the program crashes saying 'Permission denied'
@@ -644,14 +644,14 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     if (raw == True):
         idx = (np.where(r < radius))[0]
         py.semilogy(mag[idx], err[idx], 'k.')
-        
+
     py.semilogy(magBins, errMag, 'g.-', lw=2)
     py.axis([8, 22, 1e-2, 30.0])
     py.xlabel('K Magnitude for r < %4.1f"' % radius, fontsize=16)
     py.ylabel('Positional Uncertainty (mas)', fontsize=16)
     if title == True:
         py.title(starlist)
-    
+
     py.savefig('plotPosError%s.png' % suffix)
     py.savefig('plotPosError%s.eps' % suffix)
 
@@ -664,18 +664,18 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     if (raw == True):
         idx = (np.where(r < radius))[0]
         py.plot(mag[idx], merr[idx], 'k.')
-        
+
     py.plot(magBins, merrMag, 'g.-')
     py.axis([8, 22, 0, 0.15])
     py.xlabel('K Magnitude for r < %4.1f"' % radius)
     py.ylabel('Photo. Uncertainty (mag)')
     py.title(starlist)
-    
+
     py.savefig('plotMagError%s.png' % suffix)
     py.savefig('plotMagError%s.eps' % suffix)
 
     ##########
-    # 
+    #
     # Plot histogram of number of stars detected
     #
     ##########
@@ -694,7 +694,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
 
 
     ##########
-    # 
+    #
     # Save relevant numbers to an output file.
     #
     ##########
@@ -715,8 +715,3 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
           (magCutOff, radius, numInMedian, np.median(merr[idx])))
     out.write('Turnover mag = %4.1f\n' % (maxBin))
     out.close()
-    
-
-
-       
-
