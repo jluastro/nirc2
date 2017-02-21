@@ -5,7 +5,7 @@ import math
 import user
 from pyraf import iraf as ir
 import nirc2_util
-import util
+from nirc2.reduce import util
 import time
 import pdb
 import numpy as np
@@ -413,6 +413,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     waveDir = util.getcwd()
     redDir = util.trimdir( os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir( os.path.abspath(redDir + '../') + '/')
+
     if (field != None):
         cleanDir = util.trimdir( os.path.abspath(rootDir +
                                                    'clean/' +field+
