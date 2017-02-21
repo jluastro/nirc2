@@ -1,6 +1,6 @@
 from astropy.table import Table
 import os, errno, shutil
-import pyfits
+from astropy.io import fits as pyfits
 import pdb
 
 # Load up directory aliases
