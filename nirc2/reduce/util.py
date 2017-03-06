@@ -9,7 +9,6 @@ dir_alias_file = module_dir + '/../data/directory_aliases.txt'
 dir_alias = Table.read(dir_alias_file, format='ascii.fast_no_header')
 dir_alias.rename_column('col1', 'dir')
 dir_alias.rename_column('col2', 'alias')
-
     
 def rmall(files):
     """Remove list of files without confirmation."""
