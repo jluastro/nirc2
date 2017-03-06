@@ -1,8 +1,8 @@
 import os, shutil
 from nirc2.reduce import util
-import asciidata
 import numpy as np
-import pyfits
+from astropy.io import fits
+from astropy.table import Table
 from nirc2.reduce import nirc2_util
 from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
@@ -19,13 +19,14 @@ class Analysis(object):
 
     def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
-                 useDistorted=False, cleanList='c.lis'):
+                 useDistorted=False, cleanList='c.lis', stfExtraArgs=''):
 
         # Setup default parameters
         self.type = 'ao'
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
+        self.stf_extra_args = stfExtraArgs
 
         self.starlist = rootDir + 'source_list/psf_central.dat'
         self.labellist = rootDir+ 'source_list/label.dat'
@@ -98,9 +99,9 @@ class Analysis(object):
         self.cleanList = cleanList
         self.cleanFiles = []
         if cleanList != None:
-            _list = asciidata.open(self.dirClean + self.cleanList, 'r')
-            for ii in range(_list.nrows):
-                fields = _list[0][ii].split('/')
+            _list = Table.read(self.dirClean + self.cleanList, format='ascii')
+            for ii in range(len(_list)):
+                fields = _list[_list.colnames[0]][ii].split('/')
                 filename = fields[-1].replace('.fits', '')
                 self.cleanFiles.append(filename)
 
@@ -132,8 +133,8 @@ class Analysis(object):
 
     def starfinderCombo(self, oldPsf=False):
         try:
-            print 'COMBO starfinder'
-            print 'Coo Star: ' + self.cooStar
+            print( 'COMBO starfinder' )
+            print( 'Coo Star: ' + self.cooStar )
             
             os.chdir(self.dirComboStf)
             
@@ -160,6 +161,7 @@ class Analysis(object):
                     _batch.write("/oldPsf, ")
                 
                 _batch.write("rootDir='" + self.rootDir + "'")
+                _batch.write(self.stf_extra_args)
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
@@ -198,7 +200,7 @@ class Analysis(object):
         
     def starfinderClean(self):
         try:
-            print 'CLEAN starfinder'
+            print( 'CLEAN starfinder' )
             
             os.chdir(self.dirCleanStf)
             
@@ -237,7 +239,7 @@ class Analysis(object):
 
     def calibrateCombo(self):
         try:
-            print 'COMBO calibrate'
+            print( 'COMBO calibrate' )
             
             # Get the position angle from the *.fits header
             # We assume that the submaps have the same PA as the main maps
@@ -246,7 +248,7 @@ class Analysis(object):
             calCamera = 1
             if self.type == 'ao':
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
-                angle = float(pyfits.getval(fitsFile, 'ROTPOSN')) - 0.7
+                angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
                 
                 # Check for wide camera
                 calCamera = calibrate.get_camera_type(fitsFile)
@@ -283,7 +285,7 @@ class Analysis(object):
                 else:
                     fileMain = 'mag%s%s_%s_%3.1f_stf.lis' % \
                     (self.epoch, self.imgSuffix, self.filt, self.corrMain)
-            print cmd + fileMain
+            print( cmd + fileMain )
 
             # Now call from within python... don't bother with command line anymore.
             argsTmp = cmd + fileMain
@@ -306,7 +308,7 @@ class Analysis(object):
                         fileSub = 'm%s%s_%s_%d_%3.1f_stf.lis' % \
                         (self.epoch, self.imgSuffix, self.filt, ss+1, self.corrSub)
 
-                print cmd + fileSub
+                print( cmd + fileSub )
                 
                 argsTmp = cmd + fileSub
                 args = argsTmp.split()[1:]
@@ -321,7 +323,7 @@ class Analysis(object):
         try:
             # Calibrate each file
             os.chdir(self.dirCleanStf)
-            print "DEBUG 2nd dec --",self.dirCleanStf
+            print( "DEBUG 2nd dec --",self.dirCleanStf )
             # open writeable file for log
             _log = open('calibrate.log','w')
 
@@ -343,7 +345,7 @@ class Analysis(object):
                 listFile = '%s_%3.1f_stf.lis' % (file, self.corrClean)
 
                 # Get the position angle
-                angle = float(pyfits.getval(fitsFile, 'ROTPOSN')) - 0.7
+                angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
                 calCamera = calibrate.get_camera_type(fitsFile)
 
                 cmd = cmdBase + ('-T %.1f -c %d ' % (angle, calCamera))
@@ -367,7 +369,7 @@ class Analysis(object):
             raise
 
     def alignCombo(self):
-        print 'ALIGN_RMS combo'
+        print( 'ALIGN_RMS combo' )
 
         if self.type == 'ao':
             file_ext = '_' + self.filt
@@ -415,7 +417,7 @@ class Analysis(object):
             cmd = 'java -Xmx1024m align %s ' % (self.alignFlags)
             cmd += '-r align%s%s_%3.1f ' % (self.imgSuffix, file_ext, self.corrMain)
             cmd += alnList1
-            print cmd
+            print( cmd )
             #os.system(cmd)
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
@@ -427,7 +429,7 @@ class Analysis(object):
                 cmd += '-o %s ' % self.orbitlist
             cmd += '-r align%s%s_%3.1f_named ' % (self.imgSuffix, file_ext, self.corrMain)
             cmd += alnList2
-            print cmd
+            print( cmd )
 
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
@@ -544,19 +546,19 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     Use raw=True to plot the individual stars in plots 1 and 2.
     """
     # Load up the starlist
-    lis = asciidata.open(starlist)
+    lis = Table.read(starlist, format='ascii')
 
     # Assume this is NIRC2 data.
     scale = 0.00995
     
-    name = lis[0]._data
-    mag = lis[1].tonumpy()
-    x = lis[3].tonumpy()
-    y = lis[4].tonumpy()
-    xerr = lis[5].tonumpy()
-    yerr = lis[6].tonumpy()
-    snr = lis[7].tonumpy()
-    corr = lis[8].tonumpy()
+    name = lis[lis.colnames[0]]
+    mag = lis[lis.colnames[1]]
+    x = lis[lis.colnames[3]]
+    y = lis[lis.colnames[4]]
+    xerr = lis[lis.colnames[5]]
+    yerr = lis[lis.colnames[6]]
+    snr = lis[lis.colnames[7]]
+    corr = lis[lis.colnames[8]]
 
     merr = 1.086 / snr
 
@@ -586,7 +588,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     ##########
     # Compute errors in magnitude bins
     ########## 
-    #print '%4s  %s' % ('Mag', 'Err (mas)')
+    #print( '%4s  %s' % ('Mag', 'Err (mas)') )
     for mm in range(len(magBins)):
         mMin = magBins[mm] - (magStep / 2.0)
         mMax = magBins[mm] + (magStep / 2.0)
@@ -596,7 +598,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
             errMag[mm] = np.median(err[idx])
             merrMag[mm] = np.median(merr[idx])
         
-        #print '%4.1f  %5.2f' % (magBins[mm], errMag[mm])
+        #print( '%4.1f  %5.2f' % (magBins[mm], errMag[mm]) )
         
                        
     ##########
@@ -699,12 +701,12 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     #
     ##########
     # Print out some summary information
-    print 'Number of detections: %4d' % len(mag)
-    print 'Median Pos Error (mas) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
-          (magCutOff, radius, numInMedian, errMedian)
-    print 'Median Mag Error (mag) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
-          (magCutOff, radius, numInMedian, np.median(merr[idx]))
-    print 'Turnover mag = %4.1f' % (maxBin)
+    print( 'Number of detections: %4d' % len(mag) )
+    print( 'Median Pos Error (mas) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
+          (magCutOff, radius, numInMedian, errMedian))
+    print( 'Median Mag Error (mag) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
+          (magCutOff, radius, numInMedian, np.median(merr[idx])))
+    print( 'Turnover mag = %4.1f' % (maxBin) )
 
 
     out = open('plotPosError%s.txt' % suffix, 'w')

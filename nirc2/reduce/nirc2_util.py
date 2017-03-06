@@ -9,7 +9,6 @@ import glob
 from astropy.table import Table
 import numpy as np
 import math
-import pyfits
 
 def nirc2log(directory):
     """Make an electronic NIRC2 log for all files in the specified
@@ -17,42 +16,42 @@ def nirc2log(directory):
 
     Output is a file called nirc2.log."""
     if not os.access(directory, os.F_OK):
-	print 'Cannot access directory ' + directory
+        print( 'Cannot access directory ' + directory )
 
     files = glob.glob(directory + '/*.fits')
     files.sort()
     f = open(directory + '/nirc2.log', 'w')
     
     for file in files:
-	hdr = fits.getheader(file,ignore_missing_end=True)
+        hdr = fits.getheader(file,ignore_missing_end=True)
 
 	# First column is frame number
-	frame = (hdr['filename'].strip())[0:5]
-	f.write('%5s  ' % frame)
+    frame = (hdr['filename'].strip())[0:5]
+    f.write('%5s  ' % frame)
 	
 	# Second column is object name
-	f.write('%-16s  ' % hdr['object'].replace(' ', ''))
+    f.write('%-16s  ' % hdr['object'].replace(' ', ''))
 
-	# Next is integration time, coadds, sampmode, multisam
-	f.write('%8.3f  %3d  ' % (hdr['itime'], hdr['coadds']))
-	f.write('%1d x %2d  ' % (hdr['sampmode'], hdr['multisam']))
-	
-	# Filter
-	filter1 = hdr['fwiname']
-	filter2 = hdr['fwoname']
-        filter = filter1
-	if (filter1.startswith('PK')): filter = filter2
+    # Next is integration time, coadds, sampmode, multisam
+    f.write('%8.3f  %3d  ' % (hdr['itime'], hdr['coadds']))
+    f.write('%1d x %2d  ' % (hdr['sampmode'], hdr['multisam']))
+    
+    # Filter
+    filter1 = hdr['fwiname']
+    filter2 = hdr['fwoname']
+    filter = filter1
+    if (filter1.startswith('PK')): filter = filter2
 
-	f.write('%-10s ' % filter)
-	 
-	# Camera name
-	f.write('%-6s ' % hdr['camname'])
-	
-	# Shutter state
-	f.write('%-6s ' % hdr['shrname'])
-	
-	# End of this line
-	f.write('\n')
+    f.write('%-10s ' % filter)
+     
+    # Camera name
+    f.write('%-6s ' % hdr['camname'])
+    
+    # Shutter state
+    f.write('%-6s ' % hdr['shrname'])
+    
+    # End of this line
+    f.write('\n')
 
     f.close()
         
@@ -61,7 +60,7 @@ if __name__ == '__main__':
     _nargs = len(sys.argv)
     
     if _nargs != 2:
-        print 'Usage: nirc2log directory'
+        print( 'Usage: nirc2log directory' )
     else:
         nirc2log(sys.argv[1])
         
@@ -82,9 +81,9 @@ def getAotsxy(hdr):
                 # new distortion solution (yelda et al. 2010)
                 aotsxy[0] -= (1.903193e5*0.727) + (-3.463342*0.727) * mjdobs 
 
-                print 'getAotsxy: modified from %8.3f %8.3f to %8.3f %8.3f' % \
+                print( 'getAotsxy: modified from %8.3f %8.3f to %8.3f %8.3f' % \
                     (float(hdr['AOTSX']), float(hdr['AOTSY']), 
-                     aotsxy[0], aotsxy[1])
+                     aotsxy[0], aotsxy[1]) )
 
             # Another special case: 10jul06 UT had a AOTSX/Y linear drift.
             # Found drift with 10jullgs1/clean/kp/coord.py
@@ -93,9 +92,9 @@ def getAotsxy(hdr):
                 # new distortion solution (yelda et al. 2010)
                 aotsxy[0] -= (2.039106e5*0.727) + (-3.681807*0.727) * mjdobs 
 
-                print 'getAotsxy: modified from %8.3f %8.3f to %8.3f %8.3f' % \
+                print( 'getAotsxy: modified from %8.3f %8.3f to %8.3f %8.3f' % \
                     (float(hdr['AOTSX']), float(hdr['AOTSY']), 
-                     aotsxy[0], aotsxy[1])
+                     aotsxy[0], aotsxy[1]) )
         else:
             # NGS MODE
             # Note: OBFMYIM refers to X, and vice versa!
@@ -112,7 +111,7 @@ def getAotsxy(hdr):
 
 
 def pix2radec():
-    print 'Not done yet'
+    print( 'Not done yet' )
     return
 
 def radec2pix(radec, phi, scale, posRef):
@@ -250,13 +249,13 @@ def calcOverhead(tint, coadds, ndithers, nframes, reads, tread=0.181):
 
     tmin = t / 60.0
 
-    print '\tIntegration time: %.3f' % tint
-    print '\tNumber of Coadds: %d' % coadds
-    print '\tNumber of Dither Positions: %d' % ndithers
-    print '\tFrames at each Position: %d' % nframes
-    print '\tNumber of Reads: %d' % reads
-    print 'Total elapsed observing time = %5d sec (or %5.1f min)' % \
-          (t, tmin)
+    print( '\tIntegration time: %.3f' % tint )
+    print( '\tNumber of Coadds: %d' % coadds )
+    print( '\tNumber of Dither Positions: %d' % ndithers )
+    print( '\tFrames at each Position: %d' % nframes )
+    print( '\tNumber of Reads: %d' % reads )
+    print( 'Total elapsed observing time = %5d sec (or %5.1f min)' % \
+          (t, tmin) )
 
 def plotKeyword(keyword1, keyword2, imgList):
     """
@@ -271,7 +270,7 @@ def plotKeyword(keyword1, keyword2, imgList):
     value1 = np.zeros(len(tab), dtype=float)
     value2 = np.zeros(len(tab), dtype=float)
 
-    print keyword1, keyword2
+    print( keyword1, keyword2 )
 
     for ff in range(len(files)):
         hdr = fits.getheader(files[ff], ignore_missing_end=True)
@@ -342,9 +341,9 @@ def get_pos_angle(fitsInput):
     angle = 0
     inst = get_instrument_camera(fitsInput)
     if 'NIRC2' in inst:
-        angle = float(pyfits.getval(fitsInput, 'ROTPOSN')) - 0.7
+        angle = float(fits.getval(fitsInput, 'ROTPOSN')) - 0.7
     else:
-        print 'get_pos_angle: Unsupported camera type %s' % (inst)
+        print( 'get_pos_angle: Unsupported camera type %s' % (inst) )
     
     return angle
 
@@ -387,7 +386,7 @@ def get_instrument_camera(fitsInput):
     # Check if input is a fits filename or a fits header object
     if type(fitsInput) == str:
         # First check the instrument
-        hdr = pyfits.getheader(fitsInput,ignore_missing_end=True)
+        hdr = fits.getheader(fitsInput,ignore_missing_end=True)
     else:
         # Assume this is a hdr object
         hdr = fitsInput

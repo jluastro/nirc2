@@ -1,6 +1,6 @@
 from astropy.table import Table
 import os, errno, shutil
-import pyfits
+from astropy.io import fits as pyfits
 import pdb
 
 # Load up directory aliases
@@ -22,7 +22,7 @@ def mkdir(dir):
     """Make directory if it doesn't already exist."""
     try: 
         os.makedirs(dir)
-    except OSError, exc:
+    except OSError as exc:
         if exc.errno == errno.EEXIST:
             pass
         else:
