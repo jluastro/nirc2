@@ -200,13 +200,8 @@ class Analysis(object):
 
     def starfinderClean(self):
         try:
-<<<<<<< HEAD
             print( 'CLEAN starfinder' )
             
-=======
-            print 'CLEAN starfinder'
-
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
             os.chdir(self.dirCleanStf)
 
             # Write an IDL batch file
@@ -244,13 +239,8 @@ class Analysis(object):
 
     def calibrateCombo(self):
         try:
-<<<<<<< HEAD
             print( 'COMBO calibrate' )
-            
-=======
-            print 'COMBO calibrate'
 
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
             # Get the position angle from the *.fits header
             # We assume that the submaps have the same PA as the main maps
             os.chdir(self.dirCombo)
@@ -258,13 +248,8 @@ class Analysis(object):
             calCamera = 1
             if self.type == 'ao':
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
-<<<<<<< HEAD
                 angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
-                
-=======
-                angle = float(pyfits.getval(fitsFile, 'ROTPOSN')) - 0.7
 
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
                 # Check for wide camera
                 calCamera = calibrate.get_camera_type(fitsFile)
             elif self.type == 'speckle':
@@ -323,13 +308,7 @@ class Analysis(object):
                         fileSub = 'm%s%s_%s_%d_%3.1f_stf.lis' % \
                         (self.epoch, self.imgSuffix, self.filt, ss+1, self.corrSub)
 
-<<<<<<< HEAD
                 print( cmd + fileSub )
-                
-=======
-                print cmd + fileSub
-
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
                 argsTmp = cmd + fileSub
                 args = argsTmp.split()[1:]
                 calibrate.main(args)
@@ -570,7 +549,6 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
 
     # Assume this is NIRC2 data.
     scale = 0.00995
-<<<<<<< HEAD
     
     name = lis[lis.colnames[0]]
     mag = lis[lis.colnames[1]]
@@ -580,17 +558,6 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     yerr = lis[lis.colnames[6]]
     snr = lis[lis.colnames[7]]
     corr = lis[lis.colnames[8]]
-=======
-
-    name = lis[0]._data
-    mag = lis[1].tonumpy()
-    x = lis[3].tonumpy()
-    y = lis[4].tonumpy()
-    xerr = lis[5].tonumpy()
-    yerr = lis[6].tonumpy()
-    snr = lis[7].tonumpy()
-    corr = lis[8].tonumpy()
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
 
     merr = 1.086 / snr
 
@@ -619,13 +586,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
 
     ##########
     # Compute errors in magnitude bins
-<<<<<<< HEAD
     ########## 
-    #print( '%4s  %s' % ('Mag', 'Err (mas)') )
-=======
-    ##########
-    #print '%4s  %s' % ('Mag', 'Err (mas)')
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
     for mm in range(len(magBins)):
         mMin = magBins[mm] - (magStep / 2.0)
         mMax = magBins[mm] + (magStep / 2.0)
@@ -634,17 +595,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
         if (len(idx) > 0):
             errMag[mm] = np.median(err[idx])
             merrMag[mm] = np.median(merr[idx])
-<<<<<<< HEAD
         
-        #print( '%4.1f  %5.2f' % (magBins[mm], errMag[mm]) )
-        
-                       
-=======
-
-        #print '%4.1f  %5.2f' % (magBins[mm], errMag[mm])
-
-
->>>>>>> 4f5c2c7b8e4326e0cfde3ae0838d67c943d2e2c1
     ##########
     # Compute errors in radius bins
     ##########
