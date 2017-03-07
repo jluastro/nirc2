@@ -1,9 +1,5 @@
 import atpy
-import pyfits
 from jlu.util import constants as c
-from jlu.stellarModels import extinction
-from jlu.stellarModels import atmospheres as atm
-from jlu.stellarModels import evolution
 from jlu.nirc2 import photometry as nirc2phot
 from scipy import interpolate
 import numpy as np
@@ -28,6 +24,10 @@ def magnitude_in_filter(filter, star, ext, AKs, atm, vega):
     atm = EarthAtmosphere object (wave in angstrom)
     vega = Vega object (wave in angstrom, flux in FLAMs)
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     bandpass = filter
 
     if atm != None:
@@ -60,6 +60,10 @@ class FilterNIRC2(spectrum.ArraySpectralElement):
                                                name='NIRC2-'+name)
 
 def Vega():
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     # Use Vega as our zeropoint... assume V=0.03 mag and all colors = 0.0
     vega = atm.get_kurucz_atmosphere(temperature=9550, 
                                      gravity=3.95,
@@ -106,6 +110,10 @@ class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
     You can call reddening(AKs) which will return an ArraySpectralElement
     that can then be manipulated with spectra.
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     def __init__(self):
         # Fetch the extinction curve, pre-interpolate across 1-8 microns
         wave = np.arange(1.0, 8.0, 0.01)
@@ -129,6 +137,10 @@ class RedLawRomanZuniga07(pysynphot.reddening.CustomRedLaw):
     You can call reddening(AKs) which will return an ArraySpectralElement
     that can then be manipulated with spectra.
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     def __init__(self):
         # Fetch the extinction curve, pre-interpolate across 1-8 microns
         wave = np.arange(1.0, 8.0, 0.01)
@@ -211,6 +223,10 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
     Output stored in a pickle file named syn_nir_d#####_a####.dat.
     
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+
     pickleFile = 'syn_nir_d' + str(distance).zfill(5) + '_a' \
         + str(int(round(logAge*100))).zfill(3) + '.dat'
 
@@ -552,6 +568,10 @@ def test_atmospheres(distance=6000, logAge=7.0, AKs=None):
     
     distance = distance in pc
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     # Get solar mettalicity models for a population at a specific age.
     print( 'Loading Geneva Isochrone logAge=%.2f' % logAge )
     evol = evolution.get_geneva_isochrone(logAge=logAge)
