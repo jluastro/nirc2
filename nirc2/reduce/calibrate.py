@@ -522,7 +522,8 @@ def find_cal_stars(calibs, stars, options):
 
     # Change the size of the stars table, name column to hold the largest possible
     # calib star name.
-    stars.name = stars.name.astype(calibs.name.dtype)
+    if (stars.name.dtype < calibs.name.dtype):
+        stars.name = stars.name.astype(calibs.name.dtype)
     
     # Account for velocity of stars
     delta_t = stars.epoch[0] - calibs.t0    # Using first star's epoch as current time
