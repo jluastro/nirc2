@@ -9,8 +9,9 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
     '''
     Plot the psfs of your star list over the combo image and saves the figure.
 
-    Designed for path structure 'user_root/epoch/source_list/target_psf.list'
-                                '               /combo/' etc.
+    Designed for path structure 'user_root/microlens_source_list/target_psf.list'
+                                '               /combo/', etc.
+    user_root should include '/' at the end.
 
     Args:
         epoch (str): Observing epoch, in the format YYmmmDD, where YY is the
@@ -26,7 +27,7 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
 
     root = user_root
 
-    label_file = root + epoch + '/source_list/ob' + target +'_psf.list'
+    label_file = root + 'microlens_source_list/ob' + target +'_psf.list'
     t = Table.read(label_file, format='ascii')
     fits_root = root + epoch + '/combo/mag' + epoch + '_OB' + target + '_kp'
     img = fits.getdata(fits_root + '.fits')
@@ -53,8 +54,8 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
     plt.xlim(0, 1150)
     plt.ylim(0, 1150)
 
-    outex = root+epoch+'/source_list/'+epoch+'_ob'+target
-    fig.savefig(outex+'.png')
+    outroot = root+epoch+'/'
+    fig.savefig(outroot+epoch+'_ob'+target+'.png')
     close()
 
-    return(outex, coo_coords)
+    return(outroot, coo_coords)
