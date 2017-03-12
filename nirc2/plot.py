@@ -27,7 +27,7 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
 
     root = user_root
 
-    label_file = root + 'microlens_source_list/ob' + target +'_psf.list'
+    label_file = root + 'source_list/ob' + target +'_psf.list'
     t = Table.read(label_file, format='ascii')
     fits_root = root + epoch + '/combo/mag' + epoch + '_OB' + target + '_kp'
     img = fits.getdata(fits_root + '.fits')
