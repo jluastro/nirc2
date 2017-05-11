@@ -477,8 +477,8 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         weights = readWeightsFile(roots, weight)
 
     # Determine the reference image
-    # refImage = cleanDir + 'c' + roots[0] + '.fits'
-    refImage_index = np.argmin(fwhm)
+    # refImage_index = 0    # Use the first image from night
+    refImage_index = np.argmin(fwhm)    # Use the lowest FWHM frame
     refImage = cleanDir + 'c' + roots[refImage_index] + '.fits'
     print 'combine: reference image - %s' % refImage
 
