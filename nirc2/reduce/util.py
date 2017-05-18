@@ -21,7 +21,7 @@ def mkdir(dir):
     """Make directory if it doesn't already exist."""
     try: 
         os.makedirs(dir)
-    except OSError, exc:
+    except OSError as exc:
         if exc.errno == errno.EEXIST:
             pass
         else:

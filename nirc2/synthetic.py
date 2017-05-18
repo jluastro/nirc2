@@ -1,9 +1,5 @@
 import atpy
-import pyfits
 from jlu.util import constants as c
-from jlu.stellarModels import extinction
-from jlu.stellarModels import atmospheres as atm
-from jlu.stellarModels import evolution
 from jlu.nirc2 import photometry as nirc2phot
 from scipy import interpolate
 import numpy as np
@@ -28,6 +24,10 @@ def magnitude_in_filter(filter, star, ext, AKs, atm, vega):
     atm = EarthAtmosphere object (wave in angstrom)
     vega = Vega object (wave in angstrom, flux in FLAMs)
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     bandpass = filter
 
     if atm != None:
@@ -60,6 +60,10 @@ class FilterNIRC2(spectrum.ArraySpectralElement):
                                                name='NIRC2-'+name)
 
 def Vega():
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     # Use Vega as our zeropoint... assume V=0.03 mag and all colors = 0.0
     vega = atm.get_kurucz_atmosphere(temperature=9550, 
                                      gravity=3.95,
@@ -106,6 +110,10 @@ class RedLawNishiyama09(pysynphot.reddening.CustomRedLaw):
     You can call reddening(AKs) which will return an ArraySpectralElement
     that can then be manipulated with spectra.
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     def __init__(self):
         # Fetch the extinction curve, pre-interpolate across 1-8 microns
         wave = np.arange(1.0, 8.0, 0.01)
@@ -129,6 +137,10 @@ class RedLawRomanZuniga07(pysynphot.reddening.CustomRedLaw):
     You can call reddening(AKs) which will return an ArraySpectralElement
     that can then be manipulated with spectra.
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     def __init__(self):
         # Fetch the extinction curve, pre-interpolate across 1-8 microns
         wave = np.arange(1.0, 8.0, 0.01)
@@ -211,6 +223,10 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
     Output stored in a pickle file named syn_nir_d#####_a####.dat.
     
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+
     pickleFile = 'syn_nir_d' + str(distance).zfill(5) + '_a' \
         + str(int(round(logAge*100))).zfill(3) + '.dat'
 
@@ -222,7 +238,7 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
     logL = evol.logL
     temp = 10**logT
     isWR = evol.logT != evol.logT_WR
-    print 'nearIR: Getting rid of Wolf-Rayet stars, we cannot model their atmospheres'
+    print('nearIR: Getting rid of Wolf-Rayet stars, we cannot model their atmospheres')
 
     # First get rid of the WR stars, we can't connect atmospheres
     # to them anyhow.
@@ -281,7 +297,7 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
     Ks_red = []
     Lp_red = []
     
-    print 'Making extinction curves'
+    print( 'Making extinction curves' )
     for aa in range(len(AKsGrid)):
         red = redlaw.reddening(AKsGrid[aa])
 
@@ -301,8 +317,8 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
         R = math.sqrt(L / (4.0 * math.pi * c.sigma * T**4))   # in cm
         R /= (c.cm_in_AU * c.AU_in_pc)   # in pc
 
-        print 'M = %6.2f Msun   T = %5d   R = %2.1f Rsun   logg = %4.2f' % \
-            (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii])
+        print( 'M = %6.2f Msun   T = %5d   R = %2.1f Rsun   logg = %4.2f' % \
+            (mass[ii], T, R * c.AU_in_pc / c.Rsun, logg[ii]))
 
         # Get the atmosphere model now. Wavelength is in Angstroms
         star = atm.get_merged_atmosphere(temperature=T,
@@ -315,8 +331,8 @@ def nearIR(distance, logAge, redlawClass=RedLawNishiyama09, AKsGrid=None):
         star *= (R / distance)**2  # in erg s^-1 cm^-2 A^-1
 
         for aa in range(len(AKsGrid)):
-            print 'Photometry for T = %5d, AKs = %3.1f' % \
-                (temp[ii], AKsGrid[aa])
+            print( 'Photometry for T = %5d, AKs = %3.1f' % \
+                (temp[ii], AKsGrid[aa]))
             
             # ----------
             # Now to the filter integrations
@@ -521,9 +537,9 @@ def get_Kp_K(pickAKs, pickTemp, filename='syn_nir_d06500_a619.dat',
     tdx = np.abs(temp - pickTemp).argmin()
 
     if verbose:
-        print 'Selected T = %.1f K for input of %.1f' % (temp[tdx], pickTemp)
-        print 'Selected AKs = %.2f mag for input of %.2f' % (AKs[adx], pickAKs)
-        print '   Kp - K = %.3f' % Kp_K[tdx, adx]
+        print( 'Selected T = %.1f K for input of %.1f' % (temp[tdx], pickTemp))
+        print( 'Selected AKs = %.2f mag for input of %.2f' % (AKs[adx], pickAKs))
+        print( '   Kp - K = %.3f' % Kp_K[tdx, adx])
 
     return Kp_K[tdx, adx]
 
@@ -537,9 +553,9 @@ def get_Kp_Ks(pickAKs, pickTemp, filename='syn_nir_d06500_a619.dat',
     tdx = np.abs(temp - pickTemp).argmin()
 
     if verbose:
-        print 'Selected T = %.1f K for input of %.1f' % (temp[tdx], pickTemp)
-        print 'Selected AKs = %.2f mag for input of %.2f' % (AKs[adx], pickAKs)
-        print '   Kp - Ks = %.3f' % Kp_Ks[tdx, adx]
+        print( 'Selected T = %.1f K for input of %.1f' % (temp[tdx], pickTemp))
+        print( 'Selected AKs = %.2f mag for input of %.2f' % (AKs[adx], pickAKs))
+        print( '   Kp - Ks = %.3f' % Kp_Ks[tdx, adx])
 
     return Kp_Ks[tdx, adx]
     
@@ -552,8 +568,12 @@ def test_atmospheres(distance=6000, logAge=7.0, AKs=None):
     
     distance = distance in pc
     """
+    from jlu.stellarModels import extinction
+    from jlu.stellarModels import atmospheres as atm
+    from jlu.stellarModels import evolution
+    
     # Get solar mettalicity models for a population at a specific age.
-    print 'Loading Geneva Isochrone logAge=%.2f' % logAge 
+    print( 'Loading Geneva Isochrone logAge=%.2f' % logAge )
     evol = evolution.get_geneva_isochrone(logAge=logAge)
     mass = evol.mass
     logT = evol.logT
@@ -606,7 +626,7 @@ def test_atmospheres(distance=6000, logAge=7.0, AKs=None):
     # Loop through the models in the isochrone and derive their 
     # synthetic photometry.
     for ii in range(len(temp)):
-        print 'Working on Teff=%5d  logg=%4.1f' % (temp[ii], logg[ii])
+        print( 'Working on Teff=%5d  logg=%4.1f' % (temp[ii], logg[ii]))
 
         L = 10**(logL[ii]) * c.Lsun # luminosity in erg/s
         T = temp[ii]  # in Kelvin
