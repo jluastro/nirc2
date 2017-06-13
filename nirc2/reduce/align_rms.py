@@ -1,8 +1,8 @@
 import numpy as np
 import argparse
 from gcwork import starset
-# from gcwork import starset
 import pdb
+import sys
 
 def main(argv=None):
     if argv is None:
@@ -33,7 +33,7 @@ def run(args=None):
     # Read in the align output. Determine the number of
     # individual starlists are in the stack.
     s = starset.StarSet(options.root_name)
-
+    
     N_lists = len(s.years)
 
     if options.idx_min == None:
