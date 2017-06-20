@@ -3,6 +3,7 @@ import argparse
 from gcwork import starset
 # from gcwork import starset
 import pdb
+import sys
 
 def main(argv=None):
     if argv is None:
