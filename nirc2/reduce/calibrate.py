@@ -322,6 +322,7 @@ def read_photo_calib_file(options, verbose=False):
     # Read in the data portion of the file.
     #
     ##########
+    #pdb.set_trace()
     tab = Table.read(options.calib_file, format='ascii')
 
     name = tab[tab.colnames[0]]
