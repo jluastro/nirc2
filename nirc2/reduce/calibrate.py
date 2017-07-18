@@ -249,7 +249,7 @@ def read_command_line(argv):
         print( 'options.calib_column = %d' % options.calib_column )
         print( 'options.theta = %6.1f' % options.theta )
         print( 'options.searchRadius = %6.1f arcsec' % options.searchRadius )
-        print( 'options.searchMag = %6.1f' % options.searchMag )
+        print( 'options.searchMag = %6.1f' % float(options.searchMag) )
         print( 'options.brightLimit = %6.1f' % options.brightLimit )
         if options.reorder:
             print( 'Reordering lis file' )
@@ -563,7 +563,7 @@ def find_cal_stars(calibs, stars, options):
     
     magAdjust = stars.mag[0] - calibs.mag[fidx]
     if options.verbose:
-        print( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, options.searchMag) )
+        print( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, float(options.searchMag)) )
         print( 'Adjusting input magnitudes by %.2f' % magAdjust )
 
     for c in range(len(calibs.name)):

@@ -88,8 +88,8 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
                     (atmDay == day) & (atmHour == hour)))[0]
     
     if (len(idx) == 0):
-        print 'Could not find DAR data for %4d-%2d-%2d %2d:%2d in %s' % \
-            (year, month, day, hour, minute, logFile)
+        print( 'Could not find DAR data for %4d-%2d-%2d %2d:%2d in %s' % \
+            (year, month, day, hour, minute, logFile))
 
     atmMin = atmMin[idx]
     atmTemp = atmTemp[idx]
@@ -176,11 +176,11 @@ def nirc2dar(fitsFile):
     deltaR *= scale # now in arcseconds
 
     magnification = (deltaZ + deltaR) / deltaZ
-    print 'DAR FITS file = %s' % (fitsFile)
-    print 'DAR over 10": Linear dR = %f"  Quad dR = %f"' % \
-          (darCoeffL * deltaZ, darCoeffQ * deltaZ**2)
-    print 'DAR Magnification = %f' % (magnification)
-    print 'DAR Vertical Angle = %6.1f' % (math.degrees(pa))
+    print( 'DAR FITS file = %s' % (fitsFile))
+    print('DAR over 10": Linear dR = %f"  Quad dR = %f"' % \
+          (darCoeffL * deltaZ, darCoeffQ * deltaZ**2))
+    print('DAR Magnification = %f' % (magnification))
+    print('DAR Vertical Angle = %6.1f' % (math.degrees(pa)))
 
     return (pa, darCoeffL, darCoeffQ)
 
@@ -373,7 +373,7 @@ def applyDAR(fits, spaceStarlist, plot=False):
     # Save the current directory
     newFits = fits.replace('.fits', '').split('/')[-1]
     newList = newFits + '_acs.lis'
-    print newList
+    print(newList)
     _new = open(newList, 'w')
     for i in range(len(names)):
         _new.write('%10s  %7.3f  %7.2f  %10.4f  %10.4f  0  0  10  1  1  8\n' % \
