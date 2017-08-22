@@ -25,33 +25,33 @@ def nirc2log(directory):
     for file in files:
         hdr = fits.getheader(file,ignore_missing_end=True)
 
-	# First column is frame number
-    frame = (hdr['filename'].strip())[0:5]
-    f.write('%5s  ' % frame)
-	
-	# Second column is object name
-    f.write('%-16s  ' % hdr['object'].replace(' ', ''))
+        # First column is frame number
+        frame = (hdr['filename'].strip())[0:5]
+        f.write('%5s  ' % frame)
 
-    # Next is integration time, coadds, sampmode, multisam
-    f.write('%8.3f  %3d  ' % (hdr['itime'], hdr['coadds']))
-    f.write('%1d x %2d  ' % (hdr['sampmode'], hdr['multisam']))
-    
-    # Filter
-    filter1 = hdr['fwiname']
-    filter2 = hdr['fwoname']
-    filter = filter1
-    if (filter1.startswith('PK')): filter = filter2
+        # Second column is object name
+        f.write('%-16s  ' % hdr['object'].replace(' ', ''))
 
-    f.write('%-10s ' % filter)
-     
-    # Camera name
-    f.write('%-6s ' % hdr['camname'])
-    
-    # Shutter state
-    f.write('%-6s ' % hdr['shrname'])
-    
-    # End of this line
-    f.write('\n')
+        # Next is integration time, coadds, sampmode, multisam
+        f.write('%8.3f  %3d  ' % (hdr['itime'], hdr['coadds']))
+        f.write('%1d x %2d  ' % (hdr['sampmode'], hdr['multisam']))
+
+        # Filter
+        filter1 = hdr['fwiname']
+        filter2 = hdr['fwoname']
+        filter = filter1
+        if (filter1.startswith('PK')): filter = filter2
+
+        f.write('%-10s ' % filter)
+
+        # Camera name
+        f.write('%-6s ' % hdr['camname'])
+
+        # Shutter state
+        f.write('%-6s ' % hdr['shrname'])
+
+        # End of this line
+        f.write('\n')
 
     f.close()
         

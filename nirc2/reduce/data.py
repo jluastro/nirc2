@@ -1094,7 +1094,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         # Fix the ITIME header keyword so that it matches (weighted).
         itime = fits_f[0].header.get('ITIME')
         itime /= weightsTot[s]
-        fits_f[0].header.update('ITIME', '%.5f' % itime)
+        #fits_f[0].header.update('ITIME', '%.5f' % itime)
+        fits_f[0].header['ITIME'] = ('%.5f' % itime)
 
         # Set the ROTPOSN value for the combined submaps.
 
