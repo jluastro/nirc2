@@ -477,7 +477,9 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         weights = readWeightsFile(roots, weight)
 
     # Determine the reference image
-    refImage = cleanDir + 'c' + roots[0] + '.fits'
+    # refImage_index = 0    # Use the first image from night
+    refImage_index = np.argmin(fwhm)    # Use the lowest FWHM frame
+    refImage = cleanDir + 'c' + roots[refImage_index] + '.fits'
     print 'combine: reference image - %s' % refImage
 
     ##########
@@ -492,8 +494,8 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
 
     # Make a table of coordinates for the reference source.
     # These serve as initial estimates for the shifts.
-    #combine_ref(_out + '.coo', cleanDir, roots, diffPA)
-    combine_coo(_out + '.coo', cleanDir, roots, diffPA)
+    #combine_ref(_out + '.coo', cleanDir, roots, diffPA, refImage_index)
+    combine_coo(_out + '.coo', cleanDir, roots, diffPA, refImage_index)
 
     # Keep record of files that went into this combine
     combine_lis(_out + '.lis', cleanDir, roots, diffPA)
@@ -1199,7 +1201,7 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
     return (roots, strehls, fwhm, weights, newShiftsTab)
 
 
-def combine_ref(coofile, cleanDir, roots, diffPA):
+def combine_ref(coofile, cleanDir, roots, diffPA, refImage_index=0):
     """
     Pulls reference star coordinates from image header keywords.
     """
@@ -1211,7 +1213,7 @@ def combine_ref(coofile, cleanDir, roots, diffPA):
     _allCoo = open(coofile, 'w')
 
     # write reference source coordinates
-    hdr = fits.getheader(cFits[0],ignore_missing_end=True)
+    hdr = fits.getheader(cFits[refImage_index],ignore_missing_end=True)
     _allCoo.write(' ' + hdr['XREF'] + '   ' + hdr['YREF'] + '\n')
 
     # write all coordinates, including reference frame
@@ -1222,7 +1224,7 @@ def combine_ref(coofile, cleanDir, roots, diffPA):
     _allCoo.close()
 
 
-def combine_coo(coofile, cleanDir, roots, diffPA):
+def combine_coo(coofile, cleanDir, roots, diffPA, refImage_index=0):
     """
     Pulls reference star coordinates from *.coo files.
     """
@@ -1242,12 +1244,12 @@ def combine_coo(coofile, cleanDir, roots, diffPA):
     _allCoo = open(coofile, 'w')
 
     # First line must be the coordinates in the reference image
-    _allCoo.write(open(cCoos[0], 'r').read())
+    _allCoo.write(open(cCoos[refImage_index], 'r').read())
 
     # Now loop through all files (including the reference) and print
     # coordinates of same reference source.
     for i in range(len(roots)):
-	_allCoo.write(open(cCoos[i], 'r').read())
+        _allCoo.write(open(cCoos[i], 'r').read())
 
     _allCoo.close()
 
