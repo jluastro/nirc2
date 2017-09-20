@@ -34,11 +34,11 @@ class Analysis(object):
         if 'mode' not in locals():
             mode = 'legacy'
         if 'legacy' in mode:
-            self.legacy = '1'
-            self.aoopt = '0'
+            self.legacy = 1
+            self.aoopt = 0
         elif 'singlePsf':
-            self.legacy = '0'
-            self.aoopt = '0'
+            self.legacy = 0
+            self.aoopt = 0
        
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
