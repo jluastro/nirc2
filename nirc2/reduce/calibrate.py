@@ -196,6 +196,9 @@ def read_command_line(argv):
                  'matched within searchRadius / 2. (default: %default).')
     
     options, args = p.parse_args(argv)
+    options.searchMag = float(options.searchMag)
+    options.searchRadius = float(options.searchRadius)    
+    options.brightLimit = float(options.brightLimit)    
     
     # Keep a copy of the original calling parameters
     options.originalCall = ' '.join(argv)
