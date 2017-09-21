@@ -17,7 +17,7 @@ class Analysis(object):
     and photometric errors via align_rms. 
     """
 
-    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', mode='legacy'
+    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', mode='legacy', trimfake = 'on'
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis'):
 
@@ -39,6 +39,10 @@ class Analysis(object):
         elif 'singlePsf':
             self.legacy = '0'
             self.aoopt = '0'
+        if 'on' in trimfake:
+            self.trimfake = '1'
+        elif 'off':
+            self.trimfake = '0'
        
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
@@ -167,6 +171,7 @@ class Analysis(object):
                 _batch.write("starlist='" + self.starlist + "', ")
                 _batch.write("legacy=" + self.legacy + ", ")
                 _batch.write("aoopt=" + self.aoopt + ", ")
+                _batch.write("trimfake=" + self.trimfake + ", ")
                 if oldPsf:
                     _batch.write("/oldPsf, ")
                 
