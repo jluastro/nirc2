@@ -17,7 +17,7 @@ class Analysis(object):
     and photometric errors via align_rms. 
     """
 
-    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', mode='legacy', trimfake = 'on'
+    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', mode='legacy', trimfake = 'on',
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis'):
 
