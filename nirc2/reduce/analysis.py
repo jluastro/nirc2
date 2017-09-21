@@ -34,11 +34,11 @@ class Analysis(object):
         if 'mode' not in locals():
             mode = 'legacy'
         if 'legacy' in mode:
-            self.legacy = 1
-            self.aoopt = 0
+            self.legacy = '1'
+            self.aoopt = '0'
         elif 'singlePsf':
-            self.legacy = 0
-            self.aoopt = 0
+            self.legacy = '0'
+            self.aoopt = '0'
        
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
@@ -165,8 +165,8 @@ class Analysis(object):
                 _batch.write("suffixEpoch='" + self.suffix + "', ")
                 _batch.write("imgSuffix='" + self.imgSuffix + "', ")
                 _batch.write("starlist='" + self.starlist + "', ")
-                _batch.write("legacy='" + self.legacy + "', ")
-                _batch.write("aoopt='" + self.aoopt + "', ")
+                _batch.write("legacy=" + self.legacy + ", ")
+                _batch.write("aoopt=" + self.aoopt + ", ")
                 if oldPsf:
                     _batch.write("/oldPsf, ")
                 
