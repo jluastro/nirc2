@@ -72,6 +72,7 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
     # Pull from atmosphere logs.
     logDir = module_dir + '/weather/'
     logFile = logDir +'cfht-wx.'+ str(year) +'.'+ str(month).zfill(2) +'.dat'
+    
 
     _atm = Table.read(logFile, format='ascii', header_start=None)
     atmYear = _atm['col1']
@@ -109,8 +110,8 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
     pmb = atmPressure[sdx[0]]
     # Relative humidity (%)
     # Should be around 0.1 %
-    rh = atmHumidity[sdx[0]]
-
+    rh = atmHumidity[sdx[0]] / 100.0 #relative humidity should be between 0 and 1
+    print(hm, tdk, pmb, rh, lamda, phi, tlr, eps)
     return slalib.refco(hm, tdk, pmb, rh, lamda, phi, tlr, eps)
 
 def nirc2dar(fitsFile):
