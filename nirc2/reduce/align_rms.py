@@ -80,7 +80,7 @@ def run(args=None):
 
     # Calculate the average x, y, m, f
     if options.idx_ref != None:
-        print( 'Using epoch {0} as average pos/flux'.format(options.idx_ref) )
+        print(( 'Using epoch {0} as average pos/flux'.format(options.idx_ref) ))
         x_avg = x[options.idx_ref, :]
         y_avg = y[options.idx_ref, :]
         m_avg = m[options.idx_ref, :]
@@ -94,7 +94,7 @@ def run(args=None):
         snr_orig = snr[options.idx_ref, :]
     else:
         print( 'Calculate average pos/flux ' )
-        print( 'from epochs {0} - {1}'.format(options.idx_min, options.idx_max) )
+        print(( 'from epochs {0} - {1}'.format(options.idx_min, options.idx_max) ))
         x_avg = x_msk[options.idx_min : options.idx_max, :].mean(axis=0)
         y_avg = y_msk[options.idx_min : options.idx_max, :].mean(axis=0)
         f_avg = f_msk[options.idx_min : options.idx_max, :].mean(axis=0)

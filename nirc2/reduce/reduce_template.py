@@ -76,7 +76,7 @@ def go():
     #  - darks needed to make bad pixel mask
     #  - store the resulting dark in the file name that indicates the
     #    integration time (2.8s) and the coadds (10ca).
-    darkFiles = range(1, 9+1)
+    darkFiles = list(range(1, 9+1))
     calib.makedark(darkFiles, 'dark_2.8s_10ca.fits')
 
     # Flats - created in subdir flats/
@@ -113,10 +113,10 @@ def go():
     #       clean them seperatly.
     #    -- Strehl and Ref src should be the pixel coordinates of a bright
     #       (but non saturated) source in the first exposure of sci_files.
-    sci_files1 = range(108, 237+1)
+    sci_files1 = list(range(108, 237+1))
     refSrc1 = [407.77, 673.87]
     strSrc1 = [521.79, 398.92]
-    sky_files1 = range(252, 261+1)
+    sky_files1 = list(range(252, 261+1))
     #
     sky.makesky(sky_files1, 'nite1', 'kp')
     data.clean(sci_files1, 'nite1', 'kp', refSrc1, strSrc1) 
@@ -127,10 +127,10 @@ def go():
     #    reference star position in first image:  [407.77, 673.87]
     #    use a different Strehl star at position: [521.79, 398.92]
     #    Sky frames (don't forget to add 1 at end): 1252-1261 and 1400-1405
-    sci_files2 = range(1108, 1237+1)
+    sci_files2 = list(range(1108, 1237+1))
     refSrc2 = [407.77, 673.87]
     strSrc2 = [521.79, 398.92]
-    sky_files2 = range(1252, 1261+1) + range(1400, 1405+1)
+    sky_files2 = list(range(1252, 1261+1)) + list(range(1400, 1405+1))
     #
     sky.makesky(sky_files2, 'nite2', 'kp')
     data.clean(sci_files2, 'nite2', 'kp', refSrc2, strSrc2) 
@@ -156,8 +156,8 @@ def go():
     os.chdir('lp')
 
     # Nite 1
-    sky_files = range(38, 53+1)
-    sci_files = range(87, 94+1) + range(115,122+1)
+    sky_files = list(range(38, 53+1))
+    sci_files = list(range(87, 94+1)) + list(range(115,122+1))
     refSrc = [695., 543.]
     strSrc = [680., 839.]
 

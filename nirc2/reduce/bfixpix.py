@@ -2,7 +2,7 @@ from pyraf import iraf as ir
 from scipy import ndimage
 from astropy.io import fits
 import numpy as np
-import util
+from . import util
 
 """
 # bfixpix - to fix pixels using medians of surrounding pixels
@@ -30,7 +30,7 @@ def bfixpix(image_file, mask_file, outsuffix='_f', msksuffix='_s'):
     outm = image_file.replace('.fits', msksuffix + '.fits')
     
     util.rmall([outf, outm])
-    print("bfixpix: {0} -> {1}".format(image_file, outf))
+    print(("bfixpix: {0} -> {1}".format(image_file, outf)))
 
     # fetch the image, fetch the mask
     img, hdr = fits.getdata(image_file, header=True)

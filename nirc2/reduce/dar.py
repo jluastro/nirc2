@@ -5,10 +5,10 @@ import pylab as py
 import math
 from astropy.io import fits as pyfits
 import datetime
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import os, sys
-import nirc2_util
-import util
+from . import nirc2_util
+from . import util
 from nirc2.reduce import slalib
 from astropy.table import Table
 
@@ -23,7 +23,7 @@ def get_atm_conditions(year):
     """
     yearStr = str(year)
 
-    _atm = urllib.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
+    _atm = urllib.request.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
     atm = _atm.read()
     _atm.close()
     
@@ -88,8 +88,8 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
                     (atmDay == day) & (atmHour == hour)))[0]
     
     if (len(idx) == 0):
-        print( 'Could not find DAR data for %4d-%2d-%2d %2d:%2d in %s' % \
-            (year, month, day, hour, minute, logFile))
+        print(( 'Could not find DAR data for %4d-%2d-%2d %2d:%2d in %s' % \
+            (year, month, day, hour, minute, logFile)))
 
     atmMin = atmMin[idx]
     atmTemp = atmTemp[idx]
@@ -176,11 +176,11 @@ def nirc2dar(fitsFile):
     deltaR *= scale # now in arcseconds
 
     magnification = (deltaZ + deltaR) / deltaZ
-    print( 'DAR FITS file = %s' % (fitsFile))
-    print('DAR over 10": Linear dR = %f"  Quad dR = %f"' % \
-          (darCoeffL * deltaZ, darCoeffQ * deltaZ**2))
-    print('DAR Magnification = %f' % (magnification))
-    print('DAR Vertical Angle = %6.1f' % (math.degrees(pa)))
+    print(( 'DAR FITS file = %s' % (fitsFile)))
+    print(('DAR over 10": Linear dR = %f"  Quad dR = %f"' % \
+          (darCoeffL * deltaZ, darCoeffQ * deltaZ**2)))
+    print(('DAR Magnification = %f' % (magnification)))
+    print(('DAR Vertical Angle = %6.1f' % (math.degrees(pa))))
 
     return (pa, darCoeffL, darCoeffQ)
 
@@ -331,7 +331,7 @@ def applyDAR(fits, spaceStarlist, plot=False):
     #
     ##########
     _list = Table.read(spaceStarlist, format='ascii')
-    cols = _list.columns.keys()
+    cols = list(_list.columns.keys())
     names = [_list[ss][0].strip() for ss in range(len(_list))]
     mag = _list[cols[1]]
     date = _list[cols[2]]

@@ -5,13 +5,13 @@ from astropy.time import Time
 import math
 import user
 from pyraf import iraf as ir
-import nirc2_util
+from . import nirc2_util
 from nirc2.reduce import util
 import time
 import pdb
 import numpy as np
-import dar
-import bfixpix
+from . import dar
+from . import bfixpix
 import subprocess
 
 module_dir = os.path.dirname(__file__)
@@ -156,7 +156,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         imgsizeX = float(hdr1['NAXIS1'])
         imgsizeY = float(hdr1['NAXIS2'])
         date = hdr1['DATE-OBS']
-        if (float(date[0:4]) == 2015) & (float(date[5:7]) < 05):
+        if (float(date[0:4]) == 2015) & (float(date[5:7]) < 0o5):
             #global distXgeoim
             distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
             #global distYgeoim
@@ -166,7 +166,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
             #global distYgeoim
             distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
-        if (float(date[0:4]) == 2015) & (float(date[5:7]) >= 05):
+        if (float(date[0:4]) == 2015) & (float(date[5:7]) >= 0o5):
             #global distXgeoim
             distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
             #global distYgeoim
@@ -472,7 +472,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         if not os.path.exists(weight):
             raise ValueError('Weights file does not exist, %s' % weight)
 
-        print 'Weights file: ', weight
+        print('Weights file: ', weight)
 
         weights = readWeightsFile(roots, weight)
 
@@ -480,7 +480,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     # refImage_index = 0    # Use the first image from night
     refImage_index = np.argmin(fwhm)    # Use the lowest FWHM frame
     refImage = cleanDir + 'c' + roots[refImage_index] + '.fits'
-    print 'combine: reference image - %s' % refImage
+    print('combine: reference image - %s' % refImage)
 
     ##########
     # Write out a log file. With a list of images in the
@@ -547,7 +547,7 @@ def rot_img(root, phi, cleanDir):
     util.rmall([outCln])
 
     if (phi != 0):
-        print 'Rotating frame: ',root
+        print('Rotating frame: ',root)
         ir.rotate(inCln, outCln, pa)
     else:
 	ir.imcopy(inCln, outCln, verbose='no')
@@ -565,7 +565,7 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
 
     # Read in label.dat
     table = Table.read(label_file, format='ascii')
-    cols = table.columns.keys()
+    cols = list(table.columns.keys())
 
     nameCol = table[cols[0]]
     names = [n.strip() for n in nameCol]
@@ -575,8 +575,8 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
 
         x = table[cols[2]][id]
         y = table[cols[3]][id]
-    except ValueError, e:
-        print 'Could not find source ' + name + ' in label.dat.'
+    except ValueError as e:
+        print('Could not find source ' + name + ' in label.dat.')
         x = 0
         y = 0
 
@@ -650,10 +650,10 @@ def calcStrehl(files, wave, field=None):
     # matches the number of images we have. If not, some of the images
     # are bad and were dropped.
     strehlTable = Table.read(_strehl, format='ascii', header_start=None)
-    cols = strehlTable.columns.keys()
+    cols = list(strehlTable.columns.keys())
 
     if len(roots) != len(strehlTable):
-        print len(roots), len(strehlTable)
+        print(len(roots), len(strehlTable))
         # Figure out the dropped files.
         droppedFiles = []
         for rr in roots:
@@ -678,9 +678,9 @@ def weight_by_strehl(roots, strehls):
     gidx = (np.where(strehls > 0))[0]
     if len(bidx) > 0:
         badroots = [roots[i] for i in bidx]
-        print 'Found files with incorrect Strehl. May be incorrectly'
-        print 'weighted. Setting weights to minimum weight. '
-        print '\t' + ','.join(badroots)
+        print('Found files with incorrect Strehl. May be incorrectly')
+        print('weighted. Setting weights to minimum weight. ')
+        print('\t' + ','.join(badroots))
 
     strehl_min = strehls[gidx].min()
     strehls[bidx] = strehl_min
@@ -717,8 +717,8 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
     roots = [roots[i] for i in keep]
     weights = np.array( [1.0/len(roots)] * len(roots) )
 
-    print 'combine: Keeping %d frames with FWHM < %4.1f' \
-        % (len(roots), fwhm_max)
+    print('combine: Keeping %d frames with FWHM < %4.1f' \
+        % (len(roots), fwhm_max))
 
     return (roots, strehls, fwhm, weights)
 
@@ -740,7 +740,7 @@ def readWeightsFile(roots, weightFile):
     # Double check that we have the same number of
     # lines in the weightsTable as files.
     if (len(weights) != len(roots)):
-	print 'Wrong number of lines in  ' + weightFile
+	print('Wrong number of lines in  ' + weightFile)
 
     return weights
 
@@ -765,7 +765,7 @@ def loadStrehl(cleanDir, roots):
     # Double check that we have the same number of
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
-	print 'Wrong number of lines in  ' + _strehl
+	print('Wrong number of lines in  ' + _strehl)
 
     return (strehls, fwhm)
 
@@ -819,7 +819,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Variable to store weighted sum of MJDs
     mjd_weightedSum = 0.0
     
-    print 'combine: drizzling images together'
+    print('combine: drizzling images together')
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
         # Cleaned image
@@ -898,7 +898,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
     f_dlog.close()
 
-    print 'satLevel for combo image = ', satLvl_combo
+    print('satLevel for combo image = ', satLvl_combo)
     # Write the combo saturation level to a file
     _max = open(_maxFile, 'w')
     _max.write('%15.4f' % satLvl_combo)
@@ -975,7 +975,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     satLvl_tot = np.zeros(submaps, dtype=float)
     satLvl_sub = np.zeros(submaps, dtype=float)
 
-    print 'combine: drizzling sub-images together'
+    print('combine: drizzling sub-images together')
     f_log = [open(log, 'a') for log in _log]
 
     # Final normalization factor
@@ -1067,7 +1067,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     for f in f_log:
         f.close()
         
-    print 'satLevel for submaps = ', satLvl_sub
+    print('satLevel for submaps = ', satLvl_sub)
     # Write the saturation level for each submap to a file
     for l in range(submaps):
         _maxsub = open(_max[l], 'w')
@@ -1151,7 +1151,7 @@ def combine_rotation(cleanDir, roots):
         diff = phi - phiRef
 
         if (diff != 0.0):
-            print 'Different PAs found'
+            print('Different PAs found')
             diffPA = 1
             break
 
@@ -1183,8 +1183,8 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
     goodroots = [roots[i] for i in gidx]
     badroots = [roots[i] for i in bidx]
     if len(bidx) > 0:
-	print 'Found files with incorrect FWHM. They may be rejected.'
-	print '\t' + ','.join(badroots)
+	print('Found files with incorrect FWHM. They may be rejected.')
+	print('\t' + ','.join(badroots))
 
     strehls = np.concatenate([strehls[gidx], strehls[bidx]])
     fwhm = np.concatenate([fwhm[gidx], fwhm[bidx]])
@@ -1289,7 +1289,7 @@ def combine_register(outroot, refImage, diffPA):
     ir.xregister.verbose = 'no'
 
 
-    print 'combine: registering images'
+    print('combine: registering images')
     if (diffPA == 1):
         input = '@' + outroot + '.lis_r'
     else:
@@ -1297,9 +1297,9 @@ def combine_register(outroot, refImage, diffPA):
 
     regions = '[*,*]'
     # print 'input = ', input
-    print 'refImage = ', refImage
-    print 'regions = ', regions
-    print 'shiftFile = ', shiftFile
+    print('refImage = ', refImage)
+    print('regions = ', regions)
+    print('shiftFile = ', shiftFile)
 
     fileNames = Table.read(input[1:], format='ascii.no_header') # removed , header_start=None
     fileNames = np.array(fileNames)
@@ -1319,7 +1319,7 @@ def combine_register(outroot, refImage, diffPA):
         _coo.close()
 
         util.rmall([shiftFile])
-        print 'inFile = ', inFile
+        print('inFile = ', inFile)
         ir.xregister.coords = tmpCooFile
         ir.xregister(inFile, refImage, regions, shiftFile)
 
@@ -1402,7 +1402,7 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
 	_allCoo.close()
 
     xysize = float(orig_size) + ((maxoffset + padd) * 2.0)
-    print 'combine: Size of output image is %d' % xysize
+    print('combine: Size of output image is %d' % xysize)
 
     return xysize
 
@@ -1751,7 +1751,7 @@ class Sky(object):
         self.skyName = skyDir + 'sky_scaled.fits'
 
     def __initLp__(self):
-	print 'Initializing Lp Sky skyfile=%s' % (self.skyFile)
+	print('Initializing Lp Sky skyfile=%s' % (self.skyFile))
 
         # Read skies from manual sky file (format: raw_science   sky)
         if (self.skyFile):
@@ -1872,8 +1872,8 @@ class Sky(object):
 
         sky = self.skyDir + self.skies[skyidx]
 
-        print('Science = ', _n)
-        print('Sky image = ', sky)
+        print(('Science = ', _n))
+        print(('Sky image = ', sky))
 
         foo = '%s - %s  %6.1f  %6.1f' % \
               (_n, self.skies[skyidx], sciAng, self.skyAng[skyidx])
@@ -2022,7 +2022,7 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
 
     # Determine the reference image
     refImage = cleanDir + 'c' + roots[0] + '.fits'
-    print 'combine: reference image - %s' % refImage
+    print('combine: reference image - %s' % refImage)
 
     ##########
     # Write out a log file. With a list of images in the
@@ -2032,28 +2032,28 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
 
     # See if all images are at same PA, if not, rotate all to PA = 0
     # temporarily. This needs to be done to get correct shifts.
-    print 'Calling combine_rotation'
+    print('Calling combine_rotation')
     diffPA = combine_rotation(cleanDir, roots)
 
     # Make a table of initial guesses for the shifts.
     # Use the header keywords AOTSX and AOTSY to get shifts.
-    print 'Calling mosaic_ref'
+    print('Calling mosaic_ref')
     mosaic_ref(_out + '.init.shifts', cleanDir, roots, diffPA)
 
     # Keep record of files that went into this combine
-    print 'Calling combine_lis'
+    print('Calling combine_lis')
     combine_lis(_out + '.lis', cleanDir, roots, diffPA)
 
     # Register images to get shifts.
-    print 'Calling mosaic_register'
+    print('Calling mosaic_register')
     shiftsTab = mosaic_register(_out, refImage, diffPA)
 
     # Determine the size of the output image from max shifts
-    print 'Calling mosaic_size'
+    print('Calling mosaic_size')
     xysize = mosaic_size(shiftsTab, refImage, _out, _sub, submaps)
 
     # Combine all the images together.
-    print 'Calling mosaic_drizzle'
+    print('Calling mosaic_drizzle')
     combine_drizzle(xysize, cleanDir, roots, _out, weights, shiftsTab,
                     wave, diffPA, fixDAR=fixDAR)
 
@@ -2141,7 +2141,7 @@ def mosaic_register(outroot, refImage, diffPA):
     ir.xregister.xwindow = '10'
     ir.xregister.ywindow = '10'
 
-    print 'combine: registering images'
+    print('combine: registering images')
     if (diffPA == 1):
         input = '@' + outroot + '.lis_r'
     else:
@@ -2215,6 +2215,6 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
         _allCoo.close()
 
     xysize = float(orig_size) + ((maxoffset + padd) * 2.0)
-    print 'combine: Size of output image is %d' % xysize
+    print('combine: Size of output image is %d' % xysize)
 
     return xysize

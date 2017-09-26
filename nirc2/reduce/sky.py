@@ -1,7 +1,7 @@
 from astropy.io import fits
 from astropy.table import Table
 import os, sys
-import util
+from . import util
 import numpy as np
 from pyraf import iraf as ir
 
@@ -16,8 +16,8 @@ def makesky(files, nite, wave, skyscale=1):
     rawDir = rootDir + 'raw/'
 
     util.mkdir(skyDir)
-    print 'sky dir: ',skyDir
-    print 'wave dir: ',waveDir
+    print('sky dir: ',skyDir)
+    print('wave dir: ',waveDir)
 
     skylist = skyDir + 'skies_to_combine.lis'
     output = skyDir + 'sky_' + wave + '.fits'
@@ -54,8 +54,8 @@ def makesky(files, nite, wave, skyscale=1):
             ir.imarith(nn[i], '*', sky_scale[i], nsc[i])
 
 	    skyf = nn[i].split('/')
-	    print('%s   skymean=%10.2f   skyscale=%10.2f' % 
-	          (skyf[len(skyf)-1], sky_mean[i],sky_scale[i]))
+	    print(('%s   skymean=%10.2f   skyscale=%10.2f' % 
+	          (skyf[len(skyf)-1], sky_mean[i],sky_scale[i])))
             f_skylog.write('%s   %10.2f  %10.2f\n' % 
                            (nn[i], sky_mean[i], sky_scale[i]))
 
@@ -112,7 +112,7 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
     open(_rawlis, 'w').write('\n'.join(raw)+'\n')
     open(_nlis, 'w').write('\n'.join(skies)+'\n')
 
-    print 'makesky_lp: Getting raw files'
+    print('makesky_lp: Getting raw files')
     ir.imcopy('@' + _rawlis, '@' + _nlis, verbose='no')
     ir.hselect('@' + _nlis, "$I,ROTPPOSN", 'yes', Stdout=_skyRot) 
 
@@ -134,7 +134,7 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
 
     # Skip the first and last since we are going to 
     # average every NN files.
-    print 'makesky_lp: Combining to make skies.'
+    print('makesky_lp: Combining to make skies.')
     startIdx = number / 2
     stopIdx = len(sidx) - (number / 2)
     for i in range(startIdx, stopIdx):
@@ -154,7 +154,7 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
 	    tmp = (short[j]).rsplit('/', 1)
 	    short[j] = tmp[len(tmp)-1]
 
-	print '%s: %s' % (sky, " ".join(short))
+	print('%s: %s' % (sky, " ".join(short)))
         f_log.write('%s:' % sky)
         for j in range(len(short)):
             f_log.write(' %s' % short[j])
@@ -216,7 +216,7 @@ def makesky_lp2(files, nite, wave):
     open(_rawlis, 'w').write('\n'.join(raw)+'\n')
     open(_nlis, 'w').write('\n'.join(skies)+'\n')
 
-    print 'makesky_lp: Getting raw files'
+    print('makesky_lp: Getting raw files')
     ir.imcopy('@' + _rawlis, '@' + _nlis, verbose='no')
     ir.hselect('@' + _nlis, "$I,ROTPPOSN", 'yes', Stdout=_skyRot) 
 
@@ -238,7 +238,7 @@ def makesky_lp2(files, nite, wave):
 
     # Skip the first and last since we are going to 
     # average every 3 files.
-    print 'makesky_lp: Combining to make skies.'
+    print('makesky_lp: Combining to make skies.')
     for i in range(1, len(sidx)):
         angav = (angles[i] + angles[i-1])/2.
 	sky = 'sky%.1f' % (angav)
@@ -254,7 +254,7 @@ def makesky_lp2(files, nite, wave):
 	    tmp = (short[j]).rsplit('/', 1)
 	    short[j] = tmp[len(tmp)-1]
 	    
-	print '%s: %s %s' % (sky, short[0], short[1])
+	print('%s: %s %s' % (sky, short[0], short[1]))
 	f_log.write('%s: %s %s  %6.1f %6.1f\n' %
 		    (sky, short[0], short[1], 
 		     angles[i-1], angles[i]))
@@ -289,8 +289,8 @@ def makesky_fromsci(files, nite, wave):
     rawDir = rootDir + 'raw/'
 
     util.mkdir(skyDir)
-    print 'sky dir: ',skyDir
-    print 'wave dir: ',waveDir
+    print('sky dir: ',skyDir)
+    print('wave dir: ',waveDir)
 
     skylist = skyDir + 'skies_to_combine.lis'
     output = skyDir + 'sky_' + wave + '.fits'
@@ -376,7 +376,7 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
     open(_rawlis, 'w').write('\n'.join(raw)+'\n')
     open(_nlis, 'w').write('\n'.join(skies)+'\n')
 
-    print 'makesky_lp: Getting raw files'
+    print('makesky_lp: Getting raw files')
     ir.imarith('@'+_rawlis, '/', flat, '@'+_nlis)
     #ir.imcopy('@' + _rawlis, '@' + _nlis, verbose='no')
     ir.hselect('@' + _nlis, "$I,ROTPPOSN", 'yes', Stdout=_skyRot) 
@@ -399,7 +399,7 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
 
     # Skip the first and last since we are going to 
     # average every NN files.
-    print 'makesky_lp: Combining to make skies.'
+    print('makesky_lp: Combining to make skies.')
     startIdx = number / 2
     stopIdx = len(sidx) - (number / 2)
     for i in range(startIdx, stopIdx):
@@ -420,7 +420,7 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
 	    tmp = (short[j]).rsplit('/', 1)
 	    short[j] = tmp[len(tmp)-1]
 
-	print '%s: %s' % (sky, " ".join(short))
+	print('%s: %s' % (sky, " ".join(short)))
         f_log.write('%s:' % sky)
         for j in range(len(short)):
             f_log.write(' %s' % short[j])
@@ -460,7 +460,7 @@ def read_sky_rot_file(sky_rot_file):
     """Read in the list of files and rotation angles."""
     
     rotTab = Table.read(sky_rot_file, format='ascii', header_start=None)
-    cols = rotTab.columns.keys()
+    cols = list(rotTab.columns.keys())
     files = rotTab[cols[0]]
     angles = rotTab[cols[1]]
 
