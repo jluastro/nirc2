@@ -116,7 +116,9 @@ def run(args=None):
     # Estimate a new signal to noise ratio
     new_snr = f_avg / f_std
 
-    if (options.calc_rel_err == False) and (snr_orig != None):
+    if ((options.calc_rel_err == False) and
+            (isinstance(snr_orig, (list, tuple, np.ndarray))) and
+            (snr_orig != None)):
         new_snr = 1.0 / np.hypot(1.0/new_snr, 1.0/snr_orig)
 
     # Fix up any infinities in the SNR. Set them to 0.
