@@ -240,17 +240,17 @@ def read_command_line(argv):
     # Verbose mode printing
     if options.verbose:
         print( 'VERBOSE mode on' )
-        print( 'options.first_star = %s' % options.first_star )
-        print( 'options.data_type = %d' % options.data_type )
-        print( 'options.camera_type = %d' % options.camera_type )
-        print( 'options.plate_scale = %7.2f' % options.plate_scale )
-        print( 'options.outname = %s' % options.outname )
-        print( 'options.calib_file = %s' % options.calib_file )
-        print( 'options.calib_column = %d' % options.calib_column )
-        print( 'options.theta = %6.1f' % options.theta )
-        print( 'options.searchRadius = %6.1f arcsec' % options.searchRadius )
-        print( 'options.searchMag = %6.1f' % options.searchMag )
-        print( 'options.brightLimit = %6.1f' % options.brightLimit )
+        print(( 'options.first_star = %s' % options.first_star ))
+        print(( 'options.data_type = %d' % options.data_type ))
+        print(( 'options.camera_type = %d' % options.camera_type ))
+        print(( 'options.plate_scale = %7.2f' % options.plate_scale ))
+        print(( 'options.outname = %s' % options.outname ))
+        print(( 'options.calib_file = %s' % options.calib_file ))
+        print(( 'options.calib_column = %d' % options.calib_column ))
+        print(( 'options.theta = %6.1f' % options.theta ))
+        print(( 'options.searchRadius = %6.1f arcsec' % options.searchRadius ))
+        print(( 'options.searchMag = %6.1f' % float(options.searchMag) ))
+        print(( 'options.brightLimit = %6.1f' % options.brightLimit ))
         if options.reorder:
             print( 'Reordering lis file' )
         else:
@@ -268,7 +268,7 @@ def read_photo_calib_file(options, verbose=False):
     if verbose or options.verbose:
         print( '' )
         print( 'Photometric calibration information loaded from:' )
-        print( '\t', options.calib_file )
+        print(( '\t', options.calib_file ))
         print( 'Specify a different file with the -N flag.' )
         print( 'Choose a calibration column with the -M flag.' )
         print( 'The column choices are listed by [#] below.' )
@@ -301,7 +301,7 @@ def read_photo_calib_file(options, verbose=False):
                     defaultStars.append(None)
 
                 if verbose or options.verbose:
-                    print( '[%d]\t %s' % (colnum-7, fields[1]) )
+                    print(( '[%d]\t %s' % (colnum-7, fields[1]) ))
 
         else:
             # Found the first line of data after the
@@ -426,7 +426,7 @@ def read_photo_calib_file(options, verbose=False):
             calibs.include[idx] = True
 
             if options.verbose:
-                print( 'Found calibrator: ', name[idx], ' ', options.calib_stars[tt] )
+                print(( 'Found calibrator: ', name[idx], ' ', options.calib_stars[tt] ))
 
     return calibs
     
@@ -447,7 +447,7 @@ def input_data(options):
       fwhm
     """
     if options.verbose:
-        print( 'Opening starlist: ', options.input_file )
+        print(( 'Opening starlist: ', options.input_file ))
 
     tab = Table.read(options.input_file, format='ascii')
     cols = tab.colnames
@@ -493,8 +493,8 @@ def input_data(options):
             yerr = yerr[idx]
 
     if options.verbose:
-        print( 'Read %d lines in the input file.' % (len(tab)) )
-        print( 'Skipped %d lines in the input file.' % (len(tab) - len(idx)) )
+        print(( 'Read %d lines in the input file.' % (len(tab)) ))
+        print(( 'Skipped %d lines in the input file.' % (len(tab) - len(idx)) ))
 
     starlist = Starlist()
     starlist.name = name
@@ -547,8 +547,8 @@ def find_cal_stars(calibs, stars, options):
     calibs.ypix = stars.y[0] + (calibs.x * sinScale) + (calibs.y * cosScale)
     if options.verbose:
         for c in range(len(calibs.xpix)):
-            print( 'Looking for %10s at (%.2f, %.2f), mag: %.2f' % \
-                (calibs.name[c], calibs.xpix[c], calibs.ypix[c], calibs.mag[c]) )
+            print(( 'Looking for %10s at (%.2f, %.2f), mag: %.2f' % \
+                (calibs.name[c], calibs.xpix[c], calibs.ypix[c], calibs.mag[c]) ))
             
     # Create an array of indices into the starlist.
     # Set to -1 for non-matches. 
@@ -563,8 +563,8 @@ def find_cal_stars(calibs, stars, options):
     
     magAdjust = stars.mag[0] - calibs.mag[fidx]
     if options.verbose:
-        print( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, options.searchMag) )
-        print( 'Adjusting input magnitudes by %.2f' % magAdjust )
+        print(( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, float(options.searchMag)) ))
+        print(( 'Adjusting input magnitudes by %.2f' % magAdjust ))
 
     for c in range(len(calibs.name)):
         dx = stars.x - calibs.xpix[c]
@@ -597,16 +597,16 @@ def find_cal_stars(calibs, stars, options):
             # Print out
             if options.verbose:
                 notUsed = '' if (calibs.include[c] == True) else '(not used)'
-                print( '%10s found at %.2f, %.2f as %s %s' % \
+                print(( '%10s found at %.2f, %.2f as %s %s' % \
                     (calibs.name[c], 
                      stars.x[index[c]],
                      stars.y[index[c]],
                      origName,
-                     notUsed))
+                     notUsed)))
 
         else:
             if options.verbose:
-                print( '%10s not found' % (calibs.name[c]) )
+                print(( '%10s not found' % (calibs.name[c]) ))
     
     return index
 
@@ -642,14 +642,14 @@ def calc_zeropt(calibs, stars, options):
 
     if options.verbose:
         print( '' )
-        print( 'Zero-point = %5.3f +/- %.3f' % (zeropt, zeropt_err) )
+        print(( 'Zero-point = %5.3f +/- %.3f' % (zeropt, zeropt_err) ))
         print( '' )
         for i in range(len(cidx)):
             c = cidx[i]
             s = sidx[i]
-            print( '%10s Published Mag: %6.3f  Calculate Mag: %6.3f  DIFF = %6.3f' % \
+            print(( '%10s Published Mag: %6.3f  Calculate Mag: %6.3f  DIFF = %6.3f' % \
                 (calibs.name[c], calibs.mag[c], stars.mag[s]+zeropt,
-                 calibs.mag[c] - (stars.mag[s]+zeropt)) )
+                 calibs.mag[c] - (stars.mag[s]+zeropt)) ))
 
     return (zeropt, zeropt_err)
 
@@ -728,7 +728,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
                 # with the calib stars should have been caught 
                 # earlier.
                 if options.verbose:
-                    print(options.align_stars[c])
+                    print((options.align_stars[c]))
                 
                 if options.align_stars[c] == options.first_star:
                     continue
