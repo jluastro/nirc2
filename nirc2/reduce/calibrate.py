@@ -449,7 +449,7 @@ def input_data(options):
     if options.verbose:
         print( 'Opening starlist: ', options.input_file )
 
-    tab = Table.read(options.input_file, format='ascii')
+    tab = Table.read(options.input_file, format='ascii', delimiter='\s')
     cols = tab.colnames
     
     name = tab[cols[0]]
@@ -488,7 +488,7 @@ def input_data(options):
         nframes = nframes[idx]
         fwhm = fwhm[idx]
         
-        if (xerr != None):
+        if not (xerr is None):
             xerr = xerr[idx]
             yerr = yerr[idx]
 
