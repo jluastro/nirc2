@@ -155,7 +155,7 @@ def read_command_line(argv):
                  'default calibration sources for each column are stored in '+
                  'a comment at the head of the file. Choose which column to '+
                  'use with the -M flag.')
-    p.add_option('-M', dest='calib_column', type=int, default=6, metavar='[#]',
+    p.add_option('-M', dest='calib_column', type=str, default='Kp', metavar='[FILTER]',
                  help='Choose which column to use in the photo_calib.dat '+
                  'file (default: %default). See below for column choices.')
     p.add_option('-S', dest='calib_stars', metavar='[STAR1,STAR2]', default=None,
@@ -249,7 +249,7 @@ def read_command_line(argv):
         print( 'options.plate_scale = %7.2f' % options.plate_scale )
         print( 'options.outname = %s' % options.outname )
         print( 'options.calib_file = %s' % options.calib_file )
-        print( 'options.calib_column = %d' % options.calib_column )
+        print( 'options.calib_column = %s' % options.calib_column )
         print( 'options.theta = %6.1f' % options.theta )
         print( 'options.searchRadius = %6.1f arcsec' % options.searchRadius )
         print( 'options.searchMag = %6.1f' % options.searchMag )
@@ -263,56 +263,45 @@ def read_command_line(argv):
 
 
 def read_photo_calib_file(options, verbose=False):
+    # Read in filter information from photo_calib file header
     f_calib = open(options.calib_file, 'r')
     
-    magInfo = []
-    defaultStars = []
-
+    filter_names = []
+    filter_info = {}
+    filter_defaultStars = {}
+    
     if verbose or options.verbose:
         print( '' )
         print( 'Photometric calibration information loaded from:' )
-        print( '\t', options.calib_file )
+        print( '\t'+options.calib_file )
         print( 'Specify a different file with the -N flag.' )
         print( 'Choose a calibration column with the -M flag.' )
-        print( 'The column choices are listed by [#] below.' )
+        print( 'The column choices are listed by [FILTER] below.' )
         print( '' )
         print( 'Bandpass and References:' )
-
-    # Loop through lines and parse them. Recall that 
-    # comments are "##" and column headers are "# ".
+    
     for line in f_calib:
-        if line.startswith('##'):
-            # Comments, skip
-            continue
-
-        if line.startswith('# '):
-            # Column headers. The first six are hardcoded.
-            # The rest tell us how many magnitude columns
-            # we have and the associated references.
-            
+        if line.startswith('# Filt'):
+            ## Filter header lines. Read out filter names, filter info, and default calibrator stars.
             fields = line.split('--')
-
-            colnum = int( fields[0].replace('# ', '') )
-
-            # Skip the first 7 columns with pos/vel info.
-            if ((len(fields) >= 2) and (colnum > 7)):
-                magInfo.append(fields[1])
-
-                if len(fields) > 2:
-                    defaultStars.append(fields[2])
-                else:
-                    defaultStars.append(None)
-
-                if verbose or options.verbose:
-                    print( '[%d]\t %s' % (colnum-7, fields[1]) )
-
+            
+            filter_name = (fields[1].split(': '))[0].strip()
+            
+            filter_names.append(filter_name)
+            filter_info[filter_name] = (fields[1].split(': '))[1]
+            filter_defaultStars[filter_name] = fields[2]
+            
+            if verbose or options.verbose:
+                print('{0}\t{1}\t{2}'.format(filter_name, filter_info[filter_name], filter_defaultStars[filter_name]))
+        elif line.startswith('#'):
+            ## Just an otherwise ordinary comment line, skip.
+            continue
         else:
-            # Found the first line of data after the
-            # header. Finished reading the header.
+            ## First line after the header, so done reading header. Break out!
             break
 
     f_calib.close()
-
+    
     if verbose or options.verbose:
         print( '' )
         print( 'Calibration Sources:' )
@@ -326,53 +315,57 @@ def read_photo_calib_file(options, verbose=False):
     #
     ##########
     #pdb.set_trace()
-    tab = Table.read(options.calib_file, format='ascii')
-
-    name = tab[tab.colnames[0]]
-    x = tab[tab.colnames[1]]
-    y = tab[tab.colnames[2]]
-    xVel = tab[tab.colnames[3]]
-    yVel = tab[tab.colnames[4]]
-    t0 = tab[tab.colnames[5]]
-    isVariable = (tab[tab.colnames[6]] == 1)
-
-    magMatrix = np.zeros((len(magInfo), len(tab)), dtype=float)
-    isDefaultMatrix = np.zeros((len(magInfo), len(tab)), dtype=bool)
-
-    for i in range(len(magInfo)):
-        magMatrix[i,:] = tab[tab.colnames[i+7]]
-
+    tab = Table.read(options.calib_file, format='ascii.commented_header', delimiter='\s', header_start=-1)
+    
+    name_col = tab['Star']
+    x_col = tab['x_pos']
+    y_col = tab['y_pos']
+    x_vel_col = tab['x_vel']
+    y_vel_col = tab['y_vel']
+    t0_col = tab['t0']
+    isVar_col = (tab['var?'] == 1)
+    
+    
+    ## Construct mag matrix and default calibrators for each filter.
+    ## Used for printing in verbose mode
+    
+    magMatrix = np.zeros((len(filter_names), len(tab)), dtype=float)
+    isDefaultMatrix = np.zeros((len(filter_names), len(tab)), dtype=bool)
+    
+    for i in range(len(filter_names)):
+        magMatrix[i,:] = tab[filter_names[i]]
+        
         # If no default stars were set, then assume
         # all stars with non-zero magnitudes are the defaults.
-        if defaultStars[i] == None:
+        if filter_defaultStars[filter_names[i]] == None:
             idx = np.where(magMatrix[i,:] != 0)[0]
             isDefaultMatrix[i,idx] = True
 
         else:
-            stars = defaultStars[i].split(',')
+            stars = filter_defaultStars[filter_names[i]].split(',')
             stars = [stars[s].strip() for s in range(len(stars))]
             for s in range(len(tab)):
-                if (name[s] in stars):
+                if (name_col[s] in stars):
                     isDefaultMatrix[i,s] = True
                 else:
                     isDefaultMatrix[i,s] = False
-
+    
     ##########
     # Print out 
     ##########
     if verbose or options.verbose:
         print_line = ' %10s ' % 'Name'
-        for i in range(len(magInfo)):
-            print_line += ' [%3d]  ' % (i+1)
+        for i in range(len(filter_names)):
+            print_line += ' {0} '.format(filter_names[i])
 
         print_line += '\n'
         print( print_line )
 
         for s in range(len(tab)):
-            varChar = '!' if isVariable[s] else ''
-            print_line = '%1s%13s ' % (varChar, name[s])
+            varChar = '!' if isVar_col[s] else ''
+            print_line = '%1s%13s ' % (varChar, name_col[s])
             
-            for i in range(len(magInfo)):
+            for i in range(len(filter_names)):
                 defChar = '*' if isDefaultMatrix[i,s] else ''
                 print_line += ' %5.2f%1s ' % (magMatrix[i,s], defChar)
 
@@ -387,21 +380,32 @@ def read_photo_calib_file(options, verbose=False):
     ##########
     if options.input_file == None:
         return None
-
+    
+    
+    # Check if the filter is in photo_calib file
+    if not (options.calib_column in filter_names):
+        print('Filter {0} not in {1}'.format(options.calib_column, options.calib_file))
+        print('Available filter options are: {0}'.format('\', \''.join(filter_names)))
+        
+        return None
+    
+    
     ##########
     # Get only the calibration magnitudes
     # that were asked for.
     ##########
     calibs = Starlist()
-    calibs.name = name
-    calibs.x = x
-    calibs.y = y
-    calibs.xVel = xVel
-    calibs.yVel = yVel
-    calibs.t0 = t0
-    # Pick out the magnitude column
-    calibs.mag = magMatrix[options.calib_column - 1,:]  
-    calibs.magInfo = magInfo[options.calib_column-1] # String with source info.
+    calibs.name = name_col
+    calibs.x = x_col
+    calibs.y = y_col
+    calibs.xVel = x_vel_col
+    calibs.yVel = y_vel_col
+    calibs.t0 = t0_col
+    
+    # Pick out the specific filter column
+    calibs.mag = tab[options.calib_column]
+    calibs.mag_err = tab[options.calib_column + '_err']
+    calibs.mag_info = filter_info[options.calib_column]
 
     ##########
     #
@@ -412,25 +416,29 @@ def read_photo_calib_file(options, verbose=False):
     # used in the photometric calibration.
     #
     ##########
+    
     if (options.calib_stars == None):
-        # Use defaults
-        calibs.include = isDefaultMatrix[options.calib_column - 1,:]
+        filter_index = filter_names.index(options.calib_column)
+        
+        calibs.include = isDefaultMatrix[filter_index, :]
     else:
-        calibs.include = np.zeros(len(name), dtype=bool)
+        calib_stars_search = options.calib_stars
+        
+        calibs.include = np.zeros(len(name_col), dtype=bool)
 
-        for tt in range(len(options.calib_stars)):
-            idx = np.where(name == options.calib_stars[tt])[0]
-
+        for calib_search_index in range(len(calib_stars_search)):
+            idx = np.where(name_col == calib_stars_search[calib_search_index])[0]
+    
             if len(idx) == 0:
-                msg = 'Failed to find user specified calibrator: %s' % \
-                    options.calib_stars[tt]
+                msg = 'Failed to find calibrator: %s' % \
+                    calib_stars_search[calib_search_index]
                 raise Exception(msg)
-                
+        
             calibs.include[idx] = True
 
             if options.verbose:
-                print( 'Found calibrator: ', name[idx], ' ', options.calib_stars[tt] )
-
+                print( 'Found calibrator: ', name_col[idx], ' ', calib_stars_search[calib_search_index] )
+    
     return calibs
     
 def input_data(options):
@@ -691,7 +699,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
     _zer.write('# %s\n' % options.originalCall)
     _zer.write('#\n')
     _zer.write('#ZeroPoint   Error   Ncal   Cal names - ')
-    _zer.write(calibs.magInfo + '\n')
+    _zer.write(calibs.mag_info + '\n')
     _zer.write('%10.3f   ' % zeropt)
     _zer.write('%5.3f   ' % zeropt_err)
     _zer.write('%4d   ' % calibCnt)
