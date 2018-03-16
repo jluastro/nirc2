@@ -140,7 +140,7 @@ def read_command_line(argv):
     p.add_option('-T', dest='theta', type=float, default=0.0, metavar='[ANGLE]',
                  help='Rotation of the image from North with positive angles '+
                  'in the clockwise direction (default: %default)')
-    p.add_option('-I', dest='first_star', default='16C', metavar='[STAR]',
+    p.add_option('-I', dest='first_star', default='irs16C', metavar='[STAR]',
                  help='Name of the first star in the list. Any star from the '+
                  'input calibration list (see -N) can be used. The coo star'+
                  'should have a known magnitude (within 0.5 mag) in the '+
@@ -405,7 +405,8 @@ def read_photo_calib_file(options, verbose=False):
     # Pick out the specific filter column
     calibs.mag = tab[options.calib_column]
     calibs.mag_err = tab[options.calib_column + '_err']
-    calibs.mag_info = filter_info[options.calib_column]
+    calibs.filt_info = filter_info[options.calib_column]
+    calibs.filt_name = options.calib_column
 
     ##########
     #
@@ -621,10 +622,10 @@ def find_cal_stars(calibs, stars, options):
 
 def calc_zeropt(calibs, stars, options):
     """
-    Calculuate the average zeropoints from all the
+    Calculate the average zeropoints from all the
     calibrator stars specified by the user (or defaults).
     Recall that not all calibrators in our list will
-    be used for the calibration... onlyt those with
+    be used for the calibration... only those with
     both include = True and found in the starlist.
     """
 
@@ -636,18 +637,40 @@ def calc_zeropt(calibs, stars, options):
     # Calculate the zero point as the difference between the calculated 
     # magnitude and the published magnitude for each calibration star.
     dm = calibs.mag[cidx] - stars.mag[sidx]
+    dm_err = calibs.mag_err[cidx] 
+    
+    ## dm in flux space (i.e. all the zeropoint adjustments)
     all_zeropts = np.power(10, -dm/2.5)
+    
+    ## Convert error of magnitude into flux space, and derive weights for mean
+    all_zeropt_errs = (all_zeropts * dm_err)/1.0857
+    
+    ### Default case: if any of the calibrators have 0 error in reference mag, use weights = 1 for all calibrators
+    all_zeropt_weights = (0. * all_zeropt_errs) + 1.
+    
+    ### If all calibrators have an error in reference mag, calculate weights based on mag errors
+    if np.all(all_zeropt_errs != 0.0):
+        all_zeropt_weights = 1./(all_zeropt_errs ** 2.)
+    
     
     # Take mean as the value and standard deviation as the error.
     # Note, we are not using the error on the mean.
-    zeropt = all_zeropts.mean()
-    zeropt_err = all_zeropts.std(ddof=1)
+    
+    ## Weighted mean
+    zeropt = np.sum(all_zeropts * all_zeropt_weights) / np.sum(all_zeropt_weights)
+
+    ## Weighted standard deviation
+    zeropt_err = np.sqrt(np.sum(all_zeropt_weights * ((all_zeropts - zeropt)**2.)) / np.sum(all_zeropt_weights))
+    
+    ## Previous calculations (without weights):
+    # zeropt = all_zeropts.mean()
+    # zeropt_err = all_zeropts.std(ddof=1)
 
     # Using the St.Dev propagate the errors into mag space
     zeropt_err *= 1.0857 / zeropt
 
     # Convert the flux ratio back to a magnitude difference
-    zeropt = -2.5 * math.log10( zeropt )
+    zeropt = -2.5 * np.log10( zeropt )
 
     if options.verbose:
         print( '' )
@@ -699,7 +722,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
     _zer.write('# %s\n' % options.originalCall)
     _zer.write('#\n')
     _zer.write('#ZeroPoint   Error   Ncal   Cal names - ')
-    _zer.write(calibs.mag_info + '\n')
+    _zer.write('{0}: {1}\n'.format(calibs.filt_name, calibs.filt_info))
     _zer.write('%10.3f   ' % zeropt)
     _zer.write('%5.3f   ' % zeropt_err)
     _zer.write('%4d   ' % calibCnt)
