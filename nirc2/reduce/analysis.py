@@ -46,11 +46,11 @@ class Analysis(object):
        
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
-        self.mapFilter2Cal = {'kp': 1, 'lp': 3, 'h': 4, 'ms': 5}
+        self.mapFilter2Cal = {'kp': 'Kp', 'h': 'H', 'lp': 'Lp_o1', 'ms': 'Ms_o1'}
         if 'kp' in filt:
-            self.calColumn = 1
+            self.calColumn = self.mapFilter2Cal['Kp']
         elif 'J' in filt:
-            self.calColumn = 6
+            self.calColumn = 'K_o2'
         else: # case for Maser mosaic, deep mosaic
             self.calColumn = self.mapFilter2Cal[filt]
         self.calCooStar = '16C'
@@ -278,7 +278,7 @@ class Analysis(object):
             cmd += '-T %.1f ' % angle
             cmd += '-I %s ' % self.calCooStar
             cmd += '-N %s ' % self.calFile
-            cmd += '-M %d ' % self.calColumn
+            cmd += '-M %s ' % self.calColumn
             cmd += '-c %d ' % calCamera
             if (self.calStars != None) and (len(self.calStars) > 0):
                 cmd += '-S '
@@ -345,7 +345,7 @@ class Analysis(object):
             cmdBase = 'calibrate_new %s ' % self.calFlags
             cmdBase += '-I %s ' % self.calCooStar
             cmdBase += '-N %s ' % self.calFile
-            cmdBase += '-M %d ' % self.calColumn
+            cmdBase += '-M %s ' % self.calColumn
             if (self.calStars != None) and (len(self.calStars) > 0):
                 cmdBase += '-S '
                 for cc in range(len(self.calStars)):
