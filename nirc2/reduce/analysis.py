@@ -48,7 +48,7 @@ class Analysis(object):
         self.calFlags = '-f 1 -R '
         self.mapFilter2Cal = {'kp': 'Kp', 'h': 'H', 'lp': 'Lp_o1', 'ms': 'Ms_o1'}
         if 'kp' in filt:
-            self.calColumn = self.mapFilter2Cal['Kp']
+            self.calColumn = self.mapFilter2Cal['kp']
         elif 'J' in filt:
             self.calColumn = 'K_o2'
         else: # case for Maser mosaic, deep mosaic
