@@ -44,7 +44,7 @@ class Analysis(object):
         elif 'off':
             self.trimfake = '0'
        
-        self.calStars = ['16C', '16NW', '16CC']
+        self.calStars = ['irs16C', 'irs16NW', 'irs16CC']
         self.calFlags = '-f 1 -R '
         self.mapFilter2Cal = {'kp': 'Kp', 'h': 'H', 'lp': 'Lp_o1', 'ms': 'Ms_o1'}
         if 'kp' in filt:
@@ -53,7 +53,7 @@ class Analysis(object):
             self.calColumn = 'K_o2'
         else: # case for Maser mosaic, deep mosaic
             self.calColumn = self.mapFilter2Cal[filt]
-        self.calCooStar = '16C'
+        self.calCooStar = 'irs16C'
         
         self.cooStar = 'irs16C'
 
