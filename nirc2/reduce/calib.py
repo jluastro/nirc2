@@ -160,10 +160,12 @@ def makemask(dark, flat, output):
     and stores all output there. All output and temporary files
     will be created in a masks/ subdirectory.
 
-    @param dark: The full relative path to a dark file. This is used to
+    @param dark: The filename of the dark file (must be in the 
+        calib/darks/ directory). This is used to
         construct a hot pixel mask. Use a long (t>20sec) exposure dark.
     @type dark: str
-    @param flat: The full relative path to a flat file. This is used to
+    @param flat: The filename of a flat file  (must be in the 
+        calib/flats/ directory). This is used to
         construct a dead pixel mask. The flat should be normalized.
     @type flat: str
     @param output: output file name. This will be created in the masks/

@@ -86,8 +86,8 @@ def go():
     onFiles = [38, 40, 42, 44, 46]
     calib.makeflat(onFiles, offFiles, 'flat_kp.fits')
     
-    # Masks
-    calib.makemask('darks/dark_2.8s_10ca.fits', 'flats/flat_kp.fits',
+    # Masks (assumes files were created under calib/darks/ and calib/flats/)
+    calib.makemask('dark_2.8s_10ca.fits', 'flat_kp.fits',
                    'supermask.fits')
 
 
