@@ -174,29 +174,29 @@ def read_command_line(argv):
     p.add_option('-R', dest='reorder', action='store_true', default=False,
                  help='Reorder the starlist so that the align stars '+
                  'are at the top. The coo star (first star) will remain first.')
-    p.add_option('-s', '--snr', dest='snr_flag', default=0, metavar='[#]',
+    p.add_option('-s', '--snr', dest='snr_flag', default=0, metavar='[#]', type='int',
                  help='Use this flag to indicate the purpose of the SNR '+
                  'column in the input star list (default: %default). '+
                  'The choices are:\n'+
                  '[0] overwrite SNR column with calibration error (default)\n'+
                  '[1] add SNR in quadrature to calibration error\n'+
                  '[2] leave the SNR column alone')
-    p.add_option('--searchRadius', dest='searchRadius', default=0.20, metavar='[#]',
+    p.add_option('--searchRadius', dest='searchRadius', default=0.20, metavar='[#]', type='float',
                  help='Set the search radius (in arcsec) for matching the star' +
                  'in the starlist to the calibration star (default: %default arcsec).' +
                  'This is the search radius for the bright stars. Faint stars (below ' +
                  'a magnitude set by the --brightLimit flag) have a search radius that ' +
                  'is two times smaller (searchRadius / 2).')
-    p.add_option('--searchMag', dest='searchMag', default=1.0, metavar='[#]',
+    p.add_option('--searchMag', dest='searchMag', default=1.0, metavar='[#]', type='float',
                  help='Set the delta-magnitude for matching the star in the ' +
                  'starlist to the calibration star (default: %default).')
-    p.add_option('--brightLimit', dest='brightLimit', default=12, metavar='[#]',
+    p.add_option('--brightLimit', dest='brightLimit', default=12, metavar='[#]', type='float',
                  help='Set the brightness limit above which stars are matched within ' +
                  'a search radius set by --searchRadius and below which stars are ' +
                  'matched within searchRadius / 2. (default: %default).')
     
     options, args = p.parse_args(argv)
-    
+
     # Keep a copy of the original calling parameters
     options.originalCall = ' '.join(argv)
 
@@ -249,7 +249,7 @@ def read_command_line(argv):
         print(( 'options.calib_column = %d' % options.calib_column ))
         print(( 'options.theta = %6.1f' % options.theta ))
         print(( 'options.searchRadius = %6.1f arcsec' % options.searchRadius ))
-        print(( 'options.searchMag = %6.1f' % float(options.searchMag) ))
+        print(( 'options.searchMag = %6.1f' % options.searchMag ))
         print(( 'options.brightLimit = %6.1f' % options.brightLimit ))
         if options.reorder:
             print( 'Reordering lis file' )
@@ -563,7 +563,7 @@ def find_cal_stars(calibs, stars, options):
     
     magAdjust = stars.mag[0] - calibs.mag[fidx]
     if options.verbose:
-        print(( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, float(options.searchMag)) ))
+        print(( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, options.searchMag) ))
         print(( 'Adjusting input magnitudes by %.2f' % magAdjust ))
 
     for c in range(len(calibs.name)):

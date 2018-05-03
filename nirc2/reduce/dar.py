@@ -5,7 +5,12 @@ import pylab as py
 import math
 from astropy.io import fits as pyfits
 import datetime
-import urllib.request, urllib.parse, urllib.error
+try:
+    import urllib.request, urllib.parse, urllib.error
+    p2 = False
+except:
+    import urllib
+    p2 = True # Python 2 is running, so the urllib command is different
 import os, sys
 from . import nirc2_util
 from . import util
@@ -23,7 +28,10 @@ def get_atm_conditions(year):
     """
     yearStr = str(year)
 
-    _atm = urllib.request.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
+    if p2: # Python 2 command, necessary for IRAF
+        _atm = urllib.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
+    else:
+        _atm = urllib.request.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
     atm = _atm.read()
     _atm.close()
     
