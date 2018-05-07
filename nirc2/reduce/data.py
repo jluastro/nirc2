@@ -641,9 +641,9 @@ def calcStrehl(files, wave, field=None):
 
     util.rmall(['idl.strehl.batch.log'])
 
-    #subprocess.Popen('setenv', shell=True, executable = '/bin/tcsh')
+    #subprocess.Popen('setenv', shell=True, executable = '/bin/bash')
     exec_str = 'idl < idl.strehl.batch > idl.strehl.batch.log'
-    subp = subprocess.Popen(exec_str, shell=True, executable="/bin/tcsh")
+    subp = subprocess.Popen(exec_str, shell=True, executable="/bin/bash")
     tmp = subp.communicate()
 
     # Check that the number of lines in the resulting strehl file
