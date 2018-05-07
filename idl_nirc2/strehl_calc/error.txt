@@ -1,0 +1,4 @@
+Xlib: connection to ":0.0" refused by server
+Xlib: Client is not authorized to connect to Server
+Error: Can't open display: :0.0
+
