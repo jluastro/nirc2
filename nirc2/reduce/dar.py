@@ -12,8 +12,8 @@ except:
     import urllib
     p2 = True # Python 2 is running, so the urllib command is different
 import os, sys
-from . import nirc2_util
-from . import util
+from nirc2.reduce import nirc2_util
+from nirc2.reduce import util
 from nirc2.reduce import slalib
 from astropy.table import Table
 
