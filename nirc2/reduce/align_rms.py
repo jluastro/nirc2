@@ -1,8 +1,8 @@
 import numpy as np
 import argparse
 from gcwork import starset
-# from gcwork import starset
 import pdb
+import sys
 
 def main(argv=None):
     if argv is None:
@@ -33,7 +33,7 @@ def run(args=None):
     # Read in the align output. Determine the number of
     # individual starlists are in the stack.
     s = starset.StarSet(options.root_name)
-
+    
     N_lists = len(s.years)
 
     if options.idx_min == None:
@@ -80,7 +80,7 @@ def run(args=None):
 
     # Calculate the average x, y, m, f
     if options.idx_ref != None:
-        print( 'Using epoch {0} as average pos/flux'.format(options.idx_ref) )
+        print(( 'Using epoch {0} as average pos/flux'.format(options.idx_ref) ))
         x_avg = x[options.idx_ref, :]
         y_avg = y[options.idx_ref, :]
         m_avg = m[options.idx_ref, :]
@@ -94,7 +94,7 @@ def run(args=None):
         snr_orig = snr[options.idx_ref, :]
     else:
         print( 'Calculate average pos/flux ' )
-        print( 'from epochs {0} - {1}'.format(options.idx_min, options.idx_max) )
+        print(( 'from epochs {0} - {1}'.format(options.idx_min, options.idx_max) ))
         x_avg = x_msk[options.idx_min : options.idx_max, :].mean(axis=0)
         y_avg = y_msk[options.idx_min : options.idx_max, :].mean(axis=0)
         f_avg = f_msk[options.idx_min : options.idx_max, :].mean(axis=0)
@@ -116,7 +116,8 @@ def run(args=None):
     # Estimate a new signal to noise ratio
     new_snr = f_avg / f_std
 
-    if (options.calc_rel_err == False) and (snr_orig is not None):
+    if ((options.calc_rel_err == False) and
+            (isinstance(snr_orig, (list, tuple, np.ndarray)))):
         new_snr = 1.0 / np.hypot(1.0/new_snr, 1.0/snr_orig)
 
     # Fix up any infinities in the SNR. Set them to 0.

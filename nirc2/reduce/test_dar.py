@@ -5,7 +5,7 @@ import pylab as py
 import math, datetime
 import pyfits
 from gcwork import objects
-import dar
+from . import dar
 
 def diffDarOnOff(cleanDir1, cleanDir2):
     files1tmp = glob.glob(cleanDir1 + '/c????.fits')
@@ -20,7 +20,7 @@ def diffDarOnOff(cleanDir1, cleanDir2):
             if (cname1 == cname2):
                 outname = cname1.replace('c', 'diff')
 
-                print 'IMARITH: %s - %s = %s' % (cname1, cname2, outname)
+                print('IMARITH: %s - %s = %s' % (cname1, cname2, outname))
                 if (os.path.exists(outname)):
                     iraf.imdelete(outname)
                 iraf.imarith(f1, '-', f2, outname)
@@ -116,10 +116,10 @@ def plotDarCoeffsVsZenith():
     linear3 = darCoeffL * 60.0 * 10**3     # in mas
     quadra3 = darCoeffQ * 60.0**2 * 10**3  # in mas
     
-    print '            Linear(mas)    Quardatic(mas)'
-    print '1" sep    %12.7f  %12.7f' % (linear1.mean(), quadra1.mean())
-    print '10" sep   %12.7f  %12.7f' % (linear2.mean(), quadra2.mean())
-    print '60" sep   %12.7f  %12.7f' % (linear3.mean(), quadra3.mean())
+    print('            Linear(mas)    Quardatic(mas)')
+    print('1" sep    %12.7f  %12.7f' % (linear1.mean(), quadra1.mean()))
+    print('10" sep   %12.7f  %12.7f' % (linear2.mean(), quadra2.mean()))
+    print('60" sep   %12.7f  %12.7f' % (linear3.mean(), quadra3.mean()))
 
     py.clf()
     py.semilogy(elevation, linear1, 'r-')

@@ -5,10 +5,15 @@ import pylab as py
 import math
 from astropy.io import fits as pyfits
 import datetime
-import urllib
+try:
+    import urllib.request, urllib.parse, urllib.error
+    p2 = False
+except:
+    import urllib
+    p2 = True # Python 2 is running, so the urllib command is different
 import os, sys
-import nirc2_util
-import util
+from nirc2.reduce import nirc2_util
+from nirc2.reduce import util
 from nirc2.reduce import slalib
 from astropy.table import Table
 
@@ -23,7 +28,10 @@ def get_atm_conditions(year):
     """
     yearStr = str(year)
 
-    _atm = urllib.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
+    if p2: # Python 2 command, necessary for IRAF
+        _atm = urllib.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
+    else:
+        _atm = urllib.request.urlopen("http://mkwc.ifa.hawaii.edu/archive/wx/cfht/cfht-wx.%s.dat" % yearStr)
     atm = _atm.read()
     _atm.close()
     
@@ -89,8 +97,8 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
                     (atmDay == day) & (atmHour == hour)))[0]
     
     if (len(idx) == 0):
-        print 'Could not find DAR data for %4d-%2d-%2d %2d:%2d in %s' % \
-            (year, month, day, hour, minute, logFile)
+        print(( 'Could not find DAR data for %4d-%2d-%2d %2d:%2d in %s' % \
+            (year, month, day, hour, minute, logFile)))
 
     atmMin = atmMin[idx]
     atmTemp = atmTemp[idx]
@@ -177,11 +185,11 @@ def nirc2dar(fitsFile):
     deltaR *= scale # now in arcseconds
 
     magnification = (deltaZ + deltaR) / deltaZ
-    print 'DAR FITS file = %s' % (fitsFile)
-    print 'DAR over 10": Linear dR = %f"  Quad dR = %f"' % \
-          (darCoeffL * deltaZ, darCoeffQ * deltaZ**2)
-    print 'DAR Magnification = %f' % (magnification)
-    print 'DAR Vertical Angle = %6.1f' % (math.degrees(pa))
+    print(( 'DAR FITS file = %s' % (fitsFile)))
+    print(('DAR over 10": Linear dR = %f"  Quad dR = %f"' % \
+          (darCoeffL * deltaZ, darCoeffQ * deltaZ**2)))
+    print(('DAR Magnification = %f' % (magnification)))
+    print(('DAR Vertical Angle = %6.1f' % (math.degrees(pa))))
 
     return (pa, darCoeffL, darCoeffQ)
 
@@ -332,7 +340,7 @@ def applyDAR(fits, spaceStarlist, plot=False):
     #
     ##########
     _list = Table.read(spaceStarlist, format='ascii')
-    cols = _list.columns.keys()
+    cols = list(_list.columns.keys())
     names = [_list[ss][0].strip() for ss in range(len(_list))]
     mag = _list[cols[1]]
     date = _list[cols[2]]
@@ -374,7 +382,7 @@ def applyDAR(fits, spaceStarlist, plot=False):
     # Save the current directory
     newFits = fits.replace('.fits', '').split('/')[-1]
     newList = newFits + '_acs.lis'
-    print newList
+    print(newList)
     _new = open(newList, 'w')
     for i in range(len(names)):
         _new.write('%10s  %7.3f  %7.2f  %10.4f  %10.4f  0  0  10  1  1  8\n' % \

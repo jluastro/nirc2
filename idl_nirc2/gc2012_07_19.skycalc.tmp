@@ -1,0 +1,460 @@
+
+Astronomical calculator program, by John Thorstensen.
+
+*SELECT SITE* - Enter single-character code:
+   n .. NEW SITE, prompts for all parameters.
+   W .. Write site parameters to a file.
+   R .. Read new site parameters from a file.
+   x .. exit without change (current: Kitt Peak)
+   k .. Kitt Peak [MDM Obs.]
+   s .. Shattuck Obs., Dartmouth College, Hanover NH
+   z .. SALT/SAAO, Sutherland, SA.
+   e .. European Southern Obs, La Silla
+   v .. Very Large Telescope, Cerro Paranal
+   a .. Anglo-Australian Telelescope, Siding Spring
+   h .. Mt. Hopkins, AZ (MMT, FLWO)
+   p .. Palomar Observatory
+   c .. Las Campanas Observatory 
+   t .. Cerro Tololo 
+   r .. Roque de los Muchachos, La Palma, Canary Is.
+   d .. Dominion Astrophysical Obs., Victoria, BC
+   o .. McDonald Observatory, Mt. Locke, Texas
+   m .. Mauna Kea, Hawaii
+   l .. Lick Observatory
+Your answer --> You have selected Mauna Kea, Hawaii
+(This can be changed later using the 's' [site] command.)
+
+
+DATE AND TIME SET AUTOMATICALLY USING SYSTEM CLOCK ... to
+Fri, 2012 Jul 20, time   2 13 31.0 local time
+(night-date is on, so internal value of date set to last evening)
+NOTE: time, date NOT auto-updated -- 'xU' toggles this, 'T' reads clock.
+
+COORDINATES SET TO ZENITH:  21 45 45.1, +19 46 06, epoch 2000.0
+
+READY TO COMPUTE.  Use simple commands to set the date, time, RA
+dec, and so on; then use other commands to compute and display
+observability information.
+
+NEW or RUSTY USERS: type 'f' (and return) for FAST guided tour.
+*** Almanac for the currently specified date ***:
+Almanac for Mauna Kea, Hawaii:
+long. +10 21 53 (h.m.s) W, lat. +19 49.6 (d.m), elev.  4215 m
+Hawaiian Standard Time ( 10 hrs W) in use all year.
+
+For the night of: Thu, 2012 Jul 19 ---> Fri, 2012 Jul 20
+Local midnight = 2012 Jul 20, 10 hr UT, or JD 2456128.917
+Local Mean Sidereal Time at midnight =  19 32 27.4
+
+Sunset ( 4215 m horizon):   19 13 HST; Sunrise:   5 44 HST
+Evening twilight:  20 25 HST;  LMST at evening twilight:  15 56
+Morning twilight:   4 32 HST;  LMST at morning twilight:   0 05
+12-degr twilight: 19 55 HST -->  5 01 HST; night center:   0 28 HST
+
+Moonset :  19 43 HST   
+Moon at civil midnight: illuminated fraction 0.018
+1.2 days since new moon, RA and dec:   8 54 11, +11 55.3
+
+The sun is down for 10.5 hr;  8.1 hr from eve->morn 18 deg twilight.
+Dark all night (moon down from evening to morning twilight).
+
+Type command, 'f' for fast tour, or '?' for menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  19 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   5 00 00.0
+
+Julian date: 2456128.708333   LMST:  14 31 38.2
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -3 14 50; airmass =    2.624
+altitude  22.23, azimuth 134.78, parallactic angle -49.8  [130.2]
+Parallactic non-correction penalty:  1.87
+
+The sun is up, alt -0.1, az 292.0; Sun at  7 59 55.1, +20 34 50
+Moon:  8 41 16, +12 55.2, alt   6.6, az 281.4; 0.012 illum.
+1.0 days since new moon.  Object is 136.4 degr. from moon.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  434.3 sec, -14.79 km/sec to observed values.
+Barycentric Julian date = 2456128.713360
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  19 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   5 30 00.0
+
+Julian date: 2456128.729167   LMST:  15 01 43.1
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -2 44 45; airmass =    2.190
+altitude  27.04, azimuth 139.72, parallactic angle -44.1  [135.9]
+Parallactic non-correction penalty:  1.36
+
+In twilight, sun alt -6.6, az 294.7 ; Sun at  8 00 00.1, +20 34 36
+Clear zenith twilight (blue) approx  8.7  mag over dark night sky.
+Moon:  8 42 20, +12 48.9, alt  -0.1, az 283.7; 0.012 illum.
+1.0 days since new moon.  Object is 136.2 degr. from moon.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  434.2 sec, -14.83 km/sec to observed values.
+Barycentric Julian date = 2456128.734192
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  20 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   6 00 00.0
+
+Julian date: 2456128.750000   LMST:  15 31 48.0
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -2 14 40; airmass =    1.916
+altitude  31.35, azimuth 145.41, parallactic angle -37.6  [142.4]
+Parallactic non-correction penalty:  1.00
+
+In twilight, sun alt -12.9, az 297.8 ; Sun at  8 00 05.2, +20 34 21
+Clear zenith twilight (blue) approx  2.4  mag over dark night sky.
+1.1 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  434.1 sec, -14.88 km/sec to observed values.
+Barycentric Julian date = 2456128.755024
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  20 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   6 30 00.0
+
+Julian date: 2456128.770833   LMST:  16 01 52.9
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -1 44 35; airmass =    1.738
+altitude  35.03, azimuth 151.93, parallactic angle -30.4  [149.6]
+Parallactic non-correction penalty:  0.72
+
+The sun is down; there is no twilight.
+1.1 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  434.0 sec, -14.93 km/sec to observed values.
+Barycentric Julian date = 2456128.775856
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  21 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   7 00 00.0
+
+Julian date: 2456128.791667   LMST:  16 31 57.9
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -1 14 30; airmass =    1.622
+altitude  37.96, azimuth 159.25, parallactic angle -22.4  [157.6]
+Parallactic non-correction penalty:  0.49
+
+The sun is down; there is no twilight.
+1.1 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.9 sec, -14.99 km/sec to observed values.
+Barycentric Julian date = 2456128.796689
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  21 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   7 30 00.0
+
+Julian date: 2456128.812500   LMST:  17 02 02.8
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -0 44 25; airmass =    1.553
+altitude  40.00, azimuth 167.30, parallactic angle -13.7  [166.3]
+Parallactic non-correction penalty:  0.28
+
+The sun is down; there is no twilight.
+1.1 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.8 sec, -15.05 km/sec to observed values.
+Barycentric Julian date = 2456128.817521
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  22 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   8 00 00.0
+
+Julian date: 2456128.833333   LMST:  17 32 07.7
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  -0 14 20; airmass =    1.521
+altitude  41.04, azimuth 175.84, parallactic angle -4.5  [175.5]
+Parallactic non-correction penalty:  0.09
+
+The sun is down; there is no twilight.
+1.1 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.7 sec, -15.11 km/sec to observed values.
+Barycentric Julian date = 2456128.838353
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  22 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   8 30 00.0
+
+Julian date: 2456128.854167   LMST:  18 02 12.7
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +0 15 45; airmass =    1.521
+altitude  41.01, azimuth 184.56, parallactic angle  4.9  [-175.1]
+Parallactic non-correction penalty:  0.10
+
+The sun is down; there is no twilight.
+1.2 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.6 sec, -15.17 km/sec to observed values.
+Barycentric Julian date = 2456128.859186
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  23 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   9 00 00.0
+
+Julian date: 2456128.875000   LMST:  18 32 17.6
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +0 45 50; airmass =    1.555
+altitude  39.93, azimuth 193.09, parallactic angle 14.1  [-165.9]
+Parallactic non-correction penalty:  0.29
+
+The sun is down; there is no twilight.
+1.2 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.5 sec, -15.22 km/sec to observed values.
+Barycentric Julian date = 2456128.880018
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Thu, 2012 Jul 19, time  23 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time   9 30 00.0
+
+Julian date: 2456128.895833   LMST:  19 02 22.5
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +1 15 55; airmass =    1.627
+altitude  37.84, azimuth 201.11, parallactic angle 22.8  [-157.2]
+Parallactic non-correction penalty:  0.50
+
+The sun is down; there is no twilight.
+1.2 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.4 sec, -15.28 km/sec to observed values.
+Barycentric Julian date = 2456128.900850
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   0 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  10 00 00.0
+
+Julian date: 2456128.916667   LMST:  19 32 27.4
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +1 46 00; airmass =    1.745
+altitude  34.87, azimuth 208.40, parallactic angle 30.8  [-149.2]
+Parallactic non-correction penalty:  0.73
+
+The sun is down; there is no twilight.
+1.2 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.4 sec, -15.34 km/sec to observed values.
+Barycentric Julian date = 2456128.921682
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   0 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  10 30 00.0
+
+Julian date: 2456128.937500   LMST:  20 02 32.4
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +2 16 04; airmass =    1.926
+altitude  31.16, azimuth 214.87, parallactic angle 38.0  [-142.0]
+Parallactic non-correction penalty:  1.02
+
+The sun is down; there is no twilight.
+1.3 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.3 sec, -15.39 km/sec to observed values.
+Barycentric Julian date = 2456128.942515
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   1 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  11 00 00.0
+
+Julian date: 2456128.958333   LMST:  20 32 37.3
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +2 46 09; airmass =    2.206
+altitude  26.83, azimuth 220.53, parallactic angle 44.4  [-135.6]
+Parallactic non-correction penalty:  1.38
+
+The sun is down; there is no twilight.
+1.3 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.2 sec, -15.44 km/sec to observed values.
+Barycentric Julian date = 2456128.963347
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   1 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  11 30 00.0
+
+Julian date: 2456128.979167   LMST:  21 02 42.2
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +3 16 14; airmass =    2.650
+altitude  22.00, azimuth 225.44, parallactic angle 50.0  [-130.0]
+Parallactic non-correction penalty:  1.90
+
+The sun is down; there is no twilight.
+1.3 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.1 sec, -15.48 km/sec to observed values.
+Barycentric Julian date = 2456128.984179
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   2 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  12 00 00.0
+
+Julian date: 2456129.000000   LMST:  21 32 47.1
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +3 46 19; airmass =    3.421 -- Large airmass!
+altitude  16.77, azimuth 229.67, parallactic angle 55.1  [-124.9]
+Parallactic non-correction penalty:  2.72
+
+The sun is down; there is no twilight.
+1.3 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  433.0 sec, -15.52 km/sec to observed values.
+Barycentric Julian date = 2456129.005011
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   2 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  12 30 00.0
+
+Julian date: 2456129.020833   LMST:  22 02 52.1
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +4 16 24; airmass =    4.987 -- Large airmass!
+altitude  11.24, azimuth 233.33, parallactic angle 59.6  [-120.4]
+Parallactic non-correction penalty:  4.34
+
+The sun is down; there is no twilight.
+1.3 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  432.9 sec, -15.55 km/sec to observed values.
+Barycentric Julian date = 2456129.025844
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   3 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  13 00 00.0
+
+Julian date: 2456129.041667   LMST:  22 32 57.0
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +4 46 29; airmass =    9.453 -- Large airmass!
+altitude   5.45, azimuth 236.48, parallactic angle 63.7  [-116.3]
+Parallactic non-correction penalty:  9.41
+
+The sun is down; there is no twilight.
+1.4 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  432.8 sec, -15.58 km/sec to observed values.
+Barycentric Julian date = 2456129.046676
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   3 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  13 30 00.0
+
+Julian date: 2456129.062500   LMST:  23 03 01.9
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +5 16 34 -- BELOW HORIZON.
+altitude  -0.55, azimuth 239.19, parallactic angle 67.5  [-112.5]
+The sun is down; there is no twilight.
+1.4 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  432.7 sec, -15.60 km/sec to observed values.
+Barycentric Julian date = 2456129.067508
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   4 00 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  14 00 00.0
+
+Julian date: 2456129.083333   LMST:  23 33 06.9
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +5 46 39 -- BELOW HORIZON.
+altitude  -6.70, azimuth 241.53, parallactic angle 71.0  [-109.0]
+The sun is down; there is no twilight.
+1.4 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  432.6 sec, -15.62 km/sec to observed values.
+Barycentric Julian date = 2456129.088341
+
+Type command, 'f' for fast tour, '?' for a menu:
+W Long (hms):+10 21 53.2, lat (dms): +19 49 36, std time zone  10 hr W
+
+Local Date and time: Fri, 2012 Jul 20, time   4 30 00.0  HST
+   UT Date and time: Fri, 2012 Jul 20, time  14 30 00.0
+
+Julian date: 2456129.104167   LMST:   0 03 11.8
+
+Std epoch--> RA: 17 45 40.0, dec: -29 00 28, ep 2000.00   (in Sgr)
+Current  --> RA: 17 46 27.9, dec: -29 00 43, ep 2012.55
+HA:  +6 16 44 -- BELOW HORIZON.
+altitude -12.97, azimuth 243.51, parallactic angle 74.3  [-105.7]
+The sun is down; there is no twilight.
+1.4 days since new moon.  The moon is down.
+Ecliptic latitude -5.6; watch for low-flying minor planets.
+Barycentric corrections: add  432.5 sec, -15.63 km/sec to observed values.
+Barycentric Julian date = 2456129.109173
+
+Type command, 'f' for fast tour, '?' for a menu:Suggestions or comments --> john.thorstensen@dartmouth.edu
+Goodbye.
