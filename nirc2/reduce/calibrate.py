@@ -196,7 +196,10 @@ def read_command_line(argv):
                  'matched within searchRadius / 2. (default: %default).')
     
     options, args = p.parse_args(argv)
-
+    options.searchMag = np.abs(float(options.searchMag))
+    options.searchRadius = np.abs(float(options.searchRadius))
+    options.brightLimit = float(options.brightLimit)    
+    
     # Keep a copy of the original calling parameters
     options.originalCall = ' '.join(argv)
 
@@ -449,7 +452,7 @@ def input_data(options):
     if options.verbose:
         print(( 'Opening starlist: ', options.input_file ))
 
-    tab = Table.read(options.input_file, format='ascii')
+    tab = Table.read(options.input_file, format='ascii', delimiter='\s')
     cols = tab.colnames
     
     name = tab[cols[0]]
@@ -488,7 +491,7 @@ def input_data(options):
         nframes = nframes[idx]
         fwhm = fwhm[idx]
         
-        if (xerr != None):
+        if not (xerr is None):
             xerr = xerr[idx]
             yerr = yerr[idx]
 
@@ -570,10 +573,8 @@ def find_cal_stars(calibs, stars, options):
         dx = stars.x - calibs.xpix[c]
         dy = stars.y - calibs.ypix[c]
         dr = np.hypot(dx, dy)
-        dm = abs(stars.mag - calibs.mag[c] - magAdjust)
+        dm = np.abs(stars.mag - calibs.mag[c] - magAdjust)
         
-        
-
         # Find the matches within our tolerance.
         if (calibs.mag[c] < options.brightLimit):
             # For the bright stars we have the default search radius:
