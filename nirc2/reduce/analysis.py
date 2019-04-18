@@ -18,7 +18,7 @@ class Analysis(object):
     and photometric errors via align_rms. 
     """
 
-    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', mode='legacy', trimfake = 'on',
+    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis'):
 
@@ -27,24 +27,15 @@ class Analysis(object):
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
+        self.airopa_mode = 'single'  # could also be "legacy" or "variable"
+        self.trimfake = 1
+        self.stfFlags = ''
 
         self.starlist = rootDir + 'source_list/psf_central.dat'
         self.labellist = rootDir+ 'source_list/label.dat'
         self.orbitlist = rootDir+ 'source_list/orbits.dat'
         self.calFile = rootDir + 'source_list/photo_calib.dat'
-        if 'mode' not in locals():
-            mode = 'legacy'
-        if 'legacy' in mode:
-            self.legacy = '1'
-            self.aoopt = '0'
-        elif 'singlePsf':
-            self.legacy = '0'
-            self.aoopt = '0'
-        if 'on' in trimfake:
-            self.trimfake = '1'
-        elif 'off':
-            self.trimfake = '0'
-       
+
         self.calStars = ['16C', '16NW', '16CC']
         self.calFlags = '-f 1 -R '
         self.mapFilter2Cal = {'kp': 1, 'lp': 3, 'h': 4, 'ms': 5}
@@ -170,13 +161,19 @@ class Analysis(object):
                 _batch.write("suffixEpoch='" + self.suffix + "', ")
                 _batch.write("imgSuffix='" + self.imgSuffix + "', ")
                 _batch.write("starlist='" + self.starlist + "', ")
-                _batch.write("legacy=" + self.legacy + ", ")
-                _batch.write("aoopt=" + self.aoopt + ", ")
-                _batch.write("trimfake=" + self.trimfake + ", ")
-                if oldPsf:
-                    _batch.write("/oldPsf, ")
+                if self.airopa_mode == 'legacy':
+                    _batch.write("/legacy, ")
+                if self.airopa_mode == 'variable':
+                    _batch.write("/aoopt, ")
+                _batch.write("trimfake=" + str(self.trimfake) + ", ")
+                if not oldPsf:
+                    _batch.write("/makePsf, ")
                 
                 _batch.write("rootDir='" + self.rootDir + "'")
+
+                # Support for arbitrary starfinder flags.
+                _batch.write(self.stfFlags)
+                
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
@@ -191,9 +188,18 @@ class Analysis(object):
                 _batch.write("corr_main=%3.1f, " % self.corrMain)
                 _batch.write("corr_subs=%3.1f, " % self.corrSub)
                 _batch.write("starlist='" + self.starlist + "', ")
-                if oldPsf:
-                    _batch.write("/oldPsf, ")
+                if self.airopa_mode == 'legacy':
+                    _batch.write("/legacy, ")
+                # Variable mode isn't supported for Speckle data. 
+                # if mode == 'variable':
+                #     _batch.write("/aoopt, ")
+                if not oldPsf:
+                    _batch.write("/makePsf, ")
                 _batch.write("rootDir='" + self.rootDir + "'")
+                
+                # Support for arbitrary starfinder flags.
+                _batch.write(self.stfFlags)
+                
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
@@ -233,7 +239,16 @@ class Analysis(object):
             _batch.write("suffixEpoch='" + self.suffix + "', ")
             _batch.write("starlist='" + self.starlist + "', ")
             _batch.write("fileList='" + self.cleanList + "', ")
+            if self.airopa_mode == 'legacy':
+                _batch.write("/legacy, ")
+            if self.airopa_mode == 'variable':
+                _batch.write("/aoopt, ")
+            _batch.write("trimfake=" + str(self.trimfake) + ", ")
             _batch.write("rootDir='" + self.rootDir + "'")
+
+            # Support for arbitrary starfinder flags.
+            _batch.write(self.stfFlags)
+            
             _batch.write("\n")
             _batch.write("exit\n")
             _batch.close()
