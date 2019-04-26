@@ -1,8 +1,9 @@
 import os, shutil
 from nirc2.reduce import util
-import asciidata
+from astropy.table import Table
 import numpy as np
-import pyfits
+from astropy.io import fits
+from astropy.table import Table
 from nirc2.reduce import nirc2_util
 from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
@@ -17,7 +18,7 @@ class Analysis(object):
     and photometric errors via align_rms. 
     """
 
-    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', mode='legacy', trimfake = 'on',
+    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis'):
 
@@ -26,24 +27,15 @@ class Analysis(object):
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
+        self.airopa_mode = 'single'  # could also be "legacy" or "variable"
+        self.trimfake = 1
+        self.stfFlags = ''
 
         self.starlist = rootDir + 'source_list/psf_central.dat'
         self.labellist = rootDir+ 'source_list/label.dat'
         self.orbitlist = rootDir+ 'source_list/orbits.dat'
         self.calFile = rootDir + 'source_list/photo_calib.dat'
-        if 'mode' not in locals():
-            mode = 'legacy'
-        if 'legacy' in mode:
-            self.legacy = '1'
-            self.aoopt = '0'
-        elif 'singlePsf':
-            self.legacy = '0'
-            self.aoopt = '0'
-        if 'on' in trimfake:
-            self.trimfake = '1'
-        elif 'off':
-            self.trimfake = '0'
-       
+
         self.calStars = ['irs16C', 'irs16NW', 'irs16CC']
         self.calFlags = '-f 1 -R '
         self.mapFilter2Cal = {'kp': 'Kp', 'h': 'H', 'lp': 'Lp_o1', 'ms': 'Ms_o1'}
@@ -112,9 +104,9 @@ class Analysis(object):
         self.cleanList = cleanList
         self.cleanFiles = []
         if cleanList != None:
-            _list = asciidata.open(self.dirClean + self.cleanList, 'r')
-            for ii in range(_list.nrows):
-                fields = _list[0][ii].split('/')
+            _list = Table.read(self.dirClean + self.cleanList, format='ascii')
+            for ii in range(len(_list)):
+                fields = _list[_list.colnames[0]][ii].split('/')
                 filename = fields[-1].replace('.fits', '')
                 self.cleanFiles.append(filename)
 
@@ -146,8 +138,8 @@ class Analysis(object):
 
     def starfinderCombo(self, oldPsf=False):
         try:
-            print 'COMBO starfinder'
-            print 'Coo Star: ' + self.cooStar
+            print('COMBO starfinder')
+            print('Coo Star: ' + self.cooStar)
             
             os.chdir(self.dirComboStf)
             if self.type == 'ao':
@@ -160,22 +152,28 @@ class Analysis(object):
                 _batch.write("find_stf_new, ")
                 _batch.write("'" + self.epoch + "', ")
                 _batch.write("'" + self.filt + "', ")
-                _batch.write("corr_main='%3.1f', " % self.corrMain)
-                _batch.write("corr_subs='%3.1f', " % self.corrSub)
+                _batch.write("corr_main=%3.1f, " % self.corrMain)
+                _batch.write("corr_subs=%3.1f, " % self.corrSub)
                 # Only send in the deblend flag if using it!
                 if self.deblend != None:
-                    _batch.write("deblend='" + str(self.deblend) + "', ")
+                    _batch.write("deblend=" + str(self.deblend) + ", ")
                 _batch.write("cooStar='" + self.cooStar + "', ")
                 _batch.write("suffixEpoch='" + self.suffix + "', ")
                 _batch.write("imgSuffix='" + self.imgSuffix + "', ")
                 _batch.write("starlist='" + self.starlist + "', ")
-                _batch.write("legacy=" + self.legacy + ", ")
-                _batch.write("aoopt=" + self.aoopt + ", ")
-                _batch.write("trimfake=" + self.trimfake + ", ")
-                if oldPsf:
-                    _batch.write("/oldPsf, ")
+                if self.airopa_mode == 'legacy':
+                    _batch.write("/legacy, ")
+                if self.airopa_mode == 'variable':
+                    _batch.write("/aoopt, ")
+                _batch.write("trimfake=" + str(self.trimfake) + ", ")
+                if not oldPsf:
+                    _batch.write("/makePsf, ")
                 
                 _batch.write("rootDir='" + self.rootDir + "'")
+
+                # Support for arbitrary starfinder flags.
+                _batch.write(self.stfFlags)
+                
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
@@ -187,12 +185,21 @@ class Analysis(object):
                 _batch = open(fileIDLbatch, 'w')
                 _batch.write("find_new_speck, ")
                 _batch.write("'" + self.epoch + "', ")
-                _batch.write("corr_main='%3.1f', " % self.corrMain)
-                _batch.write("corr_subs='%3.1f', " % self.corrSub)
+                _batch.write("corr_main=%3.1f, " % self.corrMain)
+                _batch.write("corr_subs=%3.1f, " % self.corrSub)
                 _batch.write("starlist='" + self.starlist + "', ")
-                if oldPsf:
-                    _batch.write("/oldPsf, ")
+                if self.airopa_mode == 'legacy':
+                    _batch.write("/legacy, ")
+                # Variable mode isn't supported for Speckle data. 
+                # if mode == 'variable':
+                #     _batch.write("/aoopt, ")
+                if not oldPsf:
+                    _batch.write("/makePsf, ")
                 _batch.write("rootDir='" + self.rootDir + "'")
+                
+                # Support for arbitrary starfinder flags.
+                _batch.write(self.stfFlags)
+                
                 _batch.write("\n")
                 _batch.write("exit\n")
                 _batch.close()
@@ -214,7 +221,7 @@ class Analysis(object):
         
     def starfinderClean(self):
         try:
-            print 'CLEAN starfinder'
+            print('CLEAN starfinder')
             
             os.chdir(self.dirCleanStf)
             
@@ -227,12 +234,21 @@ class Analysis(object):
             _batch.write("find_stf_clean, ")
             _batch.write("'" + self.epoch + "', ")
             _batch.write("'" + self.filt + "', ")
-            _batch.write("corr='" + str(self.corrClean) + "', ")
+            _batch.write("corr=" + str(self.corrClean) + ", ")
             _batch.write("cooStar='" + self.cooStar + "', ")
             _batch.write("suffixEpoch='" + self.suffix + "', ")
             _batch.write("starlist='" + self.starlist + "', ")
             _batch.write("fileList='" + self.cleanList + "', ")
+            if self.airopa_mode == 'legacy':
+                _batch.write("/legacy, ")
+            if self.airopa_mode == 'variable':
+                _batch.write("/aoopt, ")
+            _batch.write("trimfake=" + str(self.trimfake) + ", ")
             _batch.write("rootDir='" + self.rootDir + "'")
+
+            # Support for arbitrary starfinder flags.
+            _batch.write(self.stfFlags)
+            
             _batch.write("\n")
             _batch.write("exit\n")
             _batch.close()
@@ -253,7 +269,7 @@ class Analysis(object):
 
     def calibrateCombo(self):
         try:
-            print 'COMBO calibrate'
+            print('COMBO calibrate')
             
             # Get the position angle from the *.fits header
             # We assume that the submaps have the same PA as the main maps
@@ -262,7 +278,7 @@ class Analysis(object):
             calCamera = 1
             if self.type == 'ao':
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
-                angle = float(pyfits.getval(fitsFile, 'ROTPOSN')) - 0.7
+                angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
                 
                 # Check for wide camera
                 calCamera = calibrate.get_camera_type(fitsFile)
@@ -299,7 +315,7 @@ class Analysis(object):
                 else:
                     fileMain = 'mag%s%s_%s_%3.1f_stf.lis' % \
                     (self.epoch, self.imgSuffix, self.filt, self.corrMain)
-            print cmd + fileMain
+            print(cmd + fileMain)
 
             # Now call from within python... don't bother with command line anymore.
             argsTmp = cmd + fileMain
@@ -322,7 +338,7 @@ class Analysis(object):
                         fileSub = 'm%s%s_%s_%d_%3.1f_stf.lis' % \
                         (self.epoch, self.imgSuffix, self.filt, ss+1, self.corrSub)
 
-                print cmd + fileSub
+                print(cmd + fileSub)
                 
                 argsTmp = cmd + fileSub
                 args = argsTmp.split()[1:]
@@ -337,7 +353,7 @@ class Analysis(object):
         try:
             # Calibrate each file
             os.chdir(self.dirCleanStf)
-            print "DEBUG 2nd dec --",self.dirCleanStf
+            print("DEBUG 2nd dec --",self.dirCleanStf)
             # open writeable file for log
             _log = open('calibrate.log','w')
 
@@ -359,7 +375,7 @@ class Analysis(object):
                 listFile = '%s_%3.1f_stf.lis' % (file, self.corrClean)
 
                 # Get the position angle
-                angle = float(pyfits.getval(fitsFile, 'ROTPOSN')) - 0.7
+                angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
                 calCamera = calibrate.get_camera_type(fitsFile)
 
                 cmd = cmdBase + ('-T %.1f -c %d ' % (angle, calCamera))
@@ -383,7 +399,7 @@ class Analysis(object):
             raise
 
     def alignCombo(self):
-        print 'ALIGN_RMS combo'
+        print('ALIGN_RMS combo')
 
         if self.type == 'ao':
             file_ext = '_' + self.filt
@@ -431,7 +447,7 @@ class Analysis(object):
             cmd = 'java -Xmx1024m align %s ' % (self.alignFlags)
             cmd += '-r align%s%s_%3.1f ' % (self.imgSuffix, file_ext, self.corrMain)
             cmd += alnList1
-            print cmd
+            print(cmd)
             #os.system(cmd)
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
@@ -443,7 +459,7 @@ class Analysis(object):
                 cmd += '-o %s ' % self.orbitlist
             cmd += '-r align%s%s_%3.1f_named ' % (self.imgSuffix, file_ext, self.corrMain)
             cmd += alnList2
-            print cmd
+            print(cmd)
 
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
@@ -541,73 +557,6 @@ class Analysis(object):
             raise
     
 
-#-----------------------------------------------------#
-# Analysis class specifically for the Arches cluster.
-# Copied over from gcreduce --> gcanalysis.py
-# 12/2/15, Matt Hosek
-#-----------------------------------------------------#
-        
-class Arches(Analysis):
-    def __init__(self, epoch, field, filt, rootDir='/g/lu/data/arches/nirc2/', 
-                 epochDirSuffix=None, useDistorted=False, cleanList='c.lis'):
-        """
-        For Arches reduction:
-
-        epoch -- '06maylgs' for example
-        field -- 'f1', 'f2', etc. This sets the PSF star list to use.
-        filt -- 'kp', 'lp', or 'h'
-
-        Path to psf starlist, calFile, and labellist is hardcoded
-        """
-        # Initialize the Analysis object
-        Analysis.__init__(self, epoch, filt=field + '_' + filt,
-                          rootDir=rootDir, epochDirSuffix=epochDirSuffix,
-                          useDistorted=useDistorted, cleanList=cleanList)
-
-        # Setup some Arches specific parameters
-        self.mapFilter2Cal = {'kp': 1, 'h': 2, 'lp': 3, 'J':4}
-        self.mapField2CooStar = {'arch_f1': 'f1_psf0',
-                                 'arch_f2': 'f2_psf8',
-                                 'arch_f3': 'f3_psf0',
-                                  'arch_f4': 'f4_psf0',
-                                 'arch_f5': 'f5_psf1',
-                                 'arch_f6': 'f6_psf7'}
-        self.mapField2CalStars = {'arch_f1': ['f1_psf0', 'f1_psf1', 'f1_psf2', 'f1_psf3', 'f1_psf4', 'f1_psf5', 'f1_psf6', 'f1_psf7','f1_psf9'],
-                                  'arch_f2': ['f2_psf0', 'f2_psf2', 'f2_psf3', 'f2_psf4', 'f2_psf6', 'f2_psf7', 'f2_psf8', 'f2_psf9', 'f2_psf10', 'f2_psf11', 'f2_psf12', 'f2_psf13'],
-                                  'arch_f3': ['f3_psf0', 'f3_psf1', 'f3_psf5'],
-                                  'arch_f4': ['f4_psf0', 'f4_psf2'],
-                                  'arch_f5': ['f5_psf0', 'f5_psf1', 'f5_psf2', 'f5_psf3', 'f5_psf4', 'f5_psf5', 'f5_psf12'],
-                                  'arch_f6': ['f6_psf2', 'f6_psf3'],
-                                  }
-                             
-
-        # Use the field to set the psf starlist
-        self.starlist = '/g/lu/code/idl/ucla_idl/'
-        self.starlist += 'arches/psfstars/%s_%s_psf_all.list' % \
-            (field, filt)
-
-        ##########
-        # Setup the appropriate calibration stuff.
-        ##########
-        # By default use the first 10 PSF stars.
-        self.calStars = self.mapField2CalStars[field]
-
-        # Choose the column based on the filter
-        self.calColumn = self.mapFilter2Cal[filt]
-
-        # Set the coo star
-        self.cooStar = self.mapField2CooStar[field]
-        self.calCooStar = self.cooStar
-
-        # Override some of the default parameters
-#         self.calFlags = '-f 1 -c 4 -R '
-        self.calFlags = '-f 1 -R '
-        self.calFile = '/g/lu/data/gc/source_list/photo_calib_arch.dat'
-        
-        self.labellist = '/g/lu/data/gc/source_list/label_arch.dat'
-        self.orbitlist = None
-
-
 def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
                  title=True):
     """
@@ -621,19 +570,19 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     Use raw=True to plot the individual stars in plots 1 and 2.
     """
     # Load up the starlist
-    lis = asciidata.open(starlist)
+    lis = Table.read(starlist, format='ascii')
 
     # Assume this is NIRC2 data.
     scale = 0.00995
     
-    name = lis[0]._data
-    mag = lis[1].tonumpy()
-    x = lis[3].tonumpy()
-    y = lis[4].tonumpy()
-    xerr = lis[5].tonumpy()
-    yerr = lis[6].tonumpy()
-    snr = lis[7].tonumpy()
-    corr = lis[8].tonumpy()
+    name = lis[lis.colnames[0]]
+    mag = lis[lis.colnames[1]]
+    x = lis[lis.colnames[3]]
+    y = lis[lis.colnames[4]]
+    xerr = lis[lis.colnames[5]]
+    yerr = lis[lis.colnames[6]]
+    snr = lis[lis.colnames[7]]
+    corr = lis[lis.colnames[8]]
 
     merr = 1.086 / snr
 
@@ -776,12 +725,12 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     #
     ##########
     # Print out some summary information
-    print 'Number of detections: %4d' % len(mag)
-    print 'Median Pos Error (mas) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
-          (magCutOff, radius, numInMedian, errMedian)
-    print 'Median Mag Error (mag) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
-          (magCutOff, radius, numInMedian, np.median(merr[idx]))
-    print 'Turnover mag = %4.1f' % (maxBin)
+    print('Number of detections: %4d' % len(mag))
+    print('Median Pos Error (mas) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
+          (magCutOff, radius, numInMedian, errMedian))
+    print('Median Mag Error (mag) for K < %2i, r < %4.1f (N=%i):  %5.2f' % \
+          (magCutOff, radius, numInMedian, np.median(merr[idx])))
+    print('Turnover mag = %4.1f' % (maxBin))
 
 
     out = open('plotPosError%s.txt' % suffix, 'w')

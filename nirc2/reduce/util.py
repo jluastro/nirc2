@@ -104,7 +104,7 @@ def update_header_coords(fileList):
     """
 
     _files = Table.read(fileList, format='ascii', header_start=None)
-    cols = _files.columns.keys()
+    cols = list(_files.columns.keys())
     files = _files[cols[0]]
     files = [files[ff].split('.')[0] for ff in range(len(files))]
     
@@ -112,13 +112,13 @@ def update_header_coords(fileList):
     for ff in range(len(files)):
         # Open .coo file and read 16C's coordinates
         coo = Table.read(files[ff]+'.coo', format='ascii', header_start=None)
-        coo_cols = coo.columns.keys()
+        coo_cols = list(coo.columns.keys())
         xref = coo[coo_cols[0]]
         yref = coo[coo_cols[1]]
 
         # Open .coord file and read strehl source's coordinates
         coord = Table.read(files[ff]+'.coord', format='ascii', header_start=None)
-        coord_cols = coord.columns.keys()
+        coord_cols = list(coord.columns.keys())
         xstr = coord[coord_cols[0]]
         ystr = coord[coord_cols[1]]
  

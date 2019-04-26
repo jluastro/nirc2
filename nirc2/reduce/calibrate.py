@@ -174,23 +174,23 @@ def read_command_line(argv):
     p.add_option('-R', dest='reorder', action='store_true', default=False,
                  help='Reorder the starlist so that the align stars '+
                  'are at the top. The coo star (first star) will remain first.')
-    p.add_option('-s', '--snr', dest='snr_flag', default=0, metavar='[#]',
+    p.add_option('-s', '--snr', dest='snr_flag', default=0, metavar='[#]', type='int',
                  help='Use this flag to indicate the purpose of the SNR '+
                  'column in the input star list (default: %default). '+
                  'The choices are:\n'+
                  '[0] overwrite SNR column with calibration error (default)\n'+
                  '[1] add SNR in quadrature to calibration error\n'+
                  '[2] leave the SNR column alone')
-    p.add_option('--searchRadius', dest='searchRadius', default=0.20, metavar='[#]',
+    p.add_option('--searchRadius', dest='searchRadius', default=0.20, metavar='[#]', type='float',
                  help='Set the search radius (in arcsec) for matching the star' +
                  'in the starlist to the calibration star (default: %default arcsec).' +
                  'This is the search radius for the bright stars. Faint stars (below ' +
                  'a magnitude set by the --brightLimit flag) have a search radius that ' +
                  'is two times smaller (searchRadius / 2).')
-    p.add_option('--searchMag', dest='searchMag', default=1.0, metavar='[#]',
+    p.add_option('--searchMag', dest='searchMag', default=1.0, metavar='[#]', type='float',
                  help='Set the delta-magnitude for matching the star in the ' +
                  'starlist to the calibration star (default: %default).')
-    p.add_option('--brightLimit', dest='brightLimit', default=12, metavar='[#]',
+    p.add_option('--brightLimit', dest='brightLimit', default=12, metavar='[#]', type='float',
                  help='Set the brightness limit above which stars are matched within ' +
                  'a search radius set by --searchRadius and below which stars are ' +
                  'matched within searchRadius / 2. (default: %default).')
@@ -243,17 +243,17 @@ def read_command_line(argv):
     # Verbose mode printing
     if options.verbose:
         print( 'VERBOSE mode on' )
-        print( 'options.first_star = %s' % options.first_star )
-        print( 'options.data_type = %d' % options.data_type )
-        print( 'options.camera_type = %d' % options.camera_type )
-        print( 'options.plate_scale = %7.2f' % options.plate_scale )
-        print( 'options.outname = %s' % options.outname )
-        print( 'options.calib_file = %s' % options.calib_file )
-        print( 'options.calib_column = %s' % options.calib_column )
-        print( 'options.theta = %6.1f' % options.theta )
-        print( 'options.searchRadius = %6.1f arcsec' % options.searchRadius )
-        print( 'options.searchMag = %6.1f' % options.searchMag )
-        print( 'options.brightLimit = %6.1f' % options.brightLimit )
+        print(( 'options.first_star = %s' % options.first_star ))
+        print(( 'options.data_type = %d' % options.data_type ))
+        print(( 'options.camera_type = %d' % options.camera_type ))
+        print(( 'options.plate_scale = %7.2f' % options.plate_scale ))
+        print(( 'options.outname = %s' % options.outname ))
+        print(( 'options.calib_file = %s' % options.calib_file ))
+        print(( 'options.calib_column = %d' % options.calib_column ))
+        print(( 'options.theta = %6.1f' % options.theta ))
+        print(( 'options.searchRadius = %6.1f arcsec' % options.searchRadius ))
+        print(( 'options.searchMag = %6.1f' % options.searchMag ))
+        print(( 'options.brightLimit = %6.1f' % options.brightLimit ))
         if options.reorder:
             print( 'Reordering lis file' )
         else:
@@ -273,7 +273,7 @@ def read_photo_calib_file(options, verbose=False):
     if verbose or options.verbose:
         print( '' )
         print( 'Photometric calibration information loaded from:' )
-        print( '\t'+options.calib_file )
+        print(( '\t', options.calib_file ))
         print( 'Specify a different file with the -N flag.' )
         print( 'Choose a calibration column with the -M flag.' )
         print( 'The column choices are listed by [FILTER] below.' )
@@ -459,7 +459,7 @@ def input_data(options):
       fwhm
     """
     if options.verbose:
-        print( 'Opening starlist: ', options.input_file )
+        print(( 'Opening starlist: ', options.input_file ))
 
     tab = Table.read(options.input_file, format='ascii', delimiter='\s')
     cols = tab.colnames
@@ -505,8 +505,8 @@ def input_data(options):
             yerr = yerr[idx]
 
     if options.verbose:
-        print( 'Read %d lines in the input file.' % (len(tab)) )
-        print( 'Skipped %d lines in the input file.' % (len(tab) - len(idx)) )
+        print(( 'Read %d lines in the input file.' % (len(tab)) ))
+        print(( 'Skipped %d lines in the input file.' % (len(tab) - len(idx)) ))
 
     starlist = Starlist()
     starlist.name = name
@@ -559,8 +559,8 @@ def find_cal_stars(calibs, stars, options):
     calibs.ypix = stars.y[0] + (calibs.x * sinScale) + (calibs.y * cosScale)
     if options.verbose:
         for c in range(len(calibs.xpix)):
-            print( 'Looking for %10s at (%.2f, %.2f), mag: %.2f' % \
-                (calibs.name[c], calibs.xpix[c], calibs.ypix[c], calibs.mag[c]) )
+            print(( 'Looking for %10s at (%.2f, %.2f), mag: %.2f' % \
+                (calibs.name[c], calibs.xpix[c], calibs.ypix[c], calibs.mag[c]) ))
             
     # Create an array of indices into the starlist.
     # Set to -1 for non-matches. 
@@ -575,8 +575,8 @@ def find_cal_stars(calibs, stars, options):
     
     magAdjust = stars.mag[0] - calibs.mag[fidx]
     if options.verbose:
-        print( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, options.searchMag) )
-        print( 'Adjusting input magnitudes by %.2f' % magAdjust )
+        print(( 'Search dr = %d pixels, dm = %.2f' % (options.searchRadius, options.searchMag) ))
+        print(( 'Adjusting input magnitudes by %.2f' % magAdjust ))
 
     for c in range(len(calibs.name)):
         dx = stars.x - calibs.xpix[c]
@@ -607,16 +607,16 @@ def find_cal_stars(calibs, stars, options):
             # Print out
             if options.verbose:
                 notUsed = '' if (calibs.include[c] == True) else '(not used)'
-                print( '%10s found at %.2f, %.2f as %s %s' % \
+                print(( '%10s found at %.2f, %.2f as %s %s' % \
                     (calibs.name[c], 
                      stars.x[index[c]],
                      stars.y[index[c]],
                      origName,
-                     notUsed))
+                     notUsed)))
 
         else:
             if options.verbose:
-                print( '%10s not found' % (calibs.name[c]) )
+                print(( '%10s not found' % (calibs.name[c]) ))
     
     return index
 
@@ -674,14 +674,14 @@ def calc_zeropt(calibs, stars, options):
 
     if options.verbose:
         print( '' )
-        print( 'Zero-point = %5.3f +/- %.3f' % (zeropt, zeropt_err) )
+        print(( 'Zero-point = %5.3f +/- %.3f' % (zeropt, zeropt_err) ))
         print( '' )
         for i in range(len(cidx)):
             c = cidx[i]
             s = sidx[i]
-            print( '%10s Published Mag: %6.3f  Calculate Mag: %6.3f  DIFF = %6.3f' % \
+            print(( '%10s Published Mag: %6.3f  Calculate Mag: %6.3f  DIFF = %6.3f' % \
                 (calibs.name[c], calibs.mag[c], stars.mag[s]+zeropt,
-                 calibs.mag[c] - (stars.mag[s]+zeropt)) )
+                 calibs.mag[c] - (stars.mag[s]+zeropt)) ))
 
     return (zeropt, zeropt_err)
 
@@ -760,7 +760,7 @@ def output_new(zeropt, zeropt_err, calibs, stars, options):
                 # with the calib stars should have been caught 
                 # earlier.
                 if options.verbose:
-                    print(options.align_stars[c])
+                    print((options.align_stars[c]))
                 
                 if options.align_stars[c] == options.first_star:
                     continue

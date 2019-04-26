@@ -17,7 +17,7 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
         epoch (str): Observing epoch, in the format YYmmmDD, where YY is the
             last two digits of the year, mmm the first three letters of the
             month, and DD the digits of the day.
-        target (str): Target object. The script will add 'ob' in outputs.
+        target (str): Target object.
 
     Returns:
         outex (str): The path to the .png file of the plot.
@@ -27,9 +27,9 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
 
     root = user_root
 
-    label_file = root + 'source_list/ob' + target +'_psf.list'
+    label_file = root + 'source_list/' + target +'_psf.list'
     t = Table.read(label_file, format='ascii')
-    fits_root = root + epoch + '/combo/mag' + epoch + '_ob' + target + '_kp'
+    fits_root = root + epoch + '/combo/mag' + epoch + '_' + target + '_kp'
     img = fits.getdata(fits_root + '.fits')
 
     coo_coords = Table.read(fits_root + '.coo', format='ascii')
@@ -54,8 +54,8 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
     plt.xlim(0, 1150)
     plt.ylim(0, 1150)
 
-    outroot = root+epoch+'/'
-    fig.savefig(outroot+epoch+'_ob'+target+'.png')
+    outex = root+epoch+'/'+epoch+'_'+target
+    fig.savefig(outex+'.png')
     close()
 
     return(outroot, coo_coords)

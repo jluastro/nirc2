@@ -160,10 +160,12 @@ def makemask(dark, flat, output):
     and stores all output there. All output and temporary files
     will be created in a masks/ subdirectory.
 
-    @param dark: The full relative path to a dark file. This is used to
+    @param dark: The filename of the dark file (must be in the 
+        calib/darks/ directory). This is used to
         construct a hot pixel mask. Use a long (t>20sec) exposure dark.
     @type dark: str
-    @param flat: The full relative path to a flat file. This is used to
+    @param flat: The filename of a flat file  (must be in the 
+        calib/flats/ directory). This is used to
         construct a dead pixel mask. The flat should be normalized.
     @type flat: str
     @param output: output file name. This will be created in the masks/
@@ -194,7 +196,7 @@ def makemask(dark, flat, output):
 
     text_output = ir.imstatistics(_dark, fields="mean,stddev",
 				  nclip=10, format=0, Stdout=1)
-    print text_output
+    print(text_output)
     values = text_output[0].split()
     hi = float(values[0]) + (10.0 * float(values[1]))
 
@@ -260,7 +262,7 @@ def makeNirc2mask(dark, flat, outDir):
 
     img_dk = pyfits.getdata(_dark)
     hot = img_dk > hi
-    print 'Found %d hot pixels' % (hot.sum())
+    print('Found %d hot pixels' % (hot.sum()))
 
     # Make dead pixel mask
     text_output = ir.imstatistics(_flat, fields="mean,stddev",
@@ -276,7 +278,7 @@ def makeNirc2mask(dark, flat, outDir):
 
     img_fl = pyfits.getdata(_flat)
     dead = logical_or(img_fl > hi, img_fl < lo)
-    print 'Found %d dead pixels' % (dead.sum())
+    print('Found %d dead pixels' % (dead.sum()))
 
     # Combine into a final supermask
     file = pyfits.open(_flat)
@@ -305,7 +307,7 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     util.mkdir(darkDir)
 
     def printStats(frame, tint, sampmode, reads):
-        files = range(frame, frame+3)
+        files = list(range(frame, frame+3))
 
         fileName = 'dark_%ds_1ca_%d_%dsm.fits' % (tint, sampmode, reads)
 
@@ -356,7 +358,7 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
 
     # Calculate the readnoise
     rdnoise = dStdvs * 4.0 * np.sqrt(reads) / (np.sqrt(2.0))
-    print 'READNOISE per read: ', rdnoise
+    print('READNOISE per read: ', rdnoise)
 
 
     ##########
@@ -366,15 +368,15 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     util.rmall([outFile])
     _out = open(outFile,'w')
     hdr = '%8s  %5s  &9s  %9s  %4s  %6s'
-    print 'Sampmode  Reads  Noise(DN)  Noise(e-)  Tint  Coadds'
-    print '--------  -----  ---------  ---------  ----  ------'
+    print('Sampmode  Reads  Noise(DN)  Noise(e-)  Tint  Coadds')
+    print('--------  -----  ---------  ---------  ----  ------')
 
     _out.write('Sampmode  Reads  Noise(DN)  Noise(e-)  Tint  Coadds\n')
     _out.write('--------  -----  ---------  ---------  ----  ------\n')
 
     for ii in range(lenDarks):
-	print '%8d  %5d  %9.1f  %9.1f  %4d  1' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii])
+	print('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
+	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
 
     for ii in range(lenDarks):
 	_out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
