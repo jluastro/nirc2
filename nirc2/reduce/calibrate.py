@@ -249,7 +249,7 @@ def read_command_line(argv):
         print(( 'options.plate_scale = %7.2f' % options.plate_scale ))
         print(( 'options.outname = %s' % options.outname ))
         print(( 'options.calib_file = %s' % options.calib_file ))
-        print(( 'options.calib_column = %d' % options.calib_column ))
+        print(( 'options.calib_column = %s' % options.calib_column ))
         print(( 'options.theta = %6.1f' % options.theta ))
         print(( 'options.searchRadius = %6.1f arcsec' % options.searchRadius ))
         print(( 'options.searchMag = %6.1f' % options.searchMag ))
