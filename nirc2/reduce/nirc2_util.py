@@ -9,51 +9,63 @@ import glob
 from astropy.table import Table
 import numpy as np
 import math
+from nirc2 import instruments
 
 def nirc2log(directory):
-    """Make an electronic NIRC2 log for all files in the specified
-    directory.
+    makelog(directory, outfile='nirc2.log')
 
-    Output is a file called nirc2.log."""
+    return
+
+def makelog(directory, outfile='image_log.txt', instrument=instruments.default_inst):
+    """Make an electronic log for all the FITS files in the 
+    specified directory.
+
+    Optional
+    ---------
+    outfile : str
+        Output text file (def=image_log.txt)
+    """
     if not os.access(directory, os.F_OK):
         print(( 'Cannot access directory ' + directory ))
 
     files = glob.glob(directory + '/*.fits')
     files.sort()
-    f = open(directory + '/nirc2.log', 'w')
+    f = open(directory + '/' + outfile, 'w')
+
+    # Short-hand
+    ihk = instrument.hdr_keys
+    
     
     for file in files:
         hdr = fits.getheader(file,ignore_missing_end=True)
 
         # First column is frame number
-        frame = (hdr['filename'].strip())[0:5]
-        f.write('%5s  ' % frame)
+        frame = (hdr[ihk['filename']].strip())[:-5]
+        f.write('%16s  ' % frame)
 
         # Second column is object name
-        f.write('%-16s  ' % hdr['object'].replace(' ', ''))
+        f.write('%-16s  ' % hdr[ihk['object_name']].replace(' ', ''))
 
         # Next is integration time, coadds, sampmode, multisam
-        f.write('%8.3f  %3d  ' % (hdr['itime'], hdr['coadds']))
-        f.write('%1d x %2d  ' % (hdr['sampmode'], hdr['multisam']))
+        f.write('%8.3f  %3d  ' % (hdr[ihk['itime']], hdr[ihk['coadds']]))
+        f.write('%1d x %2d  ' % (hdr[ihk['sampmode']], hdr[ihk['nfowler']]))
 
         # Filter
-        filter1 = hdr['fwiname']
-        filter2 = hdr['fwoname']
-        filter = filter1
-        if (filter1.startswith('PK')): filter = filter2
-
-        f.write('%-10s ' % filter)
+        filt = instrument.get_filter_name(hdr)
+        
+        f.write('%-10s ' % filt)
 
         # Camera name
-        f.write('%-6s ' % hdr['camname'])
+        f.write('%-6s ' % hdr[ihk['camera']])
 
         # Shutter state
-        f.write('%-6s ' % hdr['shrname'])
+        f.write('%-6s ' % hdr[ihk['shutter']])
 
         # End of this line
         f.write('\n')
 
     f.close()
+    
         
 
 if __name__ == '__main__':
@@ -146,7 +158,7 @@ def radec2pix(radec, phi, scale, posRef):
     
     return [d_x, d_y]
 
-def aotsxy2pix(aotsxy, scale, aotsxyRef):
+def aotsxy2pix(aotsxy, scale, aotsxyRef, inst_angle=0):
     # Determine pixel shifts from AOTSX and AOTSY positions.
     
     x = aotsxy[0]
@@ -157,6 +169,9 @@ def aotsxy2pix(aotsxy, scale, aotsxyRef):
     d_y = (y - aotsxyRef[1]) / 0.727
     d_x = d_x * (1.0/scale)
     d_y = d_y * (1.0/scale)
+
+    # Rotate to the instrument PA
+    d_x_new = d_x * np.cos(np.radians(inst_angle)) + d_y
     
     return [d_x, d_y]
 

@@ -2,13 +2,14 @@ import os, sys
 from . import util
 import pyfits
 from pyraf import iraf as ir
+from nirc2 import instruments
 import numpy as np
 
 module_dir = os.path.dirname(__file__)
 
-def makedark(files, output):
+def makedark(files, output, instrument=instruments.default_inst):
     """
-    Make dark image for NIRC2 data. Makes a calib/ directory
+    Make dark image for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a darks/ subdirectory.
 
@@ -27,7 +28,7 @@ def makedark(files, output):
     _outlis = darkDir + 'dark.lis'
     util.rmall([_out, _outlis])
 
-    darks = [rawDir + 'n' + str(i).zfill(4) + '.fits' for i in files]
+    darks = instrument.make_filenames(files, rootDir=rawDir)
 
     f_on = open(_outlis, 'w')
     f_on.write('\n'.join(darks) + '\n')
@@ -41,9 +42,10 @@ def makedark(files, output):
     ir.imcombine('@' + _outlis, _out)
 
 
-def makeflat(onFiles, offFiles, output, normalizeFirst=False):
+def makeflat(onFiles, offFiles, output, normalizeFirst=False,
+                 instrument=instruments.default_inst):
     """
-    Make flat field image for NIRC2 data. Makes a calib/ directory
+    Make flat field image for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a flats/ subdirectory.
 
@@ -75,9 +77,9 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False):
 
     util.rmall([_on, _off, _norm, _out, _onlis, _offlis, _onNormLis])
 
-    lampson = [rawDir + 'n' + str(i).zfill(4) + '.fits' for i in onFiles]
-    lampsoff = [rawDir + 'n' + str(i).zfill(4) + '.fits' for i in offFiles]
-    lampsonNorm = [flatDir + 'norm' + str(i).zfill(4) + '.fits' for i in onFiles]
+    lampson = instrument.make_filenames(onFiles, rootDir=rawDir)
+    lampsoff = instrument.make_filenames(offFiles, rootDir=rawDir)
+    lampsonNorm = instrument.make_filenames(onFiles, rootDir=flatDir + 'norm')
     util.rmall(lampsonNorm)
 
     if (len(offFiles) != 0):
@@ -155,8 +157,8 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False):
         flatRegion = '[100:900,513:950]'
         ir.normflat(_norm, _out, sample=flatRegion)
 
-def makemask(dark, flat, output):
-    """Make bad pixel mask for NIRC2 data. Makes a calib/ directory
+def makemask(dark, flat, output, instrument=instruments.default_inst):
+    """Make bad pixel mask for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a masks/ subdirectory.
 
@@ -186,7 +188,7 @@ def makemask(dark, flat, output):
     _out = maskDir + output
     _dark = darkDir + dark
     _flat = flatDir + flat
-    _nirc2mask = module_dir + '/masks/nirc2mask.fits'
+    _inst_mask = module_dir + '/masks/' +  instrument.get_bad_pixel_mask_name()
 
     util.rmall([_out])
 
@@ -215,15 +217,15 @@ def makemask(dark, flat, output):
     img_fl = pyfits.getdata(_flat)
     dead = np.logical_or(img_fl > hi, img_fl < lo)
 
-    # We also need the original NIRC2 mask (with cracks and such)
-    nirc2mask = pyfits.getdata(_nirc2mask)
+    # We also need the original instrument mask (with cracks and such)
+    inst_mask = pyfits.getdata(_inst_mask)
 
     # Combine into a final supermask. Use the flat file just as a template
     # to get the header from.
     ofile = pyfits.open(_flat)
 
-    if ((hot.shape)[0] == (nirc2mask.shape)[0]):
-        mask = hot + dead + nirc2mask
+    if ((hot.shape)[0] == (inst_mask.shape)[0]):
+        mask = hot + dead + inst_mask
     else:
         mask = hot + dead
     mask = (mask != 0)
@@ -233,10 +235,10 @@ def makemask(dark, flat, output):
     ofile[0].writeto(_out, output_verify='silentfix')
 
 
-def makeNirc2mask(dark, flat, outDir):
-    """Make the static bad pixel mask for NIRC2. This only needs to be
-    run once. This creates a file called nirc2mask.fits which is
-    subsequently used throughout the pipeline. The dark should be a long
+def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst):
+    """Make the static bad pixel mask for the instrument. This only needs to be
+    run once. This creates a file called nirc2mask.fits or osiris_img_mask.fits
+    which is subsequently used throughout the pipeline. The dark should be a long
     integration dark.
 
     @param dark: The full absolute path to a medianed dark file. This is
@@ -248,7 +250,7 @@ def makeNirc2mask(dark, flat, outDir):
     @param outDir: full path to output directory with '/' at the end.
     @type outDir: str
     """
-    _out = outDir + 'nirc2mask.fits'
+    _out = outDir + instrument.get_bad_pixel_mask_name()
     _dark = dark
     _flat = flat
 
@@ -277,7 +279,7 @@ def makeNirc2mask(dark, flat, outDir):
     hi = float(values[0]) + (15.0 * float(values[1]))
 
     img_fl = pyfits.getdata(_flat)
-    dead = logical_or(img_fl > hi, img_fl < lo)
+    dead = np.logical_or(img_fl > hi, img_fl < lo)
     print('Found %d dead pixels' % (dead.sum()))
 
     # Combine into a final supermask
