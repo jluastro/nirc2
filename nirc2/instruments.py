@@ -3,6 +3,7 @@ import pylab as plt
 import os
 import collections
 from astropy.io import fits
+import pdb
 
 module_dir = os.path.dirname(__file__)
 
@@ -113,8 +114,7 @@ class OSIRIS(Instrument):
             hdu_list = fits.open(old_file)
 
             for hh in range(len(hdu_list)):
-                if type(hdu_list[hh]) == fits.ImageHDU:
-                    hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
+                hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
 
             hdu_list.writeto(new_file, overwrite=True)
             
@@ -129,7 +129,7 @@ class OSIRIS(Instrument):
 
 ##################################################
 #
-#  SET DEFAUL INSTRUMENT FOR MODULE.
+#  SET DEFAULT INSTRUMENT FOR MODULE.
 #
 ##################################################
 default_inst = NIRC2()
