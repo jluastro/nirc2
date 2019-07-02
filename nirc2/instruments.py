@@ -1,7 +1,10 @@
 import numpy as np
 import pylab as plt
+import os
 import collections
 from astropy.io import fits
+
+module_dir = os.path.dirname(__file__)
 
 class Instrument(object):
     def __init__(self):
@@ -35,6 +38,10 @@ class NIRC2(Instrument):
 
         self.bad_pixel_mask = 'nirc2mask.fits'
 
+        self.distCoef = ''
+        self.distXgeoim = module_dir + '/reduce//distortion/nirc2_narrow_xgeoim.fits'
+        self.distYgeoim = module_dir + '/reduce//distortion/nirc2_narrow_ygeoim.fits'
+
         return
     
     def get_filter_name(self, hdr):
@@ -46,10 +53,25 @@ class NIRC2(Instrument):
 
         return filt
 
-    def make_filenames(self, files, rootDir=''):
-        file_names = [rootDir + 'n' + str(i).zfill(4) + '.fits' for i in files]
+    def make_filenames(self, files, rootDir='', prefix='n'):
+        file_names = [rootDir + prefix + str(i).zfill(4) + '.fits' for i in files]
         return file_names
 
+    def get_distortion_maps(self, date):
+        if (float(date[0:4]) < 2015):
+            distXgeoim = module_dir + '/reduce/distortion/nirc2_narrow_xgeoim.fits'
+            distYgeoim = module_dir + '/reduce/distortion/nirc2_narrow_ygeoim.fits'
+        if (float(date[0:4]) == 2015) & (float(date[5:7]) < 0o5):
+            distXgeoim = module_dir + '/reduce/distortion/nirc2_narrow_xgeoim.fits'
+            distYgeoim = module_dir + '/reduce/distortion/nirc2_narrow_ygeoim.fits'
+        if (float(date[0:4]) == 2015) & (float(date[5:7]) >= 0o5):
+            distXgeoim = module_dir + '/reduce/distortion/nirc2_narrow_xgeoim_post20150413.fits'
+            distYgeoim = module_dir + '/reduce/distortion/nirc2_narrow_ygeoim_post20150413.fits'
+        if (float(date[0:4]) > 2015):
+            distXgeoim = module_dir + '/reduce/distortion/nirc2_narrow_xgeoim_post20150413.fits'
+            distYgeoim = module_dir + '/reduce/distortion/nirc2_narrow_ygeoim_post20150413.fits'
+
+        return distXgeoim, distYgeoim
         
 
 class OSIRIS(Instrument):
@@ -67,6 +89,10 @@ class OSIRIS(Instrument):
         self.hdr_keys['shutter'] = 'ifilter'
 
         self.bad_pixel_mask = 'osiris_img_mask.fits'
+
+        self.distCoef = ''
+        self.distXgeoim = None
+        self.distYgeoim = None
         
         return
     
@@ -74,8 +100,8 @@ class OSIRIS(Instrument):
         return hdr['ifilter']
         
     
-    def make_filenames(self, files, rootDir=''):
-        file_names = [rootDir + i + '.fits' for i in files]
+    def make_filenames(self, files, rootDir='', prefix=''):
+        file_names = [rootDir + prefix + i + '.fits' for i in files]
 
         return file_names
 
@@ -94,6 +120,11 @@ class OSIRIS(Instrument):
             
         return
             
+    def get_distortion_maps(self, date):
+        distXgeoim = None
+        distYgeoim = None
+
+        return distXgeoim, distYgeoim
 
 
 ##################################################

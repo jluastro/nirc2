@@ -7,6 +7,7 @@ import user
 from pyraf import iraf as ir
 from . import nirc2_util
 from nirc2.reduce import util
+from nirc2 import instruments
 import time
 import pdb
 import numpy as np
@@ -42,9 +43,10 @@ outputVerify = 'ignore'
 
 
 def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
-          skyscale=0, skyfile=None, angOff=0.0, fixDAR=True):
+          skyscale=0, skyfile=None, angOff=0.0, fixDAR=True,
+          instrument=instruments.default_inst):
     """
-    Clean near infrared NIRC2 images.
+    Clean near infrared NIRC2 or OSIRIS images.
 
     This program should be run from the reduce/ directory.
     Example directory structure is:
@@ -139,15 +141,15 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
         # Determine the reference coordinates for the first image.
         # This is the image for which refSrc is relevant.
-        firstFile = rawDir + '/n' + str(files[0]).zfill(4) + '.fits'
-        hdr1 = fits.getheader(firstFile,ignore_missing_end=True)
+        firstFile = instrument.make_filenames([files[0]], rootDir=rawDir)[0]
+        hdr1 = fits.getheader(firstFile, ignore_missing_end=True)
         radecRef = [float(hdr1['RA']), float(hdr1['DEC'])]
         aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
         # Setup a Sky object that will figure out the sky subtraction
         skyDir = waveDir + 'sky_' + nite + '/'
         skyObj = Sky(sciDir, skyDir, wave, scale=skyscale,
-        skyfile=skyfile, angleOffset=angOff)
+                     skyfile=skyfile, angleOffset=angOff)
 
         # Prep drizzle stuff
         # Get image size from header - this is just in case the image
@@ -156,26 +158,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         imgsizeX = float(hdr1['NAXIS1'])
         imgsizeY = float(hdr1['NAXIS2'])
         date = hdr1['DATE-OBS']
-        if (float(date[0:4]) == 2015) & (float(date[5:7]) < 0o5):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
-        if (float(date[0:4]) < 2015):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
-        if (float(date[0:4]) == 2015) & (float(date[5:7]) >= 0o5):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim_post20150413.fits'
-        if (float(date[0:4]) > 2015):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim_post20150413.fits'
+
+        distXgeoim, distYgeoim = instrument.get_distortion_maps(date)
         if (imgsizeX >= imgsizeY):
             imgsize = imgsizeX
         else:

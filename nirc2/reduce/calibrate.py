@@ -385,7 +385,7 @@ def read_photo_calib_file(options, verbose=False):
     # Check if the filter is in photo_calib file
     if not (options.calib_column in filter_names):
         print('Filter {0} not in {1}'.format(options.calib_column, options.calib_file))
-        print('Available filter options are: {0}'.format('\', \''.join(filter_names)))
+        print("Available filter options are: '{0}'".format("', '".join(filter_names)))
         
         return None
     

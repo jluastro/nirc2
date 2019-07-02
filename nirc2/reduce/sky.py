@@ -4,8 +4,9 @@ import os, sys
 from . import util
 import numpy as np
 from pyraf import iraf as ir
+from nirc2 import instruments
 
-def makesky(files, nite, wave, skyscale=1):
+def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
     """Make short wavelength (not L-band or longer) skies."""
 
     # Start out in something like '06maylgs1/reduce/kp/'
@@ -24,9 +25,9 @@ def makesky(files, nite, wave, skyscale=1):
 
     util.rmall([skylist, output])
 
-    nn = [skyDir + 'n' + str(i).zfill(4) for i in files]
-    nsc = [skyDir + 'scale' + str(i).zfill(4) for i in files]
-    skies = [rawDir + 'n' + str(i).zfill(4) for i in files]
+    nn = instrument.make_filenames(files, rootDir=skyDir)
+    nsc = instrument.make_filenames(files, rootDir=skyDir, prefix='scale')
+    skies = instrument.make_filenames(files, rootDir=rawDir)
 
     for ii in range(len(nn)):
         ir.imdelete(nn[ii])
@@ -84,7 +85,8 @@ def makesky(files, nite, wave, skyscale=1):
     ir.imcombine('@' + skylist, output)
 
 
-def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
+def makesky_lp(files, nite, wave, number=3, rejectHsigma=None,
+                   instrument=instruments.default_inst):
     """Make L' skies by carefully treating the ROTPPOSN angle
     of the K-mirror. Uses 3 skies combined (set by number keyword)."""
 
@@ -97,8 +99,8 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
 
     util.mkdir(skyDir)
 
-    raw = [rawDir + 'n' + str(i).zfill(4) for i in files]
-    skies = [skyDir + 'n' + str(i).zfill(4) for i in files]
+    raw = instrument.make_filenames(files, rootDir=rawDir)
+    skies = instrument.make_filenames(files, rootDir=skyDir)
     
     _rawlis = skyDir + 'raw.lis'
     _nlis = skyDir + 'n.lis'
@@ -201,8 +203,8 @@ def makesky_lp2(files, nite, wave):
 
     util.mkdir(skyDir)
 
-    raw = [rawDir + 'n' + str(i).zfill(4) for i in files]
-    skies = [skyDir + 'n' + str(i).zfill(4) for i in files]
+    raw = instrument.make_filenames(files, rootDir=rawDir)
+    skies = instrument.make_filenames(files, rootDir=skyDir)
     
     _rawlis = skyDir + 'raw.lis'
     _nlis = skyDir + 'n.lis'
@@ -297,9 +299,9 @@ def makesky_fromsci(files, nite, wave):
 
     util.rmall([skylist, output])
 
-    nn = [skyDir + 'n' + str(i).zfill(4) for i in files]
-    nsc = [skyDir + 'scale' + str(i).zfill(4) for i in files]
-    skies = [rawDir + 'n' + str(i).zfill(4) for i in files]
+    nn = instrument.make_filenames(files, rootDir=skyDir)
+    nsc = instrument.make_filenames(files, rootDir=skyDir, prefix='scale')
+    skies = instrument.make_filenames(files, rootDir=rawDir)
 
     for ii in range(len(nn)):
         ir.imdelete(nn[ii])
@@ -356,8 +358,8 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
 
     util.mkdir(skyDir)
 
-    raw = [rawDir + 'n' + str(i).zfill(4) for i in files]
-    skies = [skyDir + 'n' + str(i).zfill(4) for i in files]
+    raw = instrument.make_filenames(files, rootDir=rawDir)
+    skies = instrument.make_filenames(files, rootDir=skyDir)
 
     flatDir = redDir + 'calib/flats/'
     flat = flatDir + 'flat_' + wave + '.fits'
