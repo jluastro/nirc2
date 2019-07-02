@@ -4,6 +4,7 @@ import os
 import collections
 from astropy.io import fits
 import pdb
+from astropy.io.fits.hdu.image import _ImageBaseHDU
 
 module_dir = os.path.dirname(__file__)
 
@@ -114,7 +115,8 @@ class OSIRIS(Instrument):
             hdu_list = fits.open(old_file)
 
             for hh in range(len(hdu_list)):
-                hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
+                if isinstance(hdu_list[hh], _ImageBaseHDU):
+                    hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
 
             hdu_list.writeto(new_file, overwrite=True)
             
