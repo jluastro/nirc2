@@ -214,10 +214,10 @@ def darPlusDistortion(inputFits, outputRoot, xgeoim=None, ygeoim=None):
     """
     # Get the size of the image and the half-points
     hdr = pyfits.getheader(inputFits)
-    imgsizeX = float(hdr['NAXIS1'])
-    imgsizeY = float(hdr['NAXIS2'])
-    halfX = round(imgsizeX / 2.0)
-    halfY = round(imgsizeY / 2.0)
+    imgsizeX = int(hdr['NAXIS1'])
+    imgsizeY = int(hdr['NAXIS2'])
+    halfX = int(round(imgsizeX / 2.0))
+    halfY = int(round(imgsizeY / 2.0))
 
     # First get the coefficients
     (pa, darCoeffL, darCoeffQ) = nirc2dar(inputFits)

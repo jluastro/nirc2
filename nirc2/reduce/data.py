@@ -170,11 +170,18 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # Loop through the list of images
         ##########
         for f in files:
-            root = str(f).zfill(4)
+            if isinstance(instrument, instruments.NIRC2):
+                root = str(f).zfill(4)
+                preroot = 'n' + root
+            if isinstance(instrument, instruments.OSIRIS):
+                root = str(f)
+                preroot = root
 
             # Define filenames
-            _raw = rawDir + 'n' + root
-            _n = 'n' + root + '.fits'
+#            _raw = rawDir + 'n' + root 
+            _raw = rawDir + preroot
+#            _n = 'n' + root + '.fits'
+            _cp = preroot + '.fits' # this is the "new" _n
             _ss = 'ss' + root + '.fits'
             _ff = 'ff' + root + '.fits'
             _ff_f = 'ff' + root + '_f' + '.fits'
@@ -193,22 +200,22 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             _dlog = 'driz' + root + '.log'
 
             # Clean up if these files previously existed
-            util.rmall([_n, _ss, _ff, _ff_f, _ff_s, _bp, _cd, _ce, _cc,
+            util.rmall([_cp, _ss, _ff, _ff_f, _ff_s, _bp, _cd, _ce, _cc,
                         _wgt, _statmask, _crmask, _mask, _pers, _max, _coo, _dlog])
 
             ### Copy the raw file to local directory ###
-            ir.imcopy(_raw, _n, verbose='no')
+            ir.imcopy(_raw, _cp, verbose='no')
 
-            ### Make perisistance mask ###
+            ### Make persistance mask ###
             # - Checked images, this doesn't appear to be a large effect.
-            #clean_persistance(_n, _pers)
+            #clean_persistance(_cp, _pers)
 
             ### Sky subtract ###
             # Get the proper sky for this science frame.
             # It might be scaled or there might be a specific one for L'.
-            sky = skyObj.getSky(_n)
+            sky = skyObj.getSky(_cp)
 
-            ir.imarith(_n, '-', sky, _ss)
+            ir.imarith(_cp, '-', sky, _ss)
 
             ### Flat field ###
             ir.imarith(_ss, '/', flat, _ff)
@@ -234,7 +241,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             bkg = clean_bkgsubtract(_ff_f, _bp)
 
             ### Drizzle individual file ###
-            clean_drizzle(_bp, _ce, _wgt, _dlog, fixDAR=fixDAR)
+            clean_drizzle(distXgeoim, distYgeoim, _bp, _ce, _wgt, _dlog, fixDAR=fixDAR)
 
             ### Make .max file ###
             # Determine the non-linearity level. Raw data level of
@@ -251,11 +258,11 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Rename and clean up files ###
             ir.imrename(_bp, _cd)
-            util.rmall([_n, _ss, _ff, _ff_f])
+            util.rmall([_cp, _ss, _ff, _ff_f])
 
             ### Make the *.coo file and update headers ###
             # First check if PA is not zero
-            tmp = rootDir + 'raw/n' + root + '.fits'
+            tmp = rootDir + 'raw/' + preroot + '.fits'
             hdr = fits.getheader(tmp,ignore_missing_end=True)
             phi = nirc2_util.getPA(hdr)
 
@@ -615,6 +622,7 @@ def calcStrehl(files, wave, field=None):
     _clis.close()
 
     # Now call Marcos's strehl widget in a command line format.
+    pdb.set_trace()
     batchFile = open(_idl, 'w')
     batchFile.write("print, \"Hello World\"\n")
     batchFile.write("cmd_strehl_widget, '" + clisFile + "', /list, ")
@@ -1422,14 +1430,11 @@ def setup_drizzle(imgsize):
     ir.drizzle.in_un = 'counts'
     ir.drizzle.out_un = 'counts'
 
-def clean_drizzle(_bp, _cd, _wgt, _dlog, fixDAR=True):
+def clean_drizzle(xgeoim, ygeoim, _bp, _cd, _wgt, _dlog, fixDAR=True):
     if (fixDAR == True):
         darRoot = _cd.replace('.fits', 'geo')
 
-        # Future: add distortion xgeoim, ygeoim to inputs here.
-        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot,
-                                                 xgeoim=distXgeoim,
-                                                 ygeoim=distYgeoim)
+        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim, ygeoim)
 
         ir.drizzle.xgeoim = xgeoim
         ir.drizzle.ygeoim = ygeoim

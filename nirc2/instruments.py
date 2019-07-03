@@ -119,6 +119,11 @@ class OSIRIS(Instrument):
                     hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
 
             hdu_list.writeto(new_file, overwrite=True)
+
+            # Add header values. 
+            fits.setval(new_file, 'EFFWAVE', value= 2.1245) # from NIRC2
+            fits.setval(new_file, 'CENWAVE', value= 2.1245) # from NIRC2
+            fits.setval(new_file, 'CAMNAME', value = 'narrow') # from NIRC2
             
         return
             

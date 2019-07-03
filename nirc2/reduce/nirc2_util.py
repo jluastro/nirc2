@@ -240,6 +240,7 @@ def rotate_coo(x, y, phi):
 
 def getScale(hdr):
     # Setup NIRC2 plate scales
+    # Units are arcsec/pixel
     scales = {"narrow": 0.009942,
               "medium": 0.019829,
               "wide": 0.039686}
