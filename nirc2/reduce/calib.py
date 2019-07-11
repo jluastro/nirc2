@@ -1,6 +1,6 @@
 import os, sys
 from . import util
-import pyfits
+from astropy.io import fits
 from pyraf import iraf as ir
 from nirc2 import instruments
 import numpy as np
@@ -126,7 +126,7 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
         ir.module.load('noao', doprint=0, hush=1)
         ir.module.load('imred', doprint=0, hush=1)
         ir.module.load('generic', doprint=0, hush=1)
-        orig_img = pyfits.getdata(_norm)
+        orig_img = fits.getdata(_norm)
         orig_size = (orig_img.shape)[0]
         if (orig_size >= 1024):
             flatRegion = '[100:900,513:950]'
@@ -192,37 +192,46 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
 
     util.rmall([_out])
 
+    ##########
     # Make hot pixel mask
+    ##########
     whatDir = redDir + dark
     print(whatDir)
 
-    text_output = ir.imstatistics(_dark, fields="mean,stddev",
-				  nclip=10, format=0, Stdout=1)
-    print(text_output)
-    values = text_output[0].split()
-    hi = float(values[0]) + (10.0 * float(values[1]))
+    # Get the sigma-clipped mean and stddev on the dark
+    img_dk = fits.getdata(_dark)
+    dark_stats = stats.sigma_clipped_stats(img_dk,
+                                           sigma=3,
+                                           maxiters=10)
+    dark_mean = dark_stats[0]
+    dark_stddev = dark_stats[2]
 
-    img_dk = pyfits.getdata(_dark)
+    # Clip out the very hot pixels.
+    hi = dark_mean + (10.0 * dark_stddev)
     hot = img_dk > hi
 
+    ##########
     # Make dead pixel mask
-    text_output = ir.imstatistics(_flat, fields="mean,stddev",
-				  nclip=10, format=0, Stdout=1)
-    values = text_output[0].split()
-    #lo = float(values[0]) - (15.0 * float(values[1]))
-    # If flat is normalized, then lo should be set to 0.5
-    lo = 0.5
-    hi = float(values[0]) + (15.0 * float(values[1]))
+    ##########
+    img_fl = fits.getdata(_flat)
+    flat_stats = stats.sigma_clipped_stats(img_fl,
+                                           sigma=3,
+                                           maxiters=10)
+    flat_mean = flat_stats[0]
+    flat_stddev = flat_stats[2]
 
-    img_fl = pyfits.getdata(_flat)
+    # Clip out the dead pixels
+    lo = 0.5
+    hi = flat_mean + (15.0 * flat_stddev)
+
     dead = np.logical_or(img_fl > hi, img_fl < lo)
 
     # We also need the original instrument mask (with cracks and such)
-    inst_mask = pyfits.getdata(_inst_mask)
+    inst_mask = fits.getdata(_inst_mask)
 
     # Combine into a final supermask. Use the flat file just as a template
     # to get the header from.
-    ofile = pyfits.open(_flat)
+    ofile = fits.open(_flat)
 
     if ((hot.shape)[0] == (inst_mask.shape)[0]):
         mask = hot + dead + inst_mask
@@ -233,6 +242,8 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
     ofile[0].data[unmask] = 0
     ofile[0].data[mask] = 1
     ofile[0].writeto(_out, output_verify='silentfix')
+
+    return
 
 
 def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst):
@@ -256,41 +267,48 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
 
     util.rmall([_out])
 
+    ##########
     # Make hot pixel mask
-    text_output = ir.imstatistics(_dark, fields="mean,stddev",
-				  nclip=10, format=0, Stdout=1)
-    values = text_output[0].split()
-    hi = float(values[0]) + (15.0 * float(values[1]))
+    ##########
+    # Get the sigma-clipped mean and stddev on the dark
+    img_dk = fits.getdata(_dark)
+    dark_stats = stats.sigma_clipped_stats(img_dk,
+                                           sigma=3,
+                                           maxiters=10)
+    dark_mean = dark_stats[0]
+    dark_stddev = dark_stats[2]
 
-    img_dk = pyfits.getdata(_dark)
+    # Clip out the very hot pixels.
+    hi = dark_mean + (15.0 * dark_stddev)
     hot = img_dk > hi
     print('Found %d hot pixels' % (hot.sum()))
 
+    ##########
     # Make dead pixel mask
-    text_output = ir.imstatistics(_flat, fields="mean,stddev",
-				  nclip=10, format=0, Stdout=1)
-    values = text_output[0].split()
+    ##########
+    img_fl = fits.getdata(_flat)
+    flat_stats = stats.sigma_clipped_stats(img_fl,
+                                           sigma=3,
+                                           maxiters=10)
+    flat_mean = flat_stats[0]
+    flat_stddev = flat_stats[2]
 
-    # Assuming flat is normalized, we don't want pixels with less
-    # than 0.5 sensitivity
-    #lo = float(values[0]) - (15.0 * float(values[1]))
-    lo = 0.5    #mask = hot
+    # Clip out the dead pixels
+    lo = 0.5
+    hi = flat_mean + (15.0 * flat_stddev)
 
-    hi = float(values[0]) + (15.0 * float(values[1]))
-
-    img_fl = pyfits.getdata(_flat)
     dead = np.logical_or(img_fl > hi, img_fl < lo)
     print('Found %d dead pixels' % (dead.sum()))
 
     # Combine into a final supermask
-    file = pyfits.open(_flat)
+    new_file = fits.open(_flat)
 
     mask = hot + dead
     mask = (mask != 0)
     unmask = (mask == 0)
-    file[0].data[unmask] = 0
-    file[0].data[mask] = 1
-    file[0].writeto(_out, output_verify='silentfix')
+    new_file[0].data[unmask] = 0
+    new_file[0].data[mask] = 1
+    new_file[0].writeto(_out, output_verify='silentfix')
 
 def analyzeDarkCalib(firstFrame, skipcombo=False):
     """
@@ -316,12 +334,13 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
         if (skipcombo == False):
             makedark(files, fileName)
 
-        text_output = ir.imstatistics(darkDir + fileName,
-                        fields="mean,stddev",
-                        nclip=10, format=0, Stdout=1)
-        values = text_output[0].split()
-        darkMean = float(values[0])
-        darkStdv = float(values[1])
+        # Get the sigma-clipped mean and stddev on the dark
+        img_dk = fits.getdata(darkDir + fileName)
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               maxiters=10)
+        darkMean = dark_stats[0]
+        darkStdv = dark_stats[2]
 
         return darkMean, darkStdv
 

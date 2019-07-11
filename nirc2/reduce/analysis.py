@@ -20,7 +20,8 @@ class Analysis(object):
 
     def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
-                 useDistorted=False, cleanList='c.lis'):
+                 useDistorted=False, cleanList='c.lis',
+                 instrument=instruments.default_inst):
 
         # Setup default parameters
         self.type = 'ao'
@@ -35,6 +36,10 @@ class Analysis(object):
         self.labellist = rootDir+ 'source_list/label.dat'
         self.orbitlist = rootDir+ 'source_list/orbits.dat'
         self.calFile = rootDir + 'source_list/photo_calib.dat'
+
+        # Keep track of the instrument these images are from.
+        # We need this to get things like plate scale, etc.
+        self.instrument = instrument
 
         self.calStars = ['irs16C', 'irs16NW', 'irs16CC']
         self.calFlags = '-f 1 -R '
@@ -413,7 +418,8 @@ class Analysis(object):
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
             elif self.type == 'speckle':
                 fitsFile = 'mag%s.fits' % self.epoch
-            alignType = nirc2_util.get_align_type(fitsFile, errors=False)
+            hdr = fits.getheader(fitsFile)
+            alignType = instrument.get_align_type(hdr, errors=False)
 
 
             os.chdir(self.dirComboAln)
@@ -512,7 +518,8 @@ class Analysis(object):
 
             # Get the align data type
             fitsFile = self.cleanFiles[0] + '.fits'
-            alignType = nirc2_util.get_align_type(fitsFile, errors=False)
+            hdr = fits.getheader(fitsFile)
+            alignType = instrument.get_align_type(hdr, errors=False)
             alignCombo = alignType + 1
 
             # Make the align*.list file

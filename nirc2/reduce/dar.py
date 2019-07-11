@@ -15,6 +15,7 @@ import os, sys
 from nirc2.reduce import nirc2_util
 from nirc2.reduce import util
 from nirc2.reduce import slalib
+from nirc2 import instruments
 from astropy.table import Table
 
 module_dir = os.path.dirname(__file__)
@@ -122,7 +123,7 @@ def keckDARcoeffs(lamda, year, month, day, hour, minute):
     print(hm, tdk, pmb, rh, lamda, phi, tlr, eps)
     return slalib.refco(hm, tdk, pmb, rh, lamda, phi, tlr, eps)
 
-def nirc2dar(fitsFile):
+def nirc2dar(fitsFile, instrument=instruments.default_inst):
     """
     Use the FITS header to extract date, time, wavelength,
     elevation, and image orientation information. This is everything
@@ -135,11 +136,10 @@ def nirc2dar(fitsFile):
     can be applied in image coordinates. 
     """
     # Get header info
-    hdr = pyfits.getheader(fitsFile)
+    img, hdr = pyfits.getdata(fitsFile, header=True)
 
-    effWave = hdr['EFFWAVE']
-    elevation = hdr['EL']
-    lamda = hdr['CENWAVE']
+    effWave = instrument.get_central_wavelength(hdr)
+    elevation = hdr[instrument.hdr_keys['elevation']]
     airmass = hdr['AIRMASS']
     parang = hdr['PARANG']
 
@@ -167,20 +167,21 @@ def nirc2dar(fitsFile):
                             3.0 * refB * (tanz + 2.0*tanz**3))
 
     # Convert DAR coefficients for use with units of NIRC2 pixels
-    scale = nirc2_util.getScale(hdr)
+    scale = instrument.get_plate_scale(hdr)
     darCoeffL *= 1.0
     darCoeffQ *= 1.0 * scale / 206265.0
     
     # Lets determine the zenith and horizon unit vectors for
     # this image.
-    pa = math.radians(parang + float(hdr['ROTPOSN']) - float(hdr['INSTANGL']))
+    pos_ang = instrument.get_position_angle(hdr)
+    pa = math.radians(parang + pos_ang)
     zenithX = -math.sin(pa)
     zenithY = math.cos(pa)
 
     # Compute the predicted differential atmospheric refraction
     # over a 10'' seperation along the zenith direction.
     # Remember coeffecicents are only for deltaZ in pixels
-    deltaZ = 10.0
+    deltaZ = img.shape[0] * scale
     deltaR = darCoeffL * (deltaZ/scale) + darCoeffQ * (deltaZ/scale)**2
     deltaR *= scale # now in arcseconds
 
@@ -193,7 +194,7 @@ def nirc2dar(fitsFile):
 
     return (pa, darCoeffL, darCoeffQ)
 
-def darPlusDistortion(inputFits, outputRoot, xgeoim=None, ygeoim=None):
+def darPlusDistortion(inputFits, outputRoot, xgeoim=None, ygeoim=None, instrument=instruments.default_inst):
     """
     Create lookup tables (stored as FITS files) that can be used
     to correct DAR. Optionally, the shifts due to DAR can be added
@@ -220,7 +221,7 @@ def darPlusDistortion(inputFits, outputRoot, xgeoim=None, ygeoim=None):
     halfY = int(round(imgsizeY / 2.0))
 
     # First get the coefficients
-    (pa, darCoeffL, darCoeffQ) = nirc2dar(inputFits)
+    (pa, darCoeffL, darCoeffQ) = nirc2dar(inputFits, instrument=instrument)
     #(a, b) = nirc2darPoly(inputFits)
 
     # Create two 1024 arrays (or read in existing ones) for the

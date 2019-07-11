@@ -1,10 +1,12 @@
 from astropy.io import fits
 from astropy.table import Table
-import os, sys
+from astropy import stats
+import os, sys, shutil
 from . import util
 import numpy as np
 from pyraf import iraf as ir
 from nirc2 import instruments
+import pdb
 
 def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
     """Make short wavelength (not L-band or longer) skies."""
@@ -30,10 +32,9 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
     skies = instrument.make_filenames(files, rootDir=rawDir)
 
     for ii in range(len(nn)):
-        ir.imdelete(nn[ii])
-        ir.imdelete(nsc[ii])
-        ir.imcopy(skies[ii], nn[ii], verbose="no")
-
+        if os.path.exists(nn[ii]): os.remove(nn[ii])
+        if os.path.exists(nsc[ii]): os.remove(nsc[ii])
+        shutil.copy(skies[ii], nn[ii])
 
     # scale skies to common median
     if skyscale:
@@ -44,15 +45,20 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
         sky_mean = np.zeros([len(skies)], dtype=float)
 
         for i in range(len(skies)):
-            text = ir.imstat(nn[i], fields='mean', nclip=4, 
-                         lsigma=10, usigma=10, format=0, Stdout=1)
-            sky_mean[i] = float(text[0])
+            # Get the sigma-clipped mean and stddev on the dark
+            img_sky = fits.getdata(nn[i])
+            sky_stats = stats.sigma_clipped_stats(img_sky,
+                                                  sigma=10,
+                                                  iters=4)
+            sky_mean[i] = sky_stats[0]
 
         sky_all = sky_mean.mean()
         sky_scale = sky_all/sky_mean
 
         for i in range(len(skies)):
-            ir.imarith(nn[i], '*', sky_scale[i], nsc[i])
+            _nn = fits.open(nn[i])
+            _nn[0].data *= sky_scale[i]
+            _nn.writeto(nsc[i])
 
 	    skyf = nn[i].split('/')
 	    print(('%s   skymean=%10.2f   skyscale=%10.2f' % 
@@ -75,7 +81,7 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
 
         #skylist = skyDir + 'n????.fits' 
 
-    ir.imdelete(output)
+    if os.path.exists(output): os.remove(output)
     ir.unlearn('imcombine')
     ir.imcombine.combine = 'median'
     ir.imcombine.reject = 'none'
@@ -320,13 +326,13 @@ def makesky_fromsci(files, nite, wave):
     sky_mean = np.zeros([len(skies)], dtype=float)
     sky_std = np.zeros([len(skies)], dtype=float)
 
-    text = ir.imstat("@" + skylist, fields='midpt,stddev', nclip=10, 
-                     lsigma=10, usigma=3, format=0, Stdout=1)
-
     for ii in range(len(nn)):
-        fields = text[ii].split()
-        sky_mean[ii] = float(fields[0])
-        sky_std[ii] = float(fields[1])
+        img_sky = fits.getdata(nn[i])
+        sky_stats = stats.sigma_clipped_stats(img_sky,
+                                              sigma_lower=10, sigma_upper=3,
+                                              iters=10)
+        sky_mean[ii] = sky_stats[0]
+        sky_std[ii] = sky_stats[2]
 
     sky_mean_all = sky_mean.mean()
     sky_std_all = sky_std.mean()
