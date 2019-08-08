@@ -7,6 +7,7 @@ from astropy.table import Table
 from nirc2.reduce import nirc2_util
 from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
+from nirc2 import instruments
 import subprocess
 import pylab as py
 import pdb
@@ -283,7 +284,9 @@ class Analysis(object):
             calCamera = 1
             if self.type == 'ao':
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
-                angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
+                hdr = fits.getheader(fitsFile)
+                angle = self.instrument.get_position_angle(hdr)
+                print(self.instrument.name)
                 
                 # Check for wide camera
                 calCamera = calibrate.get_camera_type(fitsFile)
@@ -419,7 +422,7 @@ class Analysis(object):
             elif self.type == 'speckle':
                 fitsFile = 'mag%s.fits' % self.epoch
             hdr = fits.getheader(fitsFile)
-            alignType = instrument.get_align_type(hdr, errors=False)
+            alignType = self.instrument.get_align_type(hdr, errors=False)
 
 
             os.chdir(self.dirComboAln)

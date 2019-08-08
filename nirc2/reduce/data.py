@@ -786,7 +786,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Get the distortion maps for this instrument.
     hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
     distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
-    
+
     print('combine: drizzling images together')
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
@@ -851,7 +851,14 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
         ir.drizzle.outweig = _wgt
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
-
+        ir.drizzle.outnx = imgsize
+        ir.drizzle.outny = imgsize
+        
+        print('Drizzling: ', roots[i])
+        print('     xsh = {0:8.2f}'.format( xsh ))
+        print('     ysh = {0:8.2f}'.format( ysh ))
+        print('  weight = {0:8.2f}'.format( weights[i] ))
+        print('   outnx = {0:8d}'.format( imgsize ))
         ir.drizzle(_cdwt_ir, _tmpfits, Stdout=f_dlog)
 
         # Read .max file with saturation level for final combined image
@@ -902,6 +909,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
                           'X Distortion Image')
     fits_f[0].header.set('DISTORTY', "%s" % distYgeoim,
                           'Y Distortion Image')
+
+    # Fix the DATASEC header keyword, if it exists.
+    if 'DATASEC' in fits_f[0].header:
+        fits_f[0].header['DATASEC'] = '[1:{0:d},1:{0:d}]'.format(imgsize)
     
     # Calculate weighted MJD and store in header
     mjd_weightedMean = mjd_weightedSum / np.sum(weights)
@@ -941,6 +952,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 
     # Prep drizzle stuff
     setup_drizzle(imgsize)
+    print('Drizzle imgsize = ', imgsize)
     ir.drizzle.outcont = ''
 
     satLvl_tot = np.zeros(submaps, dtype=float)
@@ -1287,7 +1299,6 @@ def combine_register(outroot, refImage, diffPA):
     shiftsTable_empty = np.zeros((len(fileNames), 3), dtype=float)
     shiftsTable = Table(shiftsTable_empty, dtype=('S50', float, float)) #dtype=(float, float, 'S50')
 
-
     for ii in range(len(fileNames)):
         inFile = fileNames[ii]
 
@@ -1359,11 +1370,11 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
 
     orig_img = fits.getdata(refImage)
     orig_size = (orig_img.shape)[0]
-    padd = 8.0
+    padd = int(np.floor(orig_size * 0.01))
 
-    # Read in 16C's position in the ref image and translate
+    # Read in the reference star's position in the ref image and translate
     # it into the coordinates of the final main and sub maps.
-    hdr = fits.getheader(refImage,ignore_missing_end=True)
+    hdr = fits.getheader(refImage, ignore_missing_end=True)
     xrefSrc = float(hdr['XREF'])
     yrefSrc = float(hdr['YREF'])
 
@@ -1380,7 +1391,7 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
         _allCoo.write('%9.3f %9.3f\n' % (xrefSrc, yrefSrc))
         _allCoo.close()
 
-    xysize = float(orig_size) + ((maxoffset + padd) * 2.0)
+    xysize = int(float(orig_size) + ((maxoffset + padd) * 2.0))
     print('combine: Size of output image is %d' % xysize)
 
     return xysize
@@ -2142,7 +2153,7 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
 
     orig_img = fits.getdata(refImage)
     orig_size = (orig_img.shape)[0]
-    padd = 8.0
+    padd = int(np.floor(orig_size * 0.02))
 
     xref = x_allShifts[0]
     yref = y_allShifts[0]

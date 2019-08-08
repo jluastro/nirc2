@@ -203,7 +203,9 @@ class OSIRIS(Instrument):
         """
         Get the sky PA in degrees East of North. 
         """
-        return float(hdr['ROTPOSN']) - float(hdr['INSTANGL'])
+        pa_old = float(hdr['ROTPOSN']) - self.get_instrument_angle(hdr)
+        pa_new = pa_old - 180.0
+        return pa_new
     
     def get_instrument_angle(self, hdr):
         """
