@@ -43,7 +43,7 @@ outputVerify = 'ignore'
 
 def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
           skyscale=0, skyfile=None, angOff=0.0, fixDAR=True,
-          instrument=instruments.default_inst):
+          instrument=instruments.default_inst, check_ref_loc=True):
     """
     Clean near infrared NIRC2 or OSIRIS images.
 
@@ -258,7 +258,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             phi = instrument.get_position_angle(hdr)
 
             clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
-                          instrument=instrument)
+                          instrument=instrument, check_loc=check_ref_loc)
 
             ### Move to the clean directory ###
             util.rmall([clean + _cc, clean + _coo, clean + _rcoo,
@@ -1596,7 +1596,7 @@ def clean_bkgsubtract(_ff_f, _bp):
     return bkg
 
 def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
-                  instrument=instruments.default_inst):
+                  instrument=instruments.default_inst, check_loc=True):
     """Make the *.coo file for this science image. Use the difference
     between the AOTSX/Y keywords from a reference image and each science
     image to tell how the positions of the two frames are related.
@@ -1615,6 +1615,9 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
     @type aotsxyRef: array of floats with length=2 [x, y]
     @param radecRef: The RA/DEC header values from the reference image.
     @type radecRef: array of floats with length=2 [x, y]
+
+    check_loc (bool):  If True the reference source is recentered for this frame.
+                     Use False if the offsets are large enough to move the reference source off of the image
     """
 
     hdr = fits.getheader(_ce, ignore_missing_end=True)
@@ -1642,16 +1645,17 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
     ystr = strSrc[1] + d_xy[1]
 
     # re-center stars to get exact coordinates
-    centBox = 12.0
-    text = ir.imcntr(_ce, xref, yref, cbox=centBox, Stdout=1)
-    values = text[0].split()
-    xref = float(values[2])
-    yref = float(values[4])
+    if check_loc:
+        centBox = 12.0
+        text = ir.imcntr(_ce, xref, yref, cbox=centBox, Stdout=1)
+        values = text[0].split()
+        xref = float(values[2])
+        yref = float(values[4])
 
-    text = ir.imcntr(_ce, xstr, ystr, cbox=centBox, Stdout=1)
-    values = text[0].split()
-    xstr = float(values[2])
-    ystr = float(values[4])
+        text = ir.imcntr(_ce, xstr, ystr, cbox=centBox, Stdout=1)
+        values = text[0].split()
+        xstr = float(values[2])
+        ystr = float(values[4])
 
     # write reference star x,y to fits header
     fits_f = fits.open(_ce)

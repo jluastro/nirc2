@@ -281,8 +281,10 @@ def darPlusDistortion(inputFits, outputRoot, xgeoim=None, ygeoim=None, instrumen
     return (xout, yout)
 
 
-def applyDAR(fits, spaceStarlist, plot=False):
+def applyDAR(inputFits, spaceStarlist, plot=False, instrument=instruments.default_inst):
     """
+    inputFits: (str) name if fits file associated with this starlist
+
     Input a starlist in x=RA (+x = west) and y=Dec (arcseconds) taken from
     space and introduce differential atmospheric refraction (DAR). The amount
     of DAR that is applied depends on the header information in the input fits
@@ -295,46 +297,50 @@ def applyDAR(fits, spaceStarlist, plot=False):
     current directory.
     """
     # Get header info
-    hdr = pyfits.getheader(fits)
+    #hdr = pyfits.getheader(fits)
 
-    effWave = hdr['EFFWAVE']
-    elevation = hdr['EL']
-    lamda = hdr['CENWAVE']
-    airmass = hdr['AIRMASS']
-    parang = hdr['PARANG']
+    #effWave = hdr['EFFWAVE']
+    #elevation = hdr['EL']
+    #lamda = hdr['CENWAVE']
+    #airmass = hdr['AIRMASS']
+    #parang = hdr['PARANG']
+    #
+    #date = hdr['DATE-OBS'].split('-')
+    #year = int(date[0])
+    #month = int(date[1])
+    #day = int(date[2])
 
-    date = hdr['DATE-OBS'].split('-')
-    year = int(date[0])
-    month = int(date[1])
-    day = int(date[2])
+    #utc = hdr['UTC'].split(':')
+    #hour = int(utc[0])
+    #minute = int(utc[1])
+    #second = int(math.floor(float(utc[2])))
 
-    utc = hdr['UTC'].split(':')
-    hour = int(utc[0])
-    minute = int(utc[1])
-    second = int(math.floor(float(utc[2])))
+    #utc = datetime.datetime(year, month, day, hour, minute, second)
+    #utc2hst = datetime.timedelta(hours=-10)
+    #hst = utc + utc2hst
 
-    utc = datetime.datetime(year, month, day, hour, minute, second)
-    utc2hst = datetime.timedelta(hours=-10)
-    hst = utc + utc2hst
 
-    (refA, refB) = keckDARcoeffs(effWave, hst.year, hst.month, hst.day,
-                                 hst.hour, hst.minute)
+    #(refA, refB) = keckDARcoeffs(effWave, hst.year, hst.month, hst.day,
+    #                             hst.hour, hst.minute)
 
-    tanz = math.tan(math.radians(90.0 - elevation))
-    tmp = 1.0 + tanz**2
-    darCoeffL = tmp * (refA + 3.0 * refB * tanz**2)
-    darCoeffQ = -tmp * (refA*tanz +
-                            3.0 * refB * (tanz + 2.0*tanz**3))
+    #tanz = math.tan(math.radians(90.0 - elevation))
+    #tmp = 1.0 + tanz**2
+    #darCoeffL = tmp * (refA + 3.0 * refB * tanz**2)
+    #darCoeffQ = -tmp * (refA*tanz +
+    #                        3.0 * refB * (tanz + 2.0*tanz**3))
 
     # Convert DAR coefficients for use with arcseconds
-    darCoeffL *= 1.0
-    darCoeffQ *= 1.0 / 206265.0
+    #darCoeffL *= 1.0
+    #darCoeffQ *= 1.0 / 206265.0
     
     # Lets determine the zenith and horizon unit vectors for
     # this image. The angle we need is simply the parallactic
     # (or vertical) angle since ACS images are North Up already.
-    pa = math.radians(parang)
+    #pa = math.radians(parang)
 
+    #MS: presumably the above code is all replacable with this call (which uses the intrument object
+    (pa, darCoeffL, darCoeffQ) = nirc2dar(inputFits, instrument=instrument)
+    
     ##########
     #
     # Read in the starlist
