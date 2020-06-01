@@ -1,6 +1,7 @@
 import os, sys
 from . import util
 from astropy.io import fits
+from astropy import stats
 from pyraf import iraf as ir
 from nirc2 import instruments
 import numpy as np
