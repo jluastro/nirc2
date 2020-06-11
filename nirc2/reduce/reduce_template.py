@@ -27,6 +27,7 @@ from nirc2.reduce import calib
 from nirc2.reduce import sky
 from nirc2.reduce import data
 from nirc2.reduce import util
+from nirc2.reduce import dar
 from nirc2.reduce import nirc2_util
 from nirc2 import instruments
 
@@ -53,6 +54,9 @@ def makelog():
     # If you are reducing OSIRIS, you need to flip the images first. 
     # raw_files = glob.glob('../raw/i*.fits')
     # osiris.flip_images(raw_files)
+
+    # Download weather data we will need.
+    dar.get_atm_conditions('2020')
 
     return
     

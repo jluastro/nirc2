@@ -203,7 +203,7 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
     img_dk = fits.getdata(_dark)
     dark_stats = stats.sigma_clipped_stats(img_dk,
                                            sigma=3,
-                                           maxiters=10)
+                                           iters=10)
     dark_mean = dark_stats[0]
     dark_stddev = dark_stats[2]
 
@@ -217,7 +217,7 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
     img_fl = fits.getdata(_flat)
     flat_stats = stats.sigma_clipped_stats(img_fl,
                                            sigma=3,
-                                           maxiters=10)
+                                           iters=10)
     flat_mean = flat_stats[0]
     flat_stddev = flat_stats[2]
 
@@ -275,7 +275,7 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     img_dk = fits.getdata(_dark)
     dark_stats = stats.sigma_clipped_stats(img_dk,
                                            sigma=3,
-                                           maxiters=10)
+                                           iters=10)
     dark_mean = dark_stats[0]
     dark_stddev = dark_stats[2]
 
@@ -290,7 +290,7 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     img_fl = fits.getdata(_flat)
     flat_stats = stats.sigma_clipped_stats(img_fl,
                                            sigma=3,
-                                           maxiters=10)
+                                           iters=10)
     flat_mean = flat_stats[0]
     flat_stddev = flat_stats[2]
 
@@ -339,7 +339,7 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
         img_dk = fits.getdata(darkDir + fileName)
         dark_stats = stats.sigma_clipped_stats(img_dk,
                                                sigma=3,
-                                               maxiters=10)
+                                               iters=10)
         darkMean = dark_stats[0]
         darkStdv = dark_stats[2]
 
