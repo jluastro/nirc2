@@ -189,7 +189,8 @@ class OSIRIS(Instrument):
         return
     
     def get_filter_name(self, hdr):
-        return hdr['ifilter']
+        f= hdr['ifilter']
+        return f.split('-')[0]
         
     def get_plate_scale(self, hdr):
         """
@@ -220,7 +221,17 @@ class OSIRIS(Instrument):
         Return the central wavelength of the filter for 
         this observation in microns.
         """
-        return float(hdr['CENWAVE'])
+        if 'CENWAVE' in hdr.keys():
+            wave = hdr['CENWAVE']
+        else:
+            if self.get_plate_scale(hdr) == 'kp':
+                wave = 2.1245
+            elif self.get_plate_scale(hdr) == 'kcont':
+                wave = 2.270    
+            else:
+                wave = 2.1245
+        return wave
+        
     
     def get_gain(self, hdr):
         return hdr['DETGAIN']

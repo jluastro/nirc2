@@ -786,7 +786,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Get the distortion maps for this instrument.
     hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
     distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
-
+    
     print('combine: drizzling images together')
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
@@ -825,7 +825,8 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             darRoot = _cdwt.replace('.fits', 'geo')
             (xgeoim, ygeoim) = dar.darPlusDistortion(_cdwt, darRoot,
                                                      xgeoim=distXgeoim,
-                                                     ygeoim=distYgeoim)
+                                                     ygeoim=distYgeoim,
+                                                     instrument=instrument)
 
             xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
             ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
@@ -970,18 +971,25 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     # Get the distortion maps for this instrument.
     hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
     distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
-    
+
+    # Set a cleanDir variable in IRAF. This avoids the long-filename problem.
+    ir.set(cleanDir=cleanDir)
+
     for i in range(len(roots)):
         # Cleaned image
         _c = cleanDir + 'c' + roots[i] + '.fits'
-        
+        _c_ir = _c.replace(cleanDir, 'cleanDir$')
+
         # Cleaned but distorted image
         _cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
         cdwt = cleanDir + 'weight/cdwt.fits'
-        
+        _cd_ir = _cd.replace(cleanDir, 'cleanDir$')
+        _cdwt_ir = cdwt.replace(cleanDir, 'cleanDir$')
+
         # Multiply each distorted image by it's weight
         util.rmall([cdwt])
-        ir.imarith(_cd, '*', weights[i], cdwt)
+
+        ir.imarith(_cd, '*', weights[i], _cdwt_ir)
         
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
@@ -1023,9 +1031,13 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         
         if (fixDAR == True):
             darRoot = cdwt.replace('.fits', 'geo')
+            print('submap: ',cdwt)
             (xgeoim, ygeoim) = dar.darPlusDistortion(cdwt, darRoot,
                                                      xgeoim=distXgeoim,
-                                                     ygeoim=distYgeoim)
+                                                     ygeoim=distYgeoim,
+                                                     instrument=instrument)
+            xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
+            ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
         else:
@@ -1040,7 +1052,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         log.write(time.ctime())
 
         if (mask == True):
-            _mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
+            _mask = 'cleanDir$masks/mask' + roots[i] + '.fits'
+            #_mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
         else:
             _mask = ''
         ir.drizzle.in_mask = _mask
@@ -1048,7 +1061,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
 
-        ir.drizzle(cdwt, fits_im, Stdout=log)
+        ir.drizzle(_cdwt_ir, fits_im, Stdout=log)
     
     # Calculate weighted MJDs for each submap
     mjd_weightedMeans = mjd_weightedSums / weightsTot
@@ -1433,7 +1446,8 @@ def clean_drizzle(xgeoim, ygeoim, _bp, _cd, _wgt, _dlog, fixDAR=True, instrument
     if (fixDAR == True):
         darRoot = _cd.replace('.fits', 'geo')
 
-        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim, ygeoim)
+        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim,
+                                                 ygeoim,instrument=instrument)
 
         ir.drizzle.xgeoim = xgeoim
         ir.drizzle.ygeoim = ygeoim
