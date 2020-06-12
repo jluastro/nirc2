@@ -233,19 +233,24 @@ class OSIRIS(Instrument):
     def flip_images(self, files, rootDir=''):
         for ff in range(len(files)):
             old_file = files[ff]
-            new_file = files[ff].replace('.fits', '_xflip.fits')
+            new_file = files[ff].replace('.fits', '_flip.fits')
             
             hdu_list = fits.open(old_file)
 
+            # Fetch the date and figure out how to
+            # best flip the images.
+            year = int(hdu_list[0].header['DATE-OBS'].split('-')[0])
+
             for hh in range(len(hdu_list)):
                 if isinstance(hdu_list[hh], _ImageBaseHDU):
-                    hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
+                    if year == 2019:
+                        hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
+                    else:
+                        hdu_list[hh].data = hdu_list[hh].data[::-1, :]
 
             hdu_list.writeto(new_file, overwrite=True)
 
             # Add header values. 
-            fits.setval(new_file, 'EFFWAVE', value= 2.1245) # from NIRC2
-            fits.setval(new_file, 'CENWAVE', value= 2.1245) # from NIRC2
             fits.setval(new_file, 'CAMNAME', value = 'narrow') # from NIRC2
             
         return
