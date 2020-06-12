@@ -145,6 +145,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         radecRef = [float(hdr1['RA']), float(hdr1['DEC'])]
         aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
+        if instrument.name == 'OSIRIS':
+            aotsxyRef = np.array([-aotsxyRef[0],-aotsxyRef[1]])
+
         # Setup a Sky object that will figure out the sky subtraction
         skyDir = waveDir + 'sky_' + nite + '/'
         skyObj = Sky(sciDir, skyDir, wave, scale=skyscale,
@@ -433,7 +436,17 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     ##########
 
     # Load the strehl_source.txt file
-    strehls, fwhm = loadStrehl(cleanDir, roots)
+    if (weight is not None) or os.path.exists(os.path.join(cleanDir,'strehl_source.txt')):
+        strehls, fwhm = loadStrehl(cleanDir, roots) 
+    else:
+        # if the file doesn't exist don't use
+        print('combine: the strehl_source file does not exist: '+os.path.join(cleanDir,'strehl_source.txt'))
+
+        # fill out some variables for later use
+        strehls = np.zeros(len(roots))-1.0
+        fwhm = np.zeros(len(roots)) -1.0
+        trim = False
+
 
     # Default weights
     # Create an array with length equal to number of frames used,
@@ -1291,7 +1304,10 @@ def combine_register(outroot, refImage, diffPA):
     ir.xregister.append = 'no'
     ir.xregister.databasefmt = 'no'
     ir.xregister.verbose = 'no'
-
+    ir.xregister.xwindow='30'
+    ir.xregister.ywindow='30'
+    ir.xregister.correlation='fourier'
+    ir.xregister.function='centroid'
 
     print('combine: registering images')
     if (diffPA == 1):
@@ -1299,8 +1315,14 @@ def combine_register(outroot, refImage, diffPA):
     else:
         input = '@' + outroot + '.lis'
 
-    regions = '[*,*]'
+    hdu = fits.open(refImage)
+    nx = hdu[0].header['NAXIS1']
+    ny = hdu[0].header['NAXIS2']
+
+    regions = '['+str(nx/2-nx/4)+':'+str(nx/2+nx/4)+','+str(ny/2-ny/4)+':'+str(ny/2+ny/4)+']'
+    #regions = '[*,*]'
     # print 'input = ', input
+    print('xwindow,ywindow',ir.xregister.xwindow,ir.xregister.ywindow)
     print('refImage = ', refImage)
     print('regions = ', regions)
     print('shiftFile = ', shiftFile)
@@ -1638,6 +1660,10 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
     aotsxy = nirc2_util.getAotsxy(hdr)
+    
+    if instrument.name == 'OSIRIS':
+        print('clean_makecoo: aotsxy',aotsxy)
+        aotsxy = np.array([-aotsxy[0],-aotsxy[1]])
 
     # Determine the image's PA and plate scale
     phi = instrument.get_position_angle(hdr)

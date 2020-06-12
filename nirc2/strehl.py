@@ -3,6 +3,7 @@ import pylab as plt
 from astropy.io import fits
 from astropy.nddata import Cutout2D
 from astropy.modeling import models, fitting
+import astropy
 import os
 from photutils import CircularAperture, CircularAnnulus, aperture_photometry
 from nirc2 import instruments
@@ -88,21 +89,29 @@ def calc_strehl(file_list, out_file, apersize=0.3, instrument=instruments.defaul
     # We will normalize our Strehl by this value. We will do the same on the
     # data later on.
     peak_coords_dl = np.unravel_index(np.argmax(dl_img, axis=None), dl_img.shape)    
-
+    print('Strehl using peak coordinates',peak_coords_dl)
     # Calculate the peak flux ratio
-    dl_peak_flux_ratio = calc_peak_flux_ratio(dl_img, peak_coords_dl, radius)
+    try:
+        dl_peak_flux_ratio = calc_peak_flux_ratio(dl_img, peak_coords_dl, radius)
 
-    # For each image, get the strehl, FWHM, RMS WFE, MJD, etc. and write to an
-    # output file. 
-    for ii in range(len(file_list)):
-        strehl, fwhm, rmswfe = calc_strehl_single(file_list[ii], radius, dl_peak_flux_ratio,
-                                                  instrument=instrument)
-        mjd = fits.getval(file_list[ii], instrument.hdr_keys['mjd'])
-        dirname, filename = os.path.split(file_list[ii])
+        # For each image, get the strehl, FWHM, RMS WFE, MJD, etc. and write to an
+        # output file. 
+        for ii in range(len(file_list)):
+            strehl, fwhm, rmswfe = calc_strehl_single(file_list[ii], radius, 
+            dl_peak_flux_ratio, instrument=instrument)
+            mjd = fits.getval(file_list[ii], instrument.hdr_keys['mjd'])
+            dirname, filename = os.path.split(file_list[ii])
 
-        _out.write(fmt_dat.format(img=filename, strehl=strehl, rms=rmswfe, fwhm=fwhm, mjd=mjd))
-        
-    _out.close()
+            _out.write(fmt_dat.format(img=filename, strehl=strehl, rms=rmswfe, fwhm=fwhm, mjd=mjd))
+            
+        _out.close()
+    except astropy.nddata.PartialOverlapError:
+        print("calc_strehl has caught an exception, not calculating Strehl: astropy.nddata.PartialOverlapError")
+        for ii in range(len(file_list)):
+            _out.write(fmt_dat.format(img=filename, strehl=-1.0, rms=-1.0, fwhm=-1.0, mjd=mjd))
+            
+        _out.close()
+  
     
     return
 

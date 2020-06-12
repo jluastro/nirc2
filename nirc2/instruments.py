@@ -255,12 +255,41 @@ class OSIRIS(Instrument):
             hdu_list.writeto(new_file, overwrite=True)
 
             # Add header values. 
-            fits.setval(new_file, 'EFFWAVE', value= 2.1245) # from NIRC2
-            fits.setval(new_file, 'CENWAVE', value= 2.1245) # from NIRC2
+            wave = self.get_central_wavelength(hdu_list[0].header)
+
+            fits.setval(new_file, 'EFFWAVE', value= wave)
+            fits.setval(new_file, 'CENWAVE', value= wave)
             fits.setval(new_file, 'CAMNAME', value = 'narrow') # from NIRC2
             
         return
+
+    def flip_images_y(self, files, rootDir=''):
+        '''
+        Flip the OSIRIS images in the y-direction (as of 2020, 
+        this is the correct orientation)
+        '''
+        for ff in range(len(files)):
+            old_file = files[ff]
+            new_file = files[ff].replace('.fits', '_yflip.fits')
             
+            hdu_list = fits.open(old_file)
+
+            for hh in range(len(hdu_list)):
+                if isinstance(hdu_list[hh], _ImageBaseHDU):
+                    hdu_list[hh].data = hdu_list[hh].data[::-1, :]
+
+            hdu_list.writeto(new_file, overwrite=True)
+
+            # Add header values. 
+            wave = self.get_central_wavelength(hdu_list[0].header)
+
+            fits.setval(new_file, 'EFFWAVE', value= wave)
+            fits.setval(new_file, 'CENWAVE', value= wave)
+            fits.setval(new_file, 'CAMNAME', value = 'narrow') # from NIRC2
+
+            
+        return
+
     def get_distortion_maps(self, hdr):
         distXgeoim = None
         distYgeoim = None
