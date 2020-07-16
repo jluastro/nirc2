@@ -133,16 +133,22 @@ def calc_strehl_single(img_file, radius, dl_peak_flux_ratio, instrument=instrume
     fwhm_boxsize = int(np.ceil((4 * dl_res_in_pix)))
     if fwhm_boxsize < 3:
         fwhm_boxsize = 3
+    pos_delta_max = 2*fwhm_min
     box_scale = 1.0
     iters = 0
 
     # Steadily increase the boxsize until we get a reasonable FWHM estimate.
-    while (fwhm < fwhm_min) or (fwhm > fwhm_max):
+    while ((fwhm < fwhm_min) or (fwhm > fwhm_max)) and (iters < 30):
         box_scale += iters * 0.1
         iters += 1
-        g2d = fit_gaussian2d(img, coords, fwhm_boxsize*box_scale)
+        g2d = fit_gaussian2d(img, coords, fwhm_boxsize*box_scale,
+                                 fwhm_min=0.8*fwhm_min, fwhm_max=fwhm_max,
+                                 pos_delta_max=pos_delta_max)
         stddev = (g2d.x_stddev_0.value + g2d.y_stddev_0.value) / 2.0
         fwhm = 2.355 * stddev
+
+        print(img_file.split('/')[-1], iters, fwhm,
+                  g2d.x_mean_0.value, g2d.y_mean_0.value, fwhm_boxsize*box_scale)
 
         # Update the coordinates if they are reasonable. 
         if ((np.abs(g2d.x_mean_0.value - coords[0]) < fwhm_boxsize) and
@@ -213,18 +219,28 @@ def calc_peak_flux_ratio(img, coords, radius):
     
     return peak_flux_ratio
 
-def fit_gaussian2d(img, coords, boxsize, plot=False):
+def fit_gaussian2d(img, coords, boxsize, plot=False,
+                       fwhm_min=1.7, fwhm_max=30, pos_delta_max=1.7):
     """
     Calculate the FWHM of an objected located at the pixel
     coordinates in the image. The FWHM will be estimated 
     from a cutout with the specified boxsize.
 
+    Parameters
+    ----------
     img : ndarray, 2D
         The image where a star is located for calculating a FWHM.
     coords : len=2 ndarray
         The [x, y] pixel position of the star in the image. 
     boxsize : int
         The size of the box (on the side), in pixels.
+    fwhm_min : float, optional
+        The minimum allowed FWHM for constraining the fit (pixels).
+    fwhm_max : float, optional
+        The maximum allowed FWHM for constraining the fit (pixels).
+    pos_delta_max : float, optional
+        The maximum allowed positional offset for constraining the fit (pixels).
+        This ensures that the fitter doesn't wonder off to a bad pixel.
     """
     cutout_obj = Cutout2D(img, coords, boxsize, mode='strict')
     cutout = cutout_obj.data
@@ -233,12 +249,28 @@ def fit_gaussian2d(img, coords, boxsize, plot=False):
     x2d, y2d = np.meshgrid(x1d, y1d)
     
     # Setup our model with some initial guess
-    g2d_init = models.Gaussian2D(x_mean = boxsize/2.0,
-                                 y_mean = boxsize/2.0,
-                                 x_stddev=2,
-                                 y_stddev=2,
+    x_init = boxsize/2.0
+    y_init = boxsize/2.0
+    stddev_init = fwhm_to_stddev(fwhm_min)
+    
+    g2d_init = models.Gaussian2D(x_mean = x_init,
+                                 y_mean = y_init,
+                                 x_stddev = stddev_init,
+                                 y_stddev = stddev_init,
                                  amplitude=cutout.max())
     g2d_init += models.Const2D(amplitude=0.0)
+    g2d_init.x_stddev_0.min = fwhm_to_stddev(fwhm_min)
+    g2d_init.y_stddev_0.min = fwhm_to_stddev(fwhm_min)
+    g2d_init.x_stddev_0.max = fwhm_to_stddev(fwhm_max)
+    g2d_init.y_stddev_0.max = fwhm_to_stddev(fwhm_max)
+
+    g2d_init.x_mean_0.min = x_init - pos_delta_max
+    g2d_init.x_mean_0.max = x_init + pos_delta_max
+    g2d_init.y_mean_0.min = y_init - pos_delta_max
+    g2d_init.y_mean_0.max = y_init + pos_delta_max
+    
+    # print(g2d_init)
+    # pdb.set_trace()
 
     fit_g = fitting.LevMarLSQFitter()
     g2d = fit_g(g2d_init, x2d, y2d, cutout)
@@ -271,4 +303,10 @@ def fit_gaussian2d(img, coords, boxsize, plot=False):
     g2d.y_mean_0 = origin_pos[1]
     
     return g2d
+    
+def fwhm_to_stddev(fwhm):
+    return fwhm / 2.355
+
+def stddev_to_fwhm(stddev):
+    return 2.355 * stddev
     

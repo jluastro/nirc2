@@ -250,7 +250,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Rename and clean up files ###
             ir.imrename(_bp, _cd)
-            util.rmall([_cp, _ss, _ff, _ff_f])
+            # util.rmall([_cp, _ss, _ff, _ff_f])
 
             ### Make the *.coo file and update headers ###
             # First check if PA is not zero
@@ -1433,7 +1433,7 @@ def clean_drizzle(xgeoim, ygeoim, _bp, _cd, _wgt, _dlog, fixDAR=True, instrument
     if (fixDAR == True):
         darRoot = _cd.replace('.fits', 'geo')
 
-        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim, ygeoim)
+        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim, ygeoim, instrument=instrument)
 
         ir.drizzle.xgeoim = xgeoim
         ir.drizzle.ygeoim = ygeoim

@@ -220,7 +220,14 @@ class OSIRIS(Instrument):
         Return the central wavelength of the filter for 
         this observation in microns.
         """
-        return float(hdr['CENWAVE'])
+        filt_name = hdr['IFILTER']
+
+        # These are very approximate for now.
+        wave_dict = {'Kp-LHex': 2.12,
+                     'Kn3-LHex': 2.12,
+                     'Hbb-LHex': 1.65}
+        
+        return wave_dict[filt_name]
     
     def get_gain(self, hdr):
         return hdr['DETGAIN']
@@ -231,6 +238,10 @@ class OSIRIS(Instrument):
         return file_names
 
     def flip_images(self, files, rootDir=''):
+        """
+        Flip images (as they come from the detector flipped) and
+        subtract reference pixels.
+        """
         for ff in range(len(files)):
             old_file = files[ff]
             new_file = files[ff].replace('.fits', '_flip.fits')
@@ -243,10 +254,13 @@ class OSIRIS(Instrument):
 
             for hh in range(len(hdu_list)):
                 if isinstance(hdu_list[hh], _ImageBaseHDU):
+                    # Subtract the reference pixels
+                    new_data = self.subtract_reference_pixels(hdu_list[hh].data)
+                    
                     if year == 2019:
-                        hdu_list[hh].data = hdu_list[hh].data[:, ::-1]
+                        hdu_list[hh].data = new_data[:, ::-1]
                     else:
-                        hdu_list[hh].data = hdu_list[hh].data[::-1, :]
+                        hdu_list[hh].data = new_data[::-1, :]
 
             hdu_list.writeto(new_file, overwrite=True)
 
@@ -254,7 +268,14 @@ class OSIRIS(Instrument):
             fits.setval(new_file, 'CAMNAME', value = 'narrow') # from NIRC2
             
         return
-            
+
+    def subtract_reference_pixels(self, img):
+        horiz_ref_pixels = np.concatenate([img[:, 0:4], img[:, -4:]], axis=1)
+        ref_pix_median = np.median(horiz_ref_pixels, axis=1)
+        new_img = img - np.array([ref_pix_median]).T
+    
+        return new_img
+
     def get_distortion_maps(self, hdr):
         distXgeoim = None
         distYgeoim = None
