@@ -5,6 +5,7 @@ from astropy import stats
 from pyraf import iraf as ir
 from nirc2 import instruments
 import numpy as np
+from astropy import stats
 
 module_dir = os.path.dirname(__file__)
 
@@ -338,8 +339,12 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
         # Get the sigma-clipped mean and stddev on the dark
         img_dk = fits.getdata(darkDir + fileName)
         dark_stats = stats.sigma_clipped_stats(img_dk,
+<<<<<<< HEAD
+                                               sigma=3)
+=======
                                                sigma=3,
                                                iters=10)
+>>>>>>> b56db6103d322641113ad41fa197b38d448c0f84
         darkMean = dark_stats[0]
         darkStdv = dark_stats[2]
 

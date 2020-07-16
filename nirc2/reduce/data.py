@@ -145,6 +145,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         radecRef = [float(hdr1['RA']), float(hdr1['DEC'])]
         aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
+        if instrument.name == 'OSIRIS':
+            aotsxyRef = np.array([-aotsxyRef[0],-aotsxyRef[1]])
+
         # Setup a Sky object that will figure out the sky subtraction
         skyDir = waveDir + 'sky_' + nite + '/'
         skyObj = Sky(sciDir, skyDir, wave, scale=skyscale,
@@ -433,7 +436,17 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     ##########
 
     # Load the strehl_source.txt file
-    strehls, fwhm = loadStrehl(cleanDir, roots)
+    if (weight is not None) or os.path.exists(os.path.join(cleanDir,'strehl_source.txt')):
+        strehls, fwhm = loadStrehl(cleanDir, roots) 
+    else:
+        # if the file doesn't exist don't use
+        print('combine: the strehl_source file does not exist: '+os.path.join(cleanDir,'strehl_source.txt'))
+
+        # fill out some variables for later use
+        strehls = np.zeros(len(roots))-1.0
+        fwhm = np.zeros(len(roots)) -1.0
+        trim = False
+
 
     # Default weights
     # Create an array with length equal to number of frames used,
@@ -786,7 +799,7 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Get the distortion maps for this instrument.
     hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
     distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
-
+    
     print('combine: drizzling images together')
     f_dlog = open(_dlog, 'a')
     for i in range(len(roots)):
@@ -825,7 +838,8 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             darRoot = _cdwt.replace('.fits', 'geo')
             (xgeoim, ygeoim) = dar.darPlusDistortion(_cdwt, darRoot,
                                                      xgeoim=distXgeoim,
-                                                     ygeoim=distYgeoim)
+                                                     ygeoim=distYgeoim,
+                                                     instrument=instrument)
 
             xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
             ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
@@ -970,18 +984,25 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     # Get the distortion maps for this instrument.
     hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
     distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
-    
+
+    # Set a cleanDir variable in IRAF. This avoids the long-filename problem.
+    ir.set(cleanDir=cleanDir)
+
     for i in range(len(roots)):
         # Cleaned image
         _c = cleanDir + 'c' + roots[i] + '.fits'
-        
+        _c_ir = _c.replace(cleanDir, 'cleanDir$')
+
         # Cleaned but distorted image
         _cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
         cdwt = cleanDir + 'weight/cdwt.fits'
-        
+        _cd_ir = _cd.replace(cleanDir, 'cleanDir$')
+        _cdwt_ir = cdwt.replace(cleanDir, 'cleanDir$')
+
         # Multiply each distorted image by it's weight
         util.rmall([cdwt])
-        ir.imarith(_cd, '*', weights[i], cdwt)
+
+        ir.imarith(_cd, '*', weights[i], _cdwt_ir)
         
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
@@ -1023,9 +1044,13 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         
         if (fixDAR == True):
             darRoot = cdwt.replace('.fits', 'geo')
+            print('submap: ',cdwt)
             (xgeoim, ygeoim) = dar.darPlusDistortion(cdwt, darRoot,
                                                      xgeoim=distXgeoim,
-                                                     ygeoim=distYgeoim)
+                                                     ygeoim=distYgeoim,
+                                                     instrument=instrument)
+            xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
+            ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
         else:
@@ -1040,7 +1065,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         log.write(time.ctime())
 
         if (mask == True):
-            _mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
+            _mask = 'cleanDir$masks/mask' + roots[i] + '.fits'
+            #_mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
         else:
             _mask = ''
         ir.drizzle.in_mask = _mask
@@ -1048,7 +1074,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
 
-        ir.drizzle(cdwt, fits_im, Stdout=log)
+        ir.drizzle(_cdwt_ir, fits_im, Stdout=log)
     
     # Calculate weighted MJDs for each submap
     mjd_weightedMeans = mjd_weightedSums / weightsTot
@@ -1278,7 +1304,10 @@ def combine_register(outroot, refImage, diffPA):
     ir.xregister.append = 'no'
     ir.xregister.databasefmt = 'no'
     ir.xregister.verbose = 'no'
-
+    ir.xregister.xwindow='30'
+    ir.xregister.ywindow='30'
+    ir.xregister.correlation='fourier'
+    ir.xregister.function='centroid'
 
     print('combine: registering images')
     if (diffPA == 1):
@@ -1286,8 +1315,14 @@ def combine_register(outroot, refImage, diffPA):
     else:
         input = '@' + outroot + '.lis'
 
-    regions = '[*,*]'
+    hdu = fits.open(refImage)
+    nx = hdu[0].header['NAXIS1']
+    ny = hdu[0].header['NAXIS2']
+
+    regions = '['+str(nx/2-nx/4)+':'+str(nx/2+nx/4)+','+str(ny/2-ny/4)+':'+str(ny/2+ny/4)+']'
+    #regions = '[*,*]'
     # print 'input = ', input
+    print('xwindow,ywindow',ir.xregister.xwindow,ir.xregister.ywindow)
     print('refImage = ', refImage)
     print('regions = ', regions)
     print('shiftFile = ', shiftFile)
@@ -1433,7 +1468,8 @@ def clean_drizzle(xgeoim, ygeoim, _bp, _cd, _wgt, _dlog, fixDAR=True, instrument
     if (fixDAR == True):
         darRoot = _cd.replace('.fits', 'geo')
 
-        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim, ygeoim)
+        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim,
+                                                 ygeoim,instrument=instrument)
 
         ir.drizzle.xgeoim = xgeoim
         ir.drizzle.ygeoim = ygeoim
@@ -1624,6 +1660,10 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
     aotsxy = nirc2_util.getAotsxy(hdr)
+    
+    if instrument.name == 'OSIRIS':
+        print('clean_makecoo: aotsxy',aotsxy)
+        aotsxy = np.array([-aotsxy[0],-aotsxy[1]])
 
     # Determine the image's PA and plate scale
     phi = instrument.get_position_angle(hdr)
