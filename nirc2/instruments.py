@@ -227,7 +227,10 @@ class OSIRIS(Instrument):
         wave_dict = {'Kp-LHex': 2.12,
                      'Kn3-LHex': 2.12,
                      'Hbb-LHex': 1.65,
-                     'Drk': 0.00}
+                     'Drk': 0.00,
+                     'Kp': 2.12,
+                     'Kn3': 2.12,
+                     'Hbb': 1.65}
         
         return wave_dict[filt_name]
     
