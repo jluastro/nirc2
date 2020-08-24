@@ -189,7 +189,8 @@ class OSIRIS(Instrument):
         return
     
     def get_filter_name(self, hdr):
-        return hdr['ifilter']
+        f= hdr['ifilter']
+        return f.split('-')[0]
         
     def get_plate_scale(self, hdr):
         """
@@ -225,7 +226,8 @@ class OSIRIS(Instrument):
         # These are very approximate for now.
         wave_dict = {'Kp-LHex': 2.12,
                      'Kn3-LHex': 2.12,
-                     'Hbb-LHex': 1.65}
+                     'Hbb-LHex': 1.65,
+                     'Drk': 0.00}
         
         return wave_dict[filt_name]
     
@@ -265,9 +267,14 @@ class OSIRIS(Instrument):
             hdu_list.writeto(new_file, overwrite=True)
 
             # Add header values. 
+            wave = self.get_central_wavelength(hdu_list[0].header)
+
+            fits.setval(new_file, 'EFFWAVE', value= wave)
+            fits.setval(new_file, 'CENWAVE', value= wave)
             fits.setval(new_file, 'CAMNAME', value = 'narrow') # from NIRC2
             
         return
+
 
     def subtract_reference_pixels(self, img):
         horiz_ref_pixels = np.concatenate([img[:, 0:4], img[:, -4:]], axis=1)

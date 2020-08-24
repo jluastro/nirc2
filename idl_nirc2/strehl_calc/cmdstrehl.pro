@@ -27,7 +27,6 @@
 ;@strehl_data_struc_default.pro
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 pro calc_cmdstrehl, strehl
-
 ;----------
 ; Find the root directory where the calibration files live.
 ;----------
@@ -72,8 +71,8 @@ pro calc_cmdstrehl, strehl
     if ((xcur gt 0 and ycur gt 0 and error eq 0) or $
         strehl.autofind eq 1) then begin
 
-        cntrd,image,xcur,ycur,x,y,radius,/silent
-        print, string(strehl.filename_im), x, y, xcur, ycur
+        cntrd,image,xcur,ycur,x,y,radius,silent=strehl.silent
+
 ;    display, image
         if (x ne -1 and y ne -1) then begin
             params = []
@@ -105,7 +104,6 @@ pro calc_cmdstrehl, strehl
             yc=params(5)
             rot=params(6)*180./!pi
             
-            stop
             strehl.fwhm=(xsig+ysig)*2.355/2.*strehl.plate_scale
             starflux=bmacaper(image,photrad,x,y,photrad+20,photrad+30,$
                               maskkcam=0,skyout=apersky,skyval=bgval)
@@ -114,6 +112,9 @@ pro calc_cmdstrehl, strehl
             sky=bgval	 
             params(0)=bgval	
             strehl.strehlim=(peak/strehl.starflux)/strehl.strehlone
+            ;print, 'Strehl = ' + string(peak) + ' (peak) / ' + string(strehl.starflux) + $
+            ;       ' (starflux) / ' + string(strehl.strehlone) + ' (strehlone)'
+            ;print, 'peak flux ratio = ' + string(peak/strehl.starflux) + ', dl peak flux ratio = ' + string(strehl.strehlone)
             
             if ((x-2*radius+1 ge 0) and $
                 (y-2*radius+1 ge 0) and $
@@ -156,7 +157,9 @@ pro calc_cmdstrehl, strehl
                     print, 'Image'+strcompress(strehl.imno,/remove_all)+$
                            ' S = '+string(strehl.strehlim,format='$(f6.3)')+$
                            ' RMS err = ' +string(rms_error,format='$(f6.1)')+' nm  '+$
-                           'FWHM = '+string(strehl.fwhm,format='$(f6.2)')+' mas'
+                           'FWHM = '+string(strehl.fwhm,format='$(f6.2)')+' mas at '+$
+                           'xpos = '+string(xcur, format='$(f6.1)')+' '+$
+                           'ypos = '+string(ycur, format='$(f6.1)')                           
                 endif
                 
                 if strehl.output ne 'none' then begin
@@ -169,7 +172,9 @@ pro calc_cmdstrehl, strehl
                     print, strcompress(strehl.filename_im,/remove_all)+$
                            ' S = '+string(strehl.strehlim,format='$(f6.3)')+$
                            ' RMS err = ' +string(rms_error,format='$(f6.1)')+' nm  '+$
-                           'FWHM = '+string(strehl.fwhm,format='$(f6.2)')+' mas'
+                           'FWHM = '+string(strehl.fwhm,format='$(f6.2)')+' mas at '+$
+                           'xpos = '+string(xcur, format='$(f6.1)')+' '+$
+                           'ypos = '+string(ycur, format='$(f6.1)')
                 endif
 
                 find_slash=strpos(strehl.filename_im,'/',/reverse_search)
@@ -374,6 +379,8 @@ function cmdstrehl, strehl
         ;; find the total flux in the image
         refflux=bmacaper(strehl.dl_im,strehl.photrad,ctr,ctr,strehl.photrad+20,strehl.photrad+30,maskkcam=0,skyval=0.)
         ;; find the reference intensity
+        ;print, 'dlpeak = ' + string(dlpeak)
+        ;print, 'refflux = ' + string(refflux)
         strehl.strehlone=dlpeak/refflux(0)
         
 ;    strehl.wavelength=central_wavelength(strehl.filt)
