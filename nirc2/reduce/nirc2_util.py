@@ -10,7 +10,7 @@ from astropy.table import Table
 import numpy as np
 import math
 from nirc2 import instruments
-import util
+from nirc2.reduce import util
 
 def nirc2log(directory):
     makelog(directory, outfile='nirc2.log')
