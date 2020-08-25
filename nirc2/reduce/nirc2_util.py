@@ -10,6 +10,7 @@ from astropy.table import Table
 import numpy as np
 import math
 from nirc2 import instruments
+import util
 
 def nirc2log(directory):
     makelog(directory, outfile='nirc2.log')
@@ -27,6 +28,11 @@ def makelog(directory, outfile='image_log.txt', instrument=instruments.default_i
     """
     if not os.access(directory, os.F_OK):
         print(( 'Cannot access directory ' + directory ))
+
+    # Remove old *flip files and the old log.
+    old = glob.glob(directory + '/*flip.fits')
+    util.rmall(old)
+    util.rmall([directory+'image_log.txt'])
 
     files = glob.glob(directory + '/*.fits')
     files.sort()
@@ -60,6 +66,10 @@ def makelog(directory, outfile='image_log.txt', instrument=instruments.default_i
 
         # Shutter state
         f.write('%-6s ' % hdr[ihk['shutter']])
+
+        # TRICK dichroic (only for OSIRIS)
+        if isinstance(instrument, instruments.OSIRIS):
+            f.write('%-6s ' % hdr['OBTDNAME'])
 
         # End of this line
         f.write('\n')
