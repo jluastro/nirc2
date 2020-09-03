@@ -226,6 +226,8 @@ class OSIRIS(Instrument):
         # These are very approximate for now.
         wave_dict = {'Kp-LHex': 2.12,
                      'Kn3-LHex': 2.12,
+                     'Kcont-LHex': 2.270,
+                     'Kcont': 2.270,
                      'Hbb-LHex': 1.65,
                      'Drk': 0.00,
                      'Kp': 2.12,
