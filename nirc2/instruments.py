@@ -264,10 +264,11 @@ class OSIRIS(Instrument):
                     # Subtract the reference pixels
                     new_data = self.subtract_reference_pixels(hdu_list[hh].data)
                     
-                    if year == 2019:
-                        hdu_list[hh].data = new_data[:, ::-1]
-                    else:
-                        hdu_list[hh].data = new_data[::-1, :]
+                    # if year == 2019:
+                    #     hdu_list[hh].data = new_data[:, ::-1]
+                    # else:
+                    #     hdu_list[hh].data = new_data[::-1, :]
+                    hdu_list[hh].data = new_data[::-1, :]
 
             hdu_list.writeto(new_file, overwrite=True)
 
