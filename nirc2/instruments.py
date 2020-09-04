@@ -231,8 +231,10 @@ class OSIRIS(Instrument):
                      'Hbb-LHex': 1.65,
                      'Drk': 0.00,
                      'Kp': 2.12,
+                     'Kp-sHex': 2.12,
                      'Kn3': 2.12,
-                     'Hbb': 1.65}
+                     'Hbb': 1.65,
+                     'BrGamma':2.169}
         
         return wave_dict[filt_name]
     
