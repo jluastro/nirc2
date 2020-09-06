@@ -260,13 +260,15 @@ class OSIRIS(Instrument):
             # Fetch the date and figure out how to
             # best flip the images.
             year = int(hdu_list[0].header['DATE-OBS'].split('-')[0])
+            month = int(hdu_list[0].header['DATE-OBS'].split('-')[1])
+            date = int(hdu_list[0].header['DATE-OBS'].split('-')[2])
 
             for hh in range(len(hdu_list)):
                 if isinstance(hdu_list[hh], _ImageBaseHDU):
                     # Subtract the reference pixels
                     new_data = self.subtract_reference_pixels(hdu_list[hh].data)
                     
-                    if year == 2019:
+                    if year == 2019 or (year == 2020 and month == 5 and date == 25):
                         hdu_list[hh].data = new_data[:, ::-1]
                     else:
                         hdu_list[hh].data = new_data[::-1, :]
