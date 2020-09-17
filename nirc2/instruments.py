@@ -272,6 +272,8 @@ class OSIRIS(Instrument):
             # Fetch the date and figure out how to
             # best flip the images.
             year = int(hdu_list[0].header['DATE-OBS'].split('-')[0])
+            month = int(hdu_list[0].header['DATE-OBS'].split('-')[1])
+            date = int(hdu_list[0].header['DATE-OBS'].split('-')[2])
 
             for hh in range(len(hdu_list)):
                 if isinstance(hdu_list[hh], _ImageBaseHDU):
