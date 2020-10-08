@@ -204,7 +204,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Make persistance mask ###
             # - Checked images, this doesn't appear to be a large effect.
-            #clean_persistance(_cp, _pers)
+            #clean_persistance(_cp, _pers, instrument=instrument)
 
             ### Sky subtract ###
             # Get the proper sky for this science frame.
@@ -247,8 +247,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             # for every frame.
             nonlinSky = skyObj.getNonlinearCorrection(sky)
 
-            coadds =fits.getval(_ss, instrument.hdr_keys['coadds'])
-            satLevel = (coadds*12000.0) - nonlinSky - bkg
+            coadds = fits.getval(_ss, instrument.hdr_keys['coadds'])
+            satLevel = (coadds*instrument.get_saturation_level()) - nonlinSky - bkg
             file(_max, 'w').write(str(satLevel))
 
             ### Rename and clean up files ###
@@ -1575,7 +1575,7 @@ def clean_cosmicrays2(_ff, _ff_cr, _mask, wave,
 
     return
 
-def clean_persistance(_n, _pers):
+def clean_persistance(_n, _pers, instrument=instruments.default_inst):
     """
     Make masks of the persistance to be used in combining the images
     later on.
@@ -1585,7 +1585,7 @@ def clean_persistance(_n, _pers):
     img = fits_f[0].data
 
     # Define the high pixels
-    persPixels = where(img > 12000)
+    persPixels = where(img > instrument.get_saturation_level())
 
     # Set saturated pixels to 0, good pixels to 1
     fits_f[0].data[persPixels] = 0

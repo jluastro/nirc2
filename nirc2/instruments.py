@@ -44,6 +44,9 @@ class Instrument(object):
     
     def get_align_type(self, errors=False):
         pass
+
+    def get_saturation_level(self):
+        pass
     
 class NIRC2(Instrument):
     def __init__(self):
@@ -158,6 +161,13 @@ class NIRC2(Instrument):
 
         return atype
 
+    def get_saturation_level(self):
+        """
+        Set to the 95% saturation threshold in DN.
+        """
+        return 12000.0
+
+
 
 class OSIRIS(Instrument):
     def __init__(self):
@@ -234,7 +244,9 @@ class OSIRIS(Instrument):
                      'Kp-sHex': 2.12,
                      'Kn3': 2.12,
                      'Hbb': 1.65,
-                     'BrGamma':2.169}
+                     'BrGamma':2.169,
+                     'BrGamma-sAnn':2.169
+                         }
         
         return wave_dict[filt_name]
     
@@ -268,10 +280,11 @@ class OSIRIS(Instrument):
                     # Subtract the reference pixels
                     new_data = self.subtract_reference_pixels(hdu_list[hh].data)
                     
-                    if year == 2019 or (year == 2020 and month == 5 and date == 25):
-                        hdu_list[hh].data = new_data[:, ::-1]
-                    else:
-                        hdu_list[hh].data = new_data[::-1, :]
+                    # if year == 2019:
+                    #     hdu_list[hh].data = new_data[:, ::-1]
+                    # else:
+                    #     hdu_list[hh].data = new_data[::-1, :]
+                    hdu_list[hh].data = new_data[::-1, :]
 
             hdu_list.writeto(new_file, overwrite=True)
 
@@ -305,6 +318,12 @@ class OSIRIS(Instrument):
             atype += 1
 
         return atype
+    
+    def get_saturation_level(self):
+        """
+        Set to the 95% saturation threshold in DN.
+        """
+        return 20000.0
     
 
 ##################################################
