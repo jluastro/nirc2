@@ -145,9 +145,6 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         radecRef = [float(hdr1['RA']), float(hdr1['DEC'])]
         aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
-        if instrument.name == 'OSIRIS':
-            aotsxyRef = np.array([-aotsxyRef[0],-aotsxyRef[1]])
-
         # Setup a Sky object that will figure out the sky subtraction
         skyDir = waveDir + 'sky_' + nite + '/'
         skyObj = Sky(sciDir, skyDir, wave, scale=skyscale,
@@ -1659,10 +1656,6 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
     aotsxy = nirc2_util.getAotsxy(hdr)
-    
-    if instrument.name == 'OSIRIS':
-        print('clean_makecoo: aotsxy',aotsxy)
-        aotsxy = np.array([-aotsxy[0],-aotsxy[1]])
 
     # Determine the image's PA and plate scale
     phi = instrument.get_position_angle(hdr)
@@ -1682,6 +1675,7 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
     yref = refSrc[1] + d_xy[1]
     xstr = strSrc[0] + d_xy[0]
     ystr = strSrc[1] + d_xy[1]
+    print('clean_makecoo: xref, yref start = ', xref, yref)
 
     # re-center stars to get exact coordinates
     if check_loc:
@@ -1695,6 +1689,7 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
         values = text[0].split()
         xstr = float(values[2])
         ystr = float(values[4])
+        print('clean_makecoo: xref, yref final = ', xref, yref)
 
     # write reference star x,y to fits header
     fits_f = fits.open(_ce)
