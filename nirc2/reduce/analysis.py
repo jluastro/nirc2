@@ -23,7 +23,7 @@ class Analysis(object):
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis',
                  instrument=instruments.default_inst,
-                 airopa_mode='legacy'):
+                 airopa_mode='legacy', stf_version=None):
 
         # Setup default parameters
         self.type = 'ao'
@@ -94,10 +94,15 @@ class Analysis(object):
         self.dirCleanAln = self.dirCleanStf + 'align/'
 
         self.dirCombo = self.dirEpoch + 'combo/'
+        
+        starfinder_dir_name = 'starfinder/'
+        if stf_version is not None:
+            starfinder_dir_name = 'starfinder_{0}/'.format(stf_version)
+        
         if stfDir != None:
-            self.dirComboStf = self.dirCombo + 'starfinder/' + stfDir + '/'
+            self.dirComboStf = self.dirCombo + starfinder_dir_name + stfDir + '/'
         else:
-            self.dirComboStf = self.dirCombo + 'starfinder/'
+            self.dirComboStf = self.dirCombo + starfinder_dir_name
         self.dirComboAln = self.dirComboStf + 'align/'
 
         # make the directories if we need to
@@ -215,7 +220,35 @@ class Analysis(object):
             #os.system(cmd)
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
-
+            
+            
+            # Copy over the starfinder FITS files to the current directory
+            epoch_file_root = 'mag{0}_{1}'.format(self.epoch, self.filt)
+            
+            shutil.copyfile(self.dirCombo + epoch_file_root + '_back.fits',
+                            epoch_file_root + '_back.fits')
+            shutil.copyfile(self.dirCombo + epoch_file_root + '_psf.fits',
+                            epoch_file_root + '_psf.fits')
+            shutil.copyfile(self.dirCombo + epoch_file_root + '_res.fits',
+                            epoch_file_root + '_res.fits')
+            shutil.copyfile(self.dirCombo + epoch_file_root + '_stars.fits',
+                            epoch_file_root + '_stars.fits')
+            
+            # Copy over submap starfinder FITS files to the current directory
+            epoch_sub_root = 'm{0}_{1}'.format(self.epoch, self.filt)
+            
+            for cur_sub_index in range(self.numSubMaps):
+                cur_sub_str = str(cur_sub_index + 1)
+                            
+                shutil.copyfile(self.dirCombo + epoch_sub_root + '_' + cur_sub_str + '_back.fits',
+                                epoch_sub_root + '_' + cur_sub_str + '_back.fits')
+                shutil.copyfile(self.dirCombo + epoch_sub_root + '_' + cur_sub_str + '_psf.fits',
+                                epoch_sub_root + '_' + cur_sub_str + '_psf.fits')
+                shutil.copyfile(self.dirCombo + epoch_sub_root + '_' + cur_sub_str + '_res.fits',
+                                epoch_sub_root + '_' + cur_sub_str + '_res.fits')
+                shutil.copyfile(self.dirCombo + epoch_sub_root + '_' + cur_sub_str + '_stars.fits',
+                                epoch_sub_root + '_' + cur_sub_str + '_stars.fits')
+            
             # Copy over the PSF starlist that was used (for posterity).
             outPsfs = 'mag%s%s_%s_psf_list.txt' % (self.epoch, self.imgSuffix, self.filt)
             shutil.copyfile(self.starlist, outPsfs)
