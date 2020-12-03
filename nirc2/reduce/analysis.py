@@ -22,14 +22,15 @@ class Analysis(object):
     def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis',
-                 instrument=instruments.default_inst):
+                 instrument=instruments.default_inst,
+                 airopa_mode='legacy'):
 
         # Setup default parameters
         self.type = 'ao'
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
-        self.airopa_mode = 'single'  # could also be "legacy" or "variable"
+        self.airopa_mode = airopa_mode      # can be "legacy", "single", or "variable"
         self.trimfake = 1
         self.stfFlags = ''
 
