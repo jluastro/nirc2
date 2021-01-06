@@ -341,6 +341,7 @@ class Analysis(object):
             cmd += '-N %s ' % self.calFile
             cmd += '-M %s ' % self.calColumn
             cmd += '-c %d ' % calCamera
+            cmd += '-V '
             if (self.calStars != None) and (len(self.calStars) > 0):
                 cmd += '-S '
                 for cc in range(len(self.calStars)):

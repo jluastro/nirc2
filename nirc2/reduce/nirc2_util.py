@@ -181,8 +181,8 @@ def aotsxy2pix(aotsxy, scale, aotsxyRef, inst_angle=0.0):
     d_y = d_y * (1.0/scale)
 
     # Rotate to the instrument PA
-    cosa = np.cos(np.radians(inst_angle))
-    sina = np.sin(np.radians(inst_angle))
+    cosa = np.cos(np.radians(-inst_angle))
+    sina = np.sin(np.radians(-inst_angle))
 
     rot_matrix = np.array([[cosa, sina], [-sina, cosa]])
     coo_ao = np.array([d_x, d_y])

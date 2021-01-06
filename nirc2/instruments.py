@@ -18,19 +18,26 @@ class Instrument(object):
         self.hdr_keys['filename'] = 'filename'
         
         return
+    
     def get_bad_pixel_mask_name(self):
         return self.bad_pixel_mask
 
     def get_filter_name(self, hdr):
         pass
 
-    def get_filter_name(self, hdr):
+    def get_plate_scale(self, hdr):
         pass
 
-    def get_filter_name(self, hdr):
+    def get_position_angle(self, hdr):
         pass
 
-    def get_filter_name(self, hdr):
+    def get_instrument_angle(self, hdr):
+        pass
+    
+    def get_central_wavelength(self, hdr):
+        pass
+    
+    def get_gain(self, hdr):
         pass
     
     def make_filenames(self, files, rootDir='', prefix='n'):
@@ -39,9 +46,6 @@ class Instrument(object):
     def get_distortion_maps(self, date):
         pass
 
-    def get_gain(self, hdr):
-        pass
-    
     def get_align_type(self, errors=False):
         pass
 
@@ -170,6 +174,9 @@ class NIRC2(Instrument):
 
 
 class OSIRIS(Instrument):
+    """
+    OSIRIS Imager - after 2019
+    """
     def __init__(self):
         self.name = 'OSIRIS'
         
@@ -199,7 +206,7 @@ class OSIRIS(Instrument):
         return
     
     def get_filter_name(self, hdr):
-        f= hdr['ifilter']
+        f = hdr['ifilter']
         return f.split('-')[0]
         
     def get_plate_scale(self, hdr):
@@ -214,9 +221,8 @@ class OSIRIS(Instrument):
         """
         Get the sky PA in degrees East of North. 
         """
-        pa_old = float(hdr['ROTPOSN']) - self.get_instrument_angle(hdr)
-        pa_new = pa_old - 180.0
-        return pa_new
+        pa = float(hdr['ROTPOSN']) - self.get_instrument_angle(hdr)
+        return pa
     
     def get_instrument_angle(self, hdr):
         """
