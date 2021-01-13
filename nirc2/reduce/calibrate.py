@@ -24,7 +24,8 @@ all_scales = [[1.0, 'No scaling'],
               [0.200, 'UKIDSS'],
               [0.004, 'TMT/IRIS'],
               [0.0196, 'GSAOI'],
-              [0.050, 'ACS-WFC']]
+              [0.050, 'ACS-WFC'],
+              [0.01,  'OSIRIS-imag']]
 
 ##################################################
 # 
@@ -385,7 +386,7 @@ def read_photo_calib_file(options, verbose=False):
     # Check if the filter is in photo_calib file
     if not (options.calib_column in filter_names):
         print('Filter {0} not in {1}'.format(options.calib_column, options.calib_file))
-        print('Available filter options are: {0}'.format('\', \''.join(filter_names)))
+        print("Available filter options are: '{0}'".format("', '".join(filter_names)))
         
         return None
     
@@ -826,7 +827,7 @@ def get_camera_type(fitsfile):
        instrument = hdr.get('INSTR')
 
        if ('imag' in instrument):
-          instrument = 'OSIRIS'
+          instrument = 'OSIRIS-imag'
     
     # Default is still NIRC2
     if (instrument == None): 
@@ -858,8 +859,8 @@ def get_camera_type(fitsfile):
                   'Hokupaa+QUIRC': 9,
                   'MMT PISCES': 10,
                   'UKIDSS': 11,
-                  'OSIRIS': 5,
-                  'LGSAO': 4
+                  'OSIRIS-imag': 16,
+                  'LGSAO': 4,
                   }
 
 

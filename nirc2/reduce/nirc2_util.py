@@ -9,51 +9,73 @@ import glob
 from astropy.table import Table
 import numpy as np
 import math
+from nirc2 import instruments
+from nirc2.reduce import util
 
 def nirc2log(directory):
-    """Make an electronic NIRC2 log for all files in the specified
-    directory.
+    makelog(directory, outfile='nirc2.log')
 
-    Output is a file called nirc2.log."""
+    return
+
+def makelog(directory, outfile='image_log.txt', instrument=instruments.default_inst):
+    """Make an electronic log for all the FITS files in the 
+    specified directory.
+
+    Optional
+    ---------
+    outfile : str
+        Output text file (def=image_log.txt)
+    """
     if not os.access(directory, os.F_OK):
         print(( 'Cannot access directory ' + directory ))
 
+    # Remove old *flip files and the old log.
+    old = glob.glob(directory + '/*flip.fits')
+    util.rmall(old)
+    util.rmall([directory+'image_log.txt'])
+
     files = glob.glob(directory + '/*.fits')
     files.sort()
-    f = open(directory + '/nirc2.log', 'w')
+    f = open(directory + '/' + outfile, 'w')
+
+    # Short-hand
+    ihk = instrument.hdr_keys
+    
     
     for file in files:
         hdr = fits.getheader(file,ignore_missing_end=True)
 
         # First column is frame number
-        frame = (hdr['filename'].strip())[0:5]
-        f.write('%5s  ' % frame)
+        frame = (hdr[ihk['filename']].strip())[:-5]
+        f.write('%16s  ' % frame)
 
         # Second column is object name
-        f.write('%-16s  ' % hdr['object'].replace(' ', ''))
+        f.write('%-16s  ' % hdr[ihk['object_name']].replace(' ', ''))
 
         # Next is integration time, coadds, sampmode, multisam
-        f.write('%8.3f  %3d  ' % (hdr['itime'], hdr['coadds']))
-        f.write('%1d x %2d  ' % (hdr['sampmode'], hdr['multisam']))
+        f.write('%8.3f  %3d  ' % (hdr[ihk['itime']], hdr[ihk['coadds']]))
+        f.write('%1d x %2d  ' % (hdr[ihk['sampmode']], hdr[ihk['nfowler']]))
 
         # Filter
-        filter1 = hdr['fwiname']
-        filter2 = hdr['fwoname']
-        filter = filter1
-        if (filter1.startswith('PK')): filter = filter2
-
-        f.write('%-10s ' % filter)
+        filt = instrument.get_filter_name(hdr)
+        
+        f.write('%-10s ' % filt)
 
         # Camera name
-        f.write('%-6s ' % hdr['camname'])
+        f.write('%-6s ' % hdr[ihk['camera']])
 
         # Shutter state
-        f.write('%-6s ' % hdr['shrname'])
+        f.write('%-6s ' % hdr[ihk['shutter']])
+
+        # TRICK dichroic (only for OSIRIS)
+        if isinstance(instrument, instruments.OSIRIS):
+            f.write('%-6s ' % hdr['OBTDNAME'])
 
         # End of this line
         f.write('\n')
 
     f.close()
+    
         
 
 if __name__ == '__main__':
@@ -146,7 +168,7 @@ def radec2pix(radec, phi, scale, posRef):
     
     return [d_x, d_y]
 
-def aotsxy2pix(aotsxy, scale, aotsxyRef):
+def aotsxy2pix(aotsxy, scale, aotsxyRef, inst_angle=0.0):
     # Determine pixel shifts from AOTSX and AOTSY positions.
     
     x = aotsxy[0]
@@ -157,6 +179,17 @@ def aotsxy2pix(aotsxy, scale, aotsxyRef):
     d_y = (y - aotsxyRef[1]) / 0.727
     d_x = d_x * (1.0/scale)
     d_y = d_y * (1.0/scale)
+
+    # Rotate to the instrument PA
+    cosa = np.cos(np.radians(-inst_angle))
+    sina = np.sin(np.radians(-inst_angle))
+
+    rot_matrix = np.array([[cosa, sina], [-sina, cosa]])
+    coo_ao = np.array([d_x, d_y])
+    coo_inst = rot_matrix.dot(coo_ao)
+
+    d_x = coo_inst[0]
+    d_y = coo_inst[1]
     
     return [d_x, d_y]
 
@@ -223,20 +256,14 @@ def rotate_coo(x, y, phi):
     return [xrot, yrot]
     
 
-def getScale(hdr):
-    # Setup NIRC2 plate scales
-    scales = {"narrow": 0.009942,
-              "medium": 0.019829,
-              "wide": 0.039686}
+def getScale(hdr, instrument=instruments.default_inst):
+    return instrument.get_plate_scale(hdr)
 
-    return scales[hdr['CAMNAME']]    
+def getPA(hdr, instrument=instruments.default_inst):
+    return instrument.get_position_angle(hdr)
 
-
-def getPA(hdr):
-    return float(hdr['ROTPOSN']) - float(hdr['INSTANGL'])
-
-def getCentralWavelength(hdr):
-    return float(hdr['CENWAVE'])
+def getCentralWavelength(hdr, instrument=instruments.default_inst):
+    return instrument.get_central_wavelength(hdr)
 
 def calcOverhead(tint, coadds, ndithers, nframes, reads, tread=0.181):
     t = 0.0
@@ -288,137 +315,3 @@ def plotKeyword(keyword1, keyword2, imgList):
 
     return (value1, value2)
     
-
-def getPlateScale():
-    """
-    Return the plate scale in mas/yr. This is the plate scale reported
-    in Yelda et al. 2010.
-    """
-    return 0.009952
-
-
-
-def get_scale(fitsInput):
-    """
-    Helper class to get the plate scale out of images from 
-    a variety of different cameras.
-    """
-    instrument = get_instrument_camera(fitsInput)
-
-    scaleInfo = {'NIRC-D79': 0.0102,
-                 'Hokupaa+QUIRC': 0.01998,
-                 'NICMOS1': 0.0431,
-                 'NICMOS2': 0.0752,
-                 'NICMOS3': 0.2017,
-                 'NIRC2narrow': 0.00994,
-                 'NIRC2medium': 0.02,
-                 'NIRC2wide': 0.04,
-                 'LGSAO': 0.00994,
-                 'OSIRIS': 0.02
-                 }
-
-    scale = scaleInfo.get(instrument)
-
-    # See if there is a WCS system for NICMOS images
-    if 'NICMOS' in instrument:
-        cd11 = hdr.get('CD1_1')
-        cd21 = hdr.get('CD2_1')
-        if cd11 != None and cd21 != None:
-            scale = math.hypot(cd11, cd21) * 3600.0
-        
-
-    # Default value
-    if scale == None:
-        scale = 0.0102
-
-    return scale
-
-def get_pos_angle(fitsInput):
-    """
-    Returns the instrument specific position angle on the sky
-    in degrees (East of North).
-    """
-    angle = 0
-    inst = get_instrument_camera(fitsInput)
-    if 'NIRC2' in inst:
-        angle = float(fits.getval(fitsInput, 'ROTPOSN')) - 0.7
-    else:
-        print(( 'get_pos_angle: Unsupported camera type %s' % (inst) ))
-    
-    return angle
-
-def get_align_type(fitsInput, errors=False):
-    """
-    Helper class to get the calibrate camera type from the
-    FITS header.
-    """
-    instrument = get_instrument_camera(fitsInput)
-
-
-    alignTypes = {'NIRC-D79': 2,
-                 'Hokupaa+QUIRC': 7,
-                 'NICMOS1': 10,
-                 'NIRC2narrow': 8,
-                 'NIRC2medium': 14,
-                 'NIRC2wide': 12,
-                 'LGSAO': 8,
-                 'OSIRIS': 14
-                 }
-
-    alignType = alignTypes.get(instrument)
-
-    # Default
-    if alignType == None:
-        alignType = 20  # arcseconds with +x to the west
-
-    if errors == True:
-        alignType += 1
-
-    return alignType
-
-
-def get_instrument_camera(fitsInput):
-    """
-    Get the instrument and camera names out of the header.
-    This will compound the two so that each instrument/camera
-    with a unique plate scale will have a different string.
-    """
-    # Check if input is a fits filename or a fits header object
-    if type(fitsInput) == str:
-        # First check the instrument
-        hdr = fits.getheader(fitsInput,ignore_missing_end=True)
-    else:
-        # Assume this is a hdr object
-        hdr = fitsInput
-
-    # Get instrument
-    instrument = hdr.get('CURRINST')
-    if (instrument == None):
-       # OLD SETUP
-       instrument = hdr.get('INSTRUME')
-       
-    if (instrument == None):
-       # OSIRIS
-       instrument = hdr.get('INSTR')
-
-       if ('imag' in instrument):
-          instrument = 'OSIRIS'
-    
-    # Default is still NIRC2
-    if (instrument == None): 
-        instrument = 'NIRC2'
-
-    # get rid of the whitespace
-    instrument = instrument.strip()
-
-    # Check NICMOS camera
-    if instrument == 'NICMOS':
-        camera = hdr.get('CAMERA')
-        instrument += camera.strip()
-        
-    # Check NIRC2 camera
-    if instrument == 'NIRC2':
-        camera = hdr.get('CAMNAME')
-        instrument += camera.strip()
-
-    return instrument

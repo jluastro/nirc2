@@ -7,6 +7,7 @@ from astropy.table import Table
 from nirc2.reduce import nirc2_util
 from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
+from nirc2 import instruments
 import subprocess
 import pylab as py
 import pdb
@@ -20,14 +21,16 @@ class Analysis(object):
 
     def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
-                 useDistorted=False, cleanList='c.lis'):
+                 useDistorted=False, cleanList='c.lis',
+                 instrument=instruments.default_inst,
+                 airopa_mode='legacy'):
 
         # Setup default parameters
         self.type = 'ao'
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
-        self.airopa_mode = 'single'  # could also be "legacy" or "variable"
+        self.airopa_mode = airopa_mode      # can be "legacy", "single", or "variable"
         self.trimfake = 1
         self.stfFlags = ''
 
@@ -35,6 +38,10 @@ class Analysis(object):
         self.labellist = rootDir+ 'source_list/label.dat'
         self.orbitlist = rootDir+ 'source_list/orbits.dat'
         self.calFile = rootDir + 'source_list/photo_calib.dat'
+
+        # Keep track of the instrument these images are from.
+        # We need this to get things like plate scale, etc.
+        self.instrument = instrument
 
         self.calStars = ['irs16C', 'irs16NW', 'irs16CC']
         self.calFlags = '-f 1 -R '
@@ -116,7 +123,43 @@ class Analysis(object):
         # Set the default magnitude cut for plotPosError
         self.plotPosMagCut = 15.0
         
-
+    def prepStarfinder(self, targetName, targetCoords, psfStars, filterName):
+        """Creates a _psf.list file and saves it in the source_list/ directory."""
+        
+        # Covering possible variable inputs and initializing
+        targetName = targetName.lower()
+        filterName = filterName.capitalize()
+        targetCoords = targetCoords[:]
+        psfListLocation = self.rootDir + 'source_list/' + targetName + '_psf.list'
+        year = date.today().strftime("%Y" + ".0")
+        
+        # Modifying the starlist provided into an astropy table
+        starno = 0
+        for star in psfStars:
+            star[0] = "{:.3f}".format(((star[0] - targetCoords[0]) * (9.942 / 1000) * -1))
+            star[1] = "{:.3f}".format(((star[1] - targetCoords[1]) * (9.942 / 1000)))
+            star.insert(0, "1.000")
+            if starno > 0:
+                star.insert(0, "S" + str(starno).zfill(3))
+            else:
+                star.insert(0, targetName)
+            star.insert(4, "-")
+            star.insert(4, year)
+            star.insert(4, "0.000")
+            star.insert(4, "0.000")
+            starno += 1
+            
+        psfStars = np.array(psfStars)
+        psfStarTable = Table(psfStars, names = ('#Name', 'Kp', 'Xarc',
+                                                      'Yarc', 'Vx', 'Vy',
+                                                      't0', 'Filt', 'PSF?'))
+        
+        ascii.write(psfStarTable, psfListLocation, 
+                    format = 'fixed_width', 
+                    delimiter = '  ', 
+                    bookend = False, 
+                    overwrite = True)
+    
     def analyzeCombo(self):
         self.starfinderCombo()
         self.calibrateCombo()
@@ -278,7 +321,9 @@ class Analysis(object):
             calCamera = 1
             if self.type == 'ao':
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
-                angle = float(fits.getval(fitsFile, 'ROTPOSN')) - 0.7
+                hdr = fits.getheader(fitsFile)
+                angle = self.instrument.get_position_angle(hdr)
+                print(self.instrument.name)
                 
                 # Check for wide camera
                 calCamera = calibrate.get_camera_type(fitsFile)
@@ -296,6 +341,7 @@ class Analysis(object):
             cmd += '-N %s ' % self.calFile
             cmd += '-M %s ' % self.calColumn
             cmd += '-c %d ' % calCamera
+            cmd += '-V '
             if (self.calStars != None) and (len(self.calStars) > 0):
                 cmd += '-S '
                 for cc in range(len(self.calStars)):
@@ -413,7 +459,8 @@ class Analysis(object):
                 fitsFile = 'mag%s%s_%s.fits' % (self.epoch, self.imgSuffix, self.filt)
             elif self.type == 'speckle':
                 fitsFile = 'mag%s.fits' % self.epoch
-            alignType = nirc2_util.get_align_type(fitsFile, errors=False)
+            hdr = fits.getheader(fitsFile)
+            alignType = self.instrument.get_align_type(hdr, errors=False)
 
 
             os.chdir(self.dirComboAln)
@@ -512,7 +559,8 @@ class Analysis(object):
 
             # Get the align data type
             fitsFile = self.cleanFiles[0] + '.fits'
-            alignType = nirc2_util.get_align_type(fitsFile, errors=False)
+            hdr = fits.getheader(fitsFile)
+            alignType = instrument.get_align_type(hdr, errors=False)
             alignCombo = alignType + 1
 
             # Make the align*.list file
@@ -679,7 +727,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
         py.title(starlist)
     
     py.savefig('plotPosError%s.png' % suffix)
-    py.savefig('plotPosError%s.eps' % suffix)
+    #py.savefig('plotPosError%s.eps' % suffix)
 
     ##########
     #
@@ -698,7 +746,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     py.title(starlist)
     
     py.savefig('plotMagError%s.png' % suffix)
-    py.savefig('plotMagError%s.eps' % suffix)
+    #py.savefig('plotMagError%s.eps' % suffix)
 
     ##########
     # 
@@ -712,7 +760,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     py.ylabel('Number of Stars')
 
     py.savefig('plotNumStars%s.png' % suffix)
-    py.savefig('plotNumStars%s.eps' % suffix)
+    #py.savefig('plotNumStars%s.eps' % suffix)
 
     # Find the peak of the distribution
     maxHist = n.argmax()

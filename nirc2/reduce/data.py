@@ -2,17 +2,20 @@ import os, sys
 from astropy.io import fits
 from astropy.table import Table
 from astropy.time import Time
+from astropy import stats
 import math
-import user
 from pyraf import iraf as ir
 from . import nirc2_util
 from nirc2.reduce import util
+from nirc2 import instruments
+from nirc2 import strehl
 import time
 import pdb
 import numpy as np
 from . import dar
 from . import bfixpix
 import subprocess
+import copy
 
 module_dir = os.path.dirname(__file__)
 
@@ -20,14 +23,11 @@ module_dir = os.path.dirname(__file__)
 # You can change them in your reduce.py file after importing data.py
 # Narrow Camera
 distCoef = ''
-distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
-distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
-#changing to test new distortio solutions right now
+# distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
+# distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
+#changing to test new distortion solutions right now
 #distXgeoim = '/g/lu/data/m53/2015may/dist_sol/Leg_6r9_may_X.fits'
 #distYgeoim = '/g/lu/data/m53/2015may/dist_sol/Leg_6r9_may_Y.fits'
-
-
-
 # Wide Camera
 #distCoef = module_dir + '/distortion/coeffs/nirc2_cubic_wide'
 #distXgeoim = ''
@@ -42,31 +42,32 @@ outputVerify = 'ignore'
 
 
 def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
-          skyscale=0, skyfile=None, angOff=0.0, fixDAR=True):
+          skyscale=0, skyfile=None, angOff=0.0, fixDAR=True,
+          instrument=instruments.default_inst, check_ref_loc=True):
     """
-    Clean near infrared NIRC2 images.
+    Clean near infrared NIRC2 or OSIRIS images.
 
     This program should be run from the reduce/ directory.
     Example directory structure is:
-	calib/
-	    flats/
-		flat_kp.fits
-		flat.fits (optional)
-	    masks/
-		supermask.fits
-	kp/
-	    sci_nite1/
-	    sky_nite1/
-		sky.fits
+    calib/
+        flats/
+        flat_kp.fits
+        flat.fits (optional)
+        masks/
+        supermask.fits
+    kp/
+        sci_nite1/
+        sky_nite1/
+        sky.fits
 
     All output files will be put into reduce/../clean/ in the
     following structure:
-	kp/
-	    c*.fits
-	    distort/
-		cd*.fits
-	    weight/
-		wgt*.fits
+    kp/
+        c*.fits
+        distort/
+        cd*.fits
+        weight/
+        wgt*.fits
 
     The clean directory may be optionally modified to be named
     <field_><wave> instead of just <wave>. So for instance, for Arches
@@ -94,7 +95,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         skies taken at matchin rotator mirror angles.
     @type angOff: float
     @kwparam badColumns: (def = None) An array specifying the bad columns (zero-based).
-    			Assumes a repeating pattern every 8 columns.
+                Assumes a repeating pattern every 8 columns.
     @type badColumns: int array
     """
 
@@ -139,15 +140,16 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
         # Determine the reference coordinates for the first image.
         # This is the image for which refSrc is relevant.
-        firstFile = rawDir + '/n' + str(files[0]).zfill(4) + '.fits'
-        hdr1 = fits.getheader(firstFile,ignore_missing_end=True)
+        firstFile = instrument.make_filenames([files[0]], rootDir=rawDir)[0]
+        hdr1 = fits.getheader(firstFile, ignore_missing_end=True)
         radecRef = [float(hdr1['RA']), float(hdr1['DEC'])]
         aotsxyRef = nirc2_util.getAotsxy(hdr1)
 
         # Setup a Sky object that will figure out the sky subtraction
         skyDir = waveDir + 'sky_' + nite + '/'
         skyObj = Sky(sciDir, skyDir, wave, scale=skyscale,
-        skyfile=skyfile, angleOffset=angOff)
+                     skyfile=skyfile, angleOffset=angOff,
+                     instrument=instrument)
 
         # Prep drizzle stuff
         # Get image size from header - this is just in case the image
@@ -155,27 +157,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # rectangular, choose the larger dimension and make it square
         imgsizeX = float(hdr1['NAXIS1'])
         imgsizeY = float(hdr1['NAXIS2'])
-        date = hdr1['DATE-OBS']
-        if (float(date[0:4]) == 2015) & (float(date[5:7]) < 0o5):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
-        if (float(date[0:4]) < 2015):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim.fits'
-        if (float(date[0:4]) == 2015) & (float(date[5:7]) >= 0o5):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim_post20150413.fits'
-        if (float(date[0:4]) > 2015):
-            #global distXgeoim
-            distXgeoim = module_dir + '/distortion/nirc2_narrow_xgeoim_post20150413.fits'
-            #global distYgeoim
-            distYgeoim = module_dir + '/distortion/nirc2_narrow_ygeoim_post20150413.fits'
+
+        distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr1)
         if (imgsizeX >= imgsizeY):
             imgsize = imgsizeX
         else:
@@ -186,45 +169,46 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # Loop through the list of images
         ##########
         for f in files:
-            root = str(f).zfill(4)
-
             # Define filenames
-            _raw = rawDir + 'n' + root
-            _n = 'n' + root + '.fits'
-            _ss = 'ss' + root + '.fits'
-            _ff = 'ff' + root + '.fits'
-            _ff_f = 'ff' + root + '_f' + '.fits'
-            _ff_s = 'ff' + root + '_s' + '.fits'
-            _bp = 'bp' + root + '.fits'
-            _cd = 'cd' + root + '.fits'
-            _ce = 'ce' + root + '.fits'
-            _cc = 'c' + root + '.fits'
-            _wgt = 'wgt' + root + '.fits'
-            _statmask = 'statmask' + root + '.fits'
-            _crmask = 'crmask' + root + '.fits'
-            _mask = 'mask' + root + '.fits'
-            _pers = 'pers' + root + '.fits'
-            _max = 'c' + root + '.max'
-            _coo = 'c' + root + '.coo'
-            _dlog = 'driz' + root + '.log'
+            _raw = instrument.make_filenames([f], rootDir=rawDir)[0]
+            _cp = instrument.make_filenames([f])[0]
+            _ss = instrument.make_filenames([f], prefix='ss')[0]
+            _ff = instrument.make_filenames([f], prefix='ff')[0]
+            _ff_f = _ff.replace('.fits', '_f.fits')
+            _ff_s = _ff.replace('.fits', '_s.fits')
+            _bp = instrument.make_filenames([f], prefix='bp')[0]
+            _cd = instrument.make_filenames([f], prefix='cd')[0]
+            _ce = instrument.make_filenames([f], prefix='ce')[0]
+            _cc = instrument.make_filenames([f], prefix='c')[0]
+            _wgt = instrument.make_filenames([f], prefix='wgt')[0]
+            _statmask = instrument.make_filenames([f], prefix='stat_mask')[0]
+            _crmask = instrument.make_filenames([f], prefix='crmask')[0]
+            _mask = instrument.make_filenames([f], prefix='mask')[0]
+            _pers = instrument.make_filenames([f], prefix='pers')[0]
+            _max = _cc.replace('.fits', '.max')
+            _coo = _cc.replace('.fits', '.coo')
+            _rcoo = _cc.replace('.fits', '.rcoo')
+            _dlog_tmp = instrument.make_filenames([f], prefix='driz')[0]
+            _dlog = _dlog_tmp.replace('.fits', '.log')
+            
 
             # Clean up if these files previously existed
-            util.rmall([_n, _ss, _ff, _ff_f, _ff_s, _bp, _cd, _ce, _cc,
-                        _wgt, _statmask, _crmask, _mask, _pers, _max, _coo, _dlog])
+            util.rmall([_cp, _ss, _ff, _ff_f, _ff_s, _bp, _cd, _ce, _cc,
+                        _wgt, _statmask, _crmask, _mask, _pers, _max, _coo, _rcoo, _dlog])
 
             ### Copy the raw file to local directory ###
-            ir.imcopy(_raw, _n, verbose='no')
+            ir.imcopy(_raw, _cp, verbose='no')
 
-            ### Make perisistance mask ###
+            ### Make persistance mask ###
             # - Checked images, this doesn't appear to be a large effect.
-            #clean_persistance(_n, _pers)
+            #clean_persistance(_cp, _pers, instrument=instrument)
 
             ### Sky subtract ###
             # Get the proper sky for this science frame.
             # It might be scaled or there might be a specific one for L'.
-            sky = skyObj.getSky(_n)
+            sky = skyObj.getSky(_cp)
 
-            ir.imarith(_n, '-', sky, _ss)
+            ir.imarith(_cp, '-', sky, _ss)
 
             ### Flat field ###
             ir.imarith(_ss, '/', flat, _ff)
@@ -244,13 +228,13 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             ### Combine static and cosmic ray mask ###
             # This will be used in combine later on.
             # Results are stored in _mask, _mask_static is deleted.
-            clean_makemask(_mask, _crmask, _statmask, wave)
+            clean_makemask(_mask, _crmask, _statmask, wave, instrument=instrument)
 
             ### Background Subtraction ###
             bkg = clean_bkgsubtract(_ff_f, _bp)
 
             ### Drizzle individual file ###
-            clean_drizzle(_bp, _ce, _wgt, _dlog, fixDAR=fixDAR)
+            clean_drizzle(distXgeoim, distYgeoim, _bp, _ce, _wgt, _dlog, fixDAR=fixDAR, instrument=instrument)
 
             ### Make .max file ###
             # Determine the non-linearity level. Raw data level of
@@ -260,26 +244,24 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             # for every frame.
             nonlinSky = skyObj.getNonlinearCorrection(sky)
 
-            coadds_tmp = ir.hselect(_ss, "COADDS", "yes", Stdout=1)
-            coadds = float(coadds_tmp[0])
-            satLevel = (coadds*12000.0) - nonlinSky - bkg
+            coadds = fits.getval(_ss, instrument.hdr_keys['coadds'])
+            satLevel = (coadds*instrument.get_saturation_level()) - nonlinSky - bkg
             file(_max, 'w').write(str(satLevel))
 
             ### Rename and clean up files ###
             ir.imrename(_bp, _cd)
-            util.rmall([_n, _ss, _ff, _ff_f])
+            # util.rmall([_cp, _ss, _ff, _ff_f])
 
             ### Make the *.coo file and update headers ###
             # First check if PA is not zero
-            tmp = rootDir + 'raw/n' + root + '.fits'
-            hdr = fits.getheader(tmp,ignore_missing_end=True)
-            phi = nirc2_util.getPA(hdr)
+            hdr = fits.getheader(_raw, ignore_missing_end=True)
+            phi = instrument.get_position_angle(hdr)
 
-            clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef,
-                          clean)
+            clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
+                          instrument=instrument, check_loc=check_ref_loc)
 
             ### Move to the clean directory ###
-            util.rmall([clean + _cc, clean + _coo,
+            util.rmall([clean + _cc, clean + _coo, clean + _rcoo,
                         distort + _cd, weight + _wgt,
                         clean + _ce, clean + _max,
                         masks + _mask, _ce])
@@ -290,12 +272,13 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             os.rename(_mask, masks + _mask)
             os.rename(_max, clean + _max)
             os.rename(_coo, clean + _coo)
+            os.rename(_rcoo, clean + _rcoo)
 
             # This just closes out any sky logging files.
             #skyObj.close()
     finally:
         # Move back up to the original directory
-        skyObj.close()
+        #skyObj.close()
         ir.cd('../')
 
 def clean_get_supermask(_statmask, _supermask, badColumns):
@@ -321,7 +304,8 @@ def clean_get_supermask(_statmask, _supermask, badColumns):
     # Save to a temporary file.
     maskFits[0].writeto(_statmask, output_verify=outputVerify)
 
-def clean_makemask(_mask, _mask_cosmic, _mask_static, wave):
+def clean_makemask(_mask, _mask_cosmic, _mask_static, wave,
+                   instrument=instruments.default_inst):
     """
     _mask -- output name for final mask
     _mask_cosmic -- should contain cosmic ray mask
@@ -339,7 +323,7 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave):
     mask = staticMask + cosmicMask
 
     # check subarray
-    if ('lp' in wave or 'ms' in wave) and (mask.shape[0] > 512):
+    if (instrument.name == 'NIRC2') and ('lp' in wave or 'ms' in wave) and (mask.shape[0] > 512):
         _lpmask = module_dir + '/masks/nirc2_lp_edgemask.fits'
         lpmask = fits.getdata(_lpmask)
         mask += lpmask
@@ -355,8 +339,9 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave):
 
     # Trim 12 rows from top and bottom b/c the distortion solution
     # introduces a torque to the image.
-    outMask[1012:1024,0:1024] = 0
-    outMask[0:12,0:1024] = 0
+    if (instrument.name == 'NIRC2'):
+        outMask[1012:1024,0:1024] = 0
+        outMask[0:12,0:1024] = 0
 
     # Write out to file
     fits.writeto(_mask, outMask, output_verify=outputVerify)
@@ -370,7 +355,7 @@ def clean_lp(files, nite, wave, refSrc, strSrc, angOff, skyfile):
 
 def combine(files, wave, outroot, field=None, outSuffix=None,
             trim=0, weight=None, fwhm_max=0, submaps=0, fixDAR=True,
-            mask=True):
+            mask=True, instrument=instruments.default_inst):
     """Accepts a list of cleaned images and does a weighted combining after
     performing frame selection based on the Strehl and FWHM.
 
@@ -431,8 +416,9 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     util.mkdir(comboDir)
 
     # Make strings out of all the filename roots.
-    allroots = [str(f).zfill(4) for f in files]
-    roots = allroots # This one will be modified by trimming
+    allroots = instrument.make_filenames(files)
+    allroots = [aa.replace('.fits', '') for aa in allroots]
+    roots = copy.deepcopy(allroots) # This one will be modified by trimming
 
     # This is the output root filename
     _out = comboDir + 'mag' + outroot + '_' + wave
@@ -447,7 +433,17 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     ##########
 
     # Load the strehl_source.txt file
-    strehls, fwhm = loadStrehl(cleanDir, roots)
+    if (weight is not None) or os.path.exists(os.path.join(cleanDir,'strehl_source.txt')):
+        strehls, fwhm = loadStrehl(cleanDir, roots) 
+    else:
+        # if the file doesn't exist don't use
+        print('combine: the strehl_source file does not exist: '+os.path.join(cleanDir,'strehl_source.txt'))
+
+        # fill out some variables for later use
+        strehls = np.zeros(len(roots))-1.0
+        fwhm = np.zeros(len(roots)) -1.0
+        trim = False
+
 
     # Default weights
     # Create an array with length equal to number of frames used,
@@ -490,7 +486,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
 
     # See if all images are at same PA, if not, rotate all to PA = 0
     # temporarily. This needs to be done to get correct shifts.
-    diffPA = combine_rotation(cleanDir, roots)
+    diffPA = combine_rotation(cleanDir, roots, instrument=instrument)
 
     # Make a table of coordinates for the reference source.
     # These serve as initial estimates for the shifts.
@@ -513,13 +509,13 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
 
     # Combine all the images together.
     combine_drizzle(xysize, cleanDir, roots, _out, weights, shiftsTab,
-                    wave, diffPA, fixDAR=fixDAR, mask=mask)
+                    wave, diffPA, fixDAR=fixDAR, mask=mask, instrument=instrument)
 
     # Now make submaps
     if (submaps > 0):
-	combine_submaps(xysize, cleanDir, roots, _sub, weights,
-			shiftsTab, submaps, wave, diffPA, fixDAR=fixDAR,
-                        mask=mask)
+        combine_submaps(xysize, cleanDir, roots, _sub, weights,
+                        shiftsTab, submaps, wave, diffPA, fixDAR=fixDAR,
+                        mask=mask, instrument=instrument)
 
     # Remove *.lis_r file & rotated rcoo files, if any - these
     # were just needed to get the proper shifts for xregister
@@ -550,7 +546,9 @@ def rot_img(root, phi, cleanDir):
         print('Rotating frame: ',root)
         ir.rotate(inCln, outCln, pa)
     else:
-	ir.imcopy(inCln, outCln, verbose='no')
+        ir.imcopy(inCln, outCln, verbose='no')
+
+    return
 
 def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
     """Queries label.dat for the xy offset from Sgr A* (in arcsec)
@@ -583,7 +581,7 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
     return [x,y]
 
 
-def calcStrehl(files, wave, field=None):
+def calcStrehl(files, wave, field=None, instrument=instruments.default_inst):
     """Make Strehl and FWHM table on the strehl source for all
     cleaned files.
 
@@ -604,66 +602,41 @@ def calcStrehl(files, wave, field=None):
                                                    'clean/' + wave) + '/')
 
     # Make a list of all the images
-    clisFile = cleanDir + 'c.lis'
-    _strehl = cleanDir + 'strehl_source.txt'
-    _idl = 'idl.strehl.batch'
-    tmpFiles = [clisFile, _strehl, _idl]
-    util.rmall(tmpFiles)
+    clis_file = cleanDir + 'c.lis'
+    strehl_file = cleanDir + 'strehl_source.txt'
+    util.rmall([clis_file, strehl_file])
 
-    _clis = open(clisFile, 'w')
-    roots = [str(f).zfill(4) for f in files]
+    clean_files = instrument.make_filenames(files, rootDir=cleanDir, prefix='c')
 
-    # Loop through all the files and determine the coordinates of the
-    # strehl source from what is in the *.coo file.
-    for root in roots:
-        _coo = cleanDir + 'c' + root + '.coo'
-        _fits = cleanDir + 'c' + root + '.fits'
-
-        # Read xstrehl, ystrehl coordinates from header
-        hdr = fits.getheader(_fits,ignore_missing_end=True)
-        xystr = [float(hdr['XSTREHL']), float(hdr['YSTREHL'])]
-
-        _coord = cleanDir + 'c' + root + '.coord'
-        file(_coord, 'w').write('%7.2f  %7.2f\n' % (xystr[0], xystr[1]))
-
-        _clis.write('%s\n' % _fits)
-
+    # Keep a record of the cleaned files. 
+    _clis = open(clis_file, 'w')
+    for c in clean_files:
+        _clis.write('%s\n' % c)
     _clis.close()
 
-    # Now call Marcos's strehl widget in a command line format.
-    batchFile = open(_idl, 'w')
-    batchFile.write("print, \"Hello World\"\n")
-    batchFile.write("cmd_strehl_widget, '" + clisFile + "', /list, ")
-    batchFile.write("output='" + _strehl + "', aper=0.3, /silent\n")
-    batchFile.write("exit\n")
-    batchFile.close()
-
-
-    util.rmall(['idl.strehl.batch.log'])
-
-    #subprocess.Popen('setenv', shell=True, executable = '/bin/bash')
-    exec_str = 'idl < idl.strehl.batch > idl.strehl.batch.log'
-    subp = subprocess.Popen(exec_str, shell=True, executable="/bin/bash")
-    tmp = subp.communicate()
-
+    # Calculate Strehl, FWHM
+    strehl.calc_strehl(clean_files, strehl_file, instrument=instrument)
+    
     # Check that the number of lines in the resulting strehl file
     # matches the number of images we have. If not, some of the images
     # are bad and were dropped.
-    strehlTable = Table.read(_strehl, format='ascii', header_start=None)
+    strehlTable = Table.read(strehl_file, format='ascii', header_start=None)
     cols = list(strehlTable.columns.keys())
 
-    if len(roots) != len(strehlTable):
-        print(len(roots), len(strehlTable))
+    if len(clean_files) != len(strehlTable):
+        print(len(clean_files), len(strehlTable))
         # Figure out the dropped files.
         droppedFiles = []
-        for rr in roots:
+        for cc in clean_files:
+            root = os.path.split(cc)[-1]
+            
             foundIt = False
             for ss in strehlTable[cols[0]]:
-                if rr in ss:
+                if root in ss:
                     foundIt = True
                     continue
             if foundIt == False:
-                droppedFiles.append(rr)
+                droppedFiles.append(root)
 
         raise RuntimeError('calcStrehl: Strehl widget lost files: ',
                            droppedFiles)
@@ -740,7 +713,7 @@ def readWeightsFile(roots, weightFile):
     # Double check that we have the same number of
     # lines in the weightsTable as files.
     if (len(weights) != len(roots)):
-	print('Wrong number of lines in  ' + weightFile)
+        print('Wrong number of lines in  ' + weightFile)
 
     return weights
 
@@ -765,7 +738,7 @@ def loadStrehl(cleanDir, roots):
     # Double check that we have the same number of
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
-	print('Wrong number of lines in  ' + _strehl)
+        print('Wrong number of lines in  ' + _strehl)
 
     return (strehls, fwhm)
 
@@ -789,7 +762,8 @@ def trim_table_by_name(outroots, tableFileName):
 
 
 def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
-                    wave, diffPA, fixDAR=True, mask=True):
+                    wave, diffPA, fixDAR=True, mask=True,
+                    instrument=instruments.default_inst):
     _fits = outroot + '.fits'
     _tmpfits = outroot + '_tmp.fits'
     _wgt = outroot + '_sig.fits'
@@ -818,6 +792,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     
     # Variable to store weighted sum of MJDs
     mjd_weightedSum = 0.0
+
+    # Get the distortion maps for this instrument.
+    hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
+    distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
     
     print('combine: drizzling images together')
     f_dlog = open(_dlog, 'a')
@@ -839,17 +817,17 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
 
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
-        itime_tmp = ir.hselect(_cdwt_ir, "ITIME", "yes", Stdout=1)
-        itime = float(itime_tmp[0]) * weights[i]
-        ir.hedit(_cdwt_ir, 'ITIME', itime, verify='no', show='no')
+        itime = fits.getval(_cdwt, instrument.hdr_keys['itime'])
+        itime *= weights[i]
+        fits.setval(_cdwt, instrument.hdr_keys['itime'], value=itime)
 
         # Get pixel shifts
         xsh = shifts[i][1]
         ysh = shifts[i][2]
 
         # Read in PA of each file to feed into drizzle for rotation
-        hdr = fits.getheader(_c,ignore_missing_end=True)
-        phi = nirc2_util.getPA(hdr)
+        hdr = fits.getheader(_c, ignore_missing_end=True)
+        phi = instrument.get_position_angle(hdr)
         if (diffPA == 1):
             ir.drizzle.rot = phi
 
@@ -857,13 +835,16 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
             darRoot = _cdwt.replace('.fits', 'geo')
             (xgeoim, ygeoim) = dar.darPlusDistortion(_cdwt, darRoot,
                                                      xgeoim=distXgeoim,
-                                                     ygeoim=distYgeoim)
+                                                     ygeoim=distYgeoim,
+                                                     instrument=instrument)
 
             xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
             ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
-
+        else:
+            ir.drizzle.xgeoim = distXgeoim
+            ir.drizzle.ygeoim = distYgeoim
 
         
         # Read in MJD of current file from FITS header
@@ -881,7 +862,14 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
         ir.drizzle.outweig = _wgt
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
-
+        ir.drizzle.outnx = imgsize
+        ir.drizzle.outny = imgsize
+        
+        print('Drizzling: ', roots[i])
+        print('     xsh = {0:8.2f}'.format( xsh ))
+        print('     ysh = {0:8.2f}'.format( ysh ))
+        print('  weight = {0:8.2f}'.format( weights[i] ))
+        print('   outnx = {0:8d}'.format( imgsize ))
         ir.drizzle(_cdwt_ir, _tmpfits, Stdout=f_dlog)
 
         # Read .max file with saturation level for final combined image
@@ -907,13 +895,13 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     # Clean up the drizzled image of any largely negative values.
     # Don't do this! See how starfinder handles really negative pixels,
     # and if all goes well...don't ever correct negative pixels to zero.
-    text = ir.imstatistics(_tmpfits, fields='mean,stddev', nclip=5,
-                           lsigma=10, usigma=1, format=0, Stdout=1)
-    vals = text[0].split()
-    sci_mean = float(vals[0])
-    sci_stddev = float(vals[1])
-
     fits_f = fits.open(_tmpfits)
+    
+    tmp_stats = stats.sigma_clipped_stats(fits_f[0].data,
+                                          sigma_upper=1, sigma_lower=10,
+                                          iters=5)
+    sci_mean = tmp_stats[0]
+    sci_stddev = tmp_stats[2]
 
     # Find and fix really bad pixels
     idx = np.where(fits_f[0].data < (sci_mean - 10*sci_stddev))
@@ -932,6 +920,10 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
                           'X Distortion Image')
     fits_f[0].header.set('DISTORTY', "%s" % distYgeoim,
                           'Y Distortion Image')
+
+    # Fix the DATASEC header keyword, if it exists.
+    if 'DATASEC' in fits_f[0].header:
+        fits_f[0].header['DATASEC'] = '[1:{0:d},1:{0:d}]'.format(imgsize)
     
     # Calculate weighted MJD and store in header
     mjd_weightedMean = mjd_weightedSum / np.sum(weights)
@@ -948,7 +940,8 @@ def combine_drizzle(imgsize, cleanDir, roots, outroot, weights, shifts,
     util.rmall([_tmpfits, _cdwt])
 
 def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
-		    shifts, submaps, wave, diffPA, fixDAR=True, mask=True):
+            shifts, submaps, wave, diffPA, fixDAR=True, mask=True,
+            instrument=instruments.default_inst):
     """
     Assumes the list of roots are pre-sorted based on quality. Images are then
           divided up with every Nth image going into the Nth submap.
@@ -970,6 +963,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
 
     # Prep drizzle stuff
     setup_drizzle(imgsize)
+    print('Drizzle imgsize = ', imgsize)
     ir.drizzle.outcont = ''
 
     satLvl_tot = np.zeros(submaps, dtype=float)
@@ -984,23 +978,34 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     # Array to store weighted sum of MJDs in each submap
     mjd_weightedSums = np.zeros(submaps, dtype=float)
 
+    # Get the distortion maps for this instrument.
+    hdr0 = fits.getheader(cleanDir + 'c' + roots[0] + '.fits')
+    distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr0)
+
+    # Set a cleanDir variable in IRAF. This avoids the long-filename problem.
+    ir.set(cleanDir=cleanDir)
+
     for i in range(len(roots)):
         # Cleaned image
         _c = cleanDir + 'c' + roots[i] + '.fits'
-        
+        _c_ir = _c.replace(cleanDir, 'cleanDir$')
+
         # Cleaned but distorted image
         _cd = cleanDir + 'distort/cd' + roots[i] + '.fits'
         cdwt = cleanDir + 'weight/cdwt.fits'
-        
+        _cd_ir = _cd.replace(cleanDir, 'cleanDir$')
+        _cdwt_ir = cdwt.replace(cleanDir, 'cleanDir$')
+
         # Multiply each distorted image by it's weight
         util.rmall([cdwt])
-        ir.imarith(_cd, '*', weights[i], cdwt)
+
+        ir.imarith(_cd, '*', weights[i], _cdwt_ir)
         
         # Fix the ITIME header keyword so that it matches (weighted).
         # Drizzle will add all the ITIMEs together, just as it adds the flux.
-        itime_tmp = ir.hselect(cdwt, "ITIME", "yes", Stdout=1)
-        itime = float(itime_tmp[0]) * weights[i]
-        ir.hedit(cdwt, 'ITIME', itime, verify='no', show='no')
+        itime = fits.getval(cdwt, instrument.hdr_keys['itime'])
+        itime *= weights[i]
+        fits.setval(cdwt, instrument.hdr_keys['itime'], value=itime)
         
         # Get pixel shifts
         xsh = shifts[i][1]
@@ -1014,7 +1019,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         
         # Read in PA of each file to feed into drizzle for rotation
         hdr = fits.getheader(_c,ignore_missing_end=True)
-        phi = nirc2_util.getPA(hdr)
+        phi = instrument.get_position_angle(hdr)
         if (diffPA == 1):
             ir.drizzle.rot = phi
 
@@ -1036,11 +1041,18 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         
         if (fixDAR == True):
             darRoot = cdwt.replace('.fits', 'geo')
+            print('submap: ',cdwt)
             (xgeoim, ygeoim) = dar.darPlusDistortion(cdwt, darRoot,
                                                      xgeoim=distXgeoim,
-                                                     ygeoim=distYgeoim)
+                                                     ygeoim=distYgeoim,
+                                                     instrument=instrument)
+            xgeoim = xgeoim.replace(cleanDir, 'cleanDir$')
+            ygeoim = ygeoim.replace(cleanDir, 'cleanDir$')
             ir.drizzle.xgeoim = xgeoim
             ir.drizzle.ygeoim = ygeoim
+        else:
+            ir.drizzle.xgeoim = distXgeoim
+            ir.drizzle.ygeoim = distYgeoim
 
         # Read in MJD of current file from FITS header
         mjd = float(hdr['MJD-OBS'])
@@ -1050,7 +1062,8 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         log.write(time.ctime())
 
         if (mask == True):
-            _mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
+            _mask = 'cleanDir$masks/mask' + roots[i] + '.fits'
+            #_mask = cleanDir + 'masks/mask' + roots[i] + '.fits'
         else:
             _mask = ''
         ir.drizzle.in_mask = _mask
@@ -1058,7 +1071,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         ir.drizzle.xsh = xsh
         ir.drizzle.ysh = ysh
 
-        ir.drizzle(cdwt, fits_im, Stdout=log)
+        ir.drizzle(_cdwt_ir, fits_im, Stdout=log)
     
     # Calculate weighted MJDs for each submap
     mjd_weightedMeans = mjd_weightedSums / weightsTot
@@ -1075,16 +1088,16 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
         _maxsub.close()
 
     for s in range(submaps):
+        fits_f = fits.open(_tmp[s])
+        
         # Clean up the drizzled image of any largely negative values.
         # Don't do this! See how starfinder handles really negative pixels,
         # and if all goes well...don't ever correct negative pixels to zero.
-        text = ir.imstatistics(_tmp[s], fields='mean,stddev', nclip=5,
-                               lsigma=10, usigma=1, format=0, Stdout=1)
-        vals = text[0].split()
-        sci_mean = float(vals[0])
-        sci_stddev = float(vals[1])
-
-        fits_f = fits.open(_tmp[s])
+        tmp_stats = stats.sigma_clipped_stats(fits_f[0].data,
+                                          sigma_upper=1, sigma_lower=10,
+                                          iters=5)
+        sci_mean = tmp_stats[0]
+        sci_stddev = tmp_stats[2]
 
         # Find and fix really bad pixels
         idx = np.where(fits_f[0].data < (sci_mean - 10*sci_stddev))
@@ -1130,7 +1143,7 @@ def combine_submaps(imgsize, cleanDir, roots, outroot, weights,
     util.rmall([cdwt])
 
 
-def combine_rotation(cleanDir, roots):
+def combine_rotation(cleanDir, roots, instrument=instruments.default_inst):
     """
     Determine if images are different PAs. If so, then
     temporarily rotate the images for xregister to use
@@ -1140,14 +1153,16 @@ def combine_rotation(cleanDir, roots):
     is rotated to PA = 0.
     """
     diffPA = 0
-    firstFile = cleanDir + 'c' + roots[0] + '.fits'
-    hdr = fits.getheader(firstFile,ignore_missing_end=True)
-    phiRef = nirc2_util.getPA(hdr)
 
-    for root in roots:
-	_fits = cleanDir + 'c' + root + '.fits'
-        hdr = fits.getheader(_fits,ignore_missing_end=True)
-        phi = nirc2_util.getPA(hdr)
+    clean_files = instrument.make_filenames(roots, rootDir=cleanDir, prefix='c')
+
+    for cc in range(len(clean_files)):
+        hdr = fits.getheader(clean_files[cc], ignore_missing_end=True)
+        phi = instrument.get_position_angle(hdr)
+
+        if cc == 0:
+            phiRef = phi
+            
         diff = phi - phiRef
 
         if (diff != 0.0):
@@ -1156,11 +1171,10 @@ def combine_rotation(cleanDir, roots):
             break
 
     if (diffPA == 1):
-        for root in roots:
-	    _fits = cleanDir + 'c' + root + '.fits'
-            hdr = fits.getheader(_fits,ignore_missing_end=True)
-            phi = nirc2_util.getPA(hdr)
-            rot_img(root, phi, cleanDir)
+        for cc in range(len(clean_files)):
+            hdr = fits.getheader(clean_files[cc], ignore_missing_end=True)
+            phi = instrument.get_position_angle(hdr)
+            rot_img(roots[cc], phi, cleanDir)
 
     return (diffPA)
 
@@ -1183,8 +1197,8 @@ def sort_frames(roots, strehls, fwhm, weights, shiftsTab):
     goodroots = [roots[i] for i in gidx]
     badroots = [roots[i] for i in bidx]
     if len(bidx) > 0:
-	print('Found files with incorrect FWHM. They may be rejected.')
-	print('\t' + ','.join(badroots))
+        print('Found files with incorrect FWHM. They may be rejected.')
+        print('\t' + ','.join(badroots))
 
     strehls = np.concatenate([strehls[gidx], strehls[bidx]])
     fwhm = np.concatenate([fwhm[gidx], fwhm[bidx]])
@@ -1287,7 +1301,10 @@ def combine_register(outroot, refImage, diffPA):
     ir.xregister.append = 'no'
     ir.xregister.databasefmt = 'no'
     ir.xregister.verbose = 'no'
-
+    ir.xregister.xwindow='30'
+    ir.xregister.ywindow='30'
+    ir.xregister.correlation='fourier'
+    ir.xregister.function='centroid'
 
     print('combine: registering images')
     if (diffPA == 1):
@@ -1295,8 +1312,14 @@ def combine_register(outroot, refImage, diffPA):
     else:
         input = '@' + outroot + '.lis'
 
-    regions = '[*,*]'
+    hdu = fits.open(refImage)
+    nx = hdu[0].header['NAXIS1']
+    ny = hdu[0].header['NAXIS2']
+
+    regions = '['+str(nx/2-nx/4)+':'+str(nx/2+nx/4)+','+str(ny/2-ny/4)+':'+str(ny/2+ny/4)+']'
+    #regions = '[*,*]'
     # print 'input = ', input
+    print('xwindow,ywindow',ir.xregister.xwindow,ir.xregister.ywindow)
     print('refImage = ', refImage)
     print('regions = ', regions)
     print('shiftFile = ', shiftFile)
@@ -1307,7 +1330,6 @@ def combine_register(outroot, refImage, diffPA):
     coords = Table.read(outroot + '.coo', format='ascii', header_start=None)
     shiftsTable_empty = np.zeros((len(fileNames), 3), dtype=float)
     shiftsTable = Table(shiftsTable_empty, dtype=('S50', float, float)) #dtype=(float, float, 'S50')
-
 
     for ii in range(len(fileNames)):
         inFile = fileNames[ii]
@@ -1343,8 +1365,8 @@ def combine_log(outroot, roots, strehls, fwhm, weights):
 
     f_log = open(_log, 'w')
     for i in range(len(roots)):
-	f_log.write('c%s %6.2f %5.2f %6.3f\n' %
-		    (roots[i], fwhm[i], strehls[i], weights[i]))
+        f_log.write('c%s %6.2f %5.2f %6.3f\n' %
+                        (roots[i], fwhm[i], strehls[i], weights[i]))
 
     f_log.close()
 
@@ -1380,11 +1402,11 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
 
     orig_img = fits.getdata(refImage)
     orig_size = (orig_img.shape)[0]
-    padd = 8.0
+    padd = int(np.floor(orig_size * 0.01))
 
-    # Read in 16C's position in the ref image and translate
+    # Read in the reference star's position in the ref image and translate
     # it into the coordinates of the final main and sub maps.
-    hdr = fits.getheader(refImage,ignore_missing_end=True)
+    hdr = fits.getheader(refImage, ignore_missing_end=True)
     xrefSrc = float(hdr['XREF'])
     yrefSrc = float(hdr['YREF'])
 
@@ -1397,11 +1419,11 @@ def combine_size(shiftsTable, refImage, outroot, subroot, submaps):
 
     util.rmall(cooAll)
     for coo in cooAll:
-	_allCoo = open(coo, 'w')
-	_allCoo.write('%9.3f %9.3f\n' % (xrefSrc, yrefSrc))
-	_allCoo.close()
+        _allCoo = open(coo, 'w')
+        _allCoo.write('%9.3f %9.3f\n' % (xrefSrc, yrefSrc))
+        _allCoo.close()
 
-    xysize = float(orig_size) + ((maxoffset + padd) * 2.0)
+    xysize = int(float(orig_size) + ((maxoffset + padd) * 2.0))
     print('combine: Size of output image is %d' % xysize)
 
     return xysize
@@ -1428,9 +1450,6 @@ def setup_drizzle(imgsize):
     ir.drizzle.pixfrac = 1
     ir.drizzle.kernel = 'lanczos3'
     ir.drizzle.scale = 1
-    ir.drizzle.coeffs = distCoef
-    ir.drizzle.xgeoim = distXgeoim
-    ir.drizzle.ygeoim = distYgeoim
     ir.drizzle.shft_un = 'input'
     ir.drizzle.shft_fr = 'output'
     ir.drizzle.align = 'center'
@@ -1438,17 +1457,21 @@ def setup_drizzle(imgsize):
     ir.drizzle.in_un = 'counts'
     ir.drizzle.out_un = 'counts'
 
-def clean_drizzle(_bp, _cd, _wgt, _dlog, fixDAR=True):
+def clean_drizzle(xgeoim, ygeoim, _bp, _cd, _wgt, _dlog, fixDAR=True, instrument=instruments.default_inst):
+    # Get the distortion maps for this instrument.
+    hdr = fits.getheader(_bp)
+    distXgeoim, distYgeoim = instrument.get_distortion_maps(hdr)
+    
     if (fixDAR == True):
         darRoot = _cd.replace('.fits', 'geo')
 
-        # Future: add distortion xgeoim, ygeoim to inputs here.
-        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot,
-                                                 xgeoim=distXgeoim,
-                                                 ygeoim=distYgeoim)
+        (xgeoim, ygeoim) = dar.darPlusDistortion(_bp, darRoot, xgeoim, ygeoim, instrument=instrument)
 
         ir.drizzle.xgeoim = xgeoim
         ir.drizzle.ygeoim = ygeoim
+    else:
+        ir.drizzle.xgeoim = distXgeoim
+        ir.drizzle.ygeoim = distYgeoim
 
     ir.drizzle(_bp, _cd, outweig=_wgt, Stdout=_dlog)
 
@@ -1469,12 +1492,12 @@ def clean_cosmicrays(_ff, _mask, wave):
     # Determine the threshold at which we should start looking
     # for cosmicrays. Need to figure out the mean level of the
     # background.
-    text_output = ir.imstatistics(_ff, fields='mean,stddev',
-                                  usigma=2, lsigma=5, nclip=5,
-                                  format=0, Stdout=1)
-    values = text_output[0].split()
-    mean = float(values[0])
-    stddev = float(values[1])
+    ff_img = fits.getdata(_ff)
+    tmp_stats = stats.sigma_clipped_stats(ff_img,
+                                          sigma_upper=2, sigma_lower=5,
+                                          iters=5)
+    mean = tmp_stats[0]
+    stddev = tmp_stats[2]
 
     # CR candidates are those that exceed surrounding pixels by
     # this threshold amount.
@@ -1500,9 +1523,10 @@ def clean_cosmicrays(_ff, _mask, wave):
                   interac='no', train='no', answer='NO')
 
     ir.imcopy(_mask+'.pl', _mask, verbose='no')
-    ir.delete(_mask+'.pl')
+    if os.path.exists(_mask + '.pl'): os.remove(_mask + '.pl')
 
-def clean_cosmicrays2(_ff, _ff_cr, _mask, wave):
+def clean_cosmicrays2(_ff, _ff_cr, _mask, wave,
+                      instrument=instruments.default_inst):
     """Clean the image of cosmicrays and make a mask containing the location
     of all the cosmicrays. The CR masks can later be used in combine() to
     keep cosmicrays from being included.
@@ -1521,35 +1545,34 @@ def clean_cosmicrays2(_ff, _ff_cr, _mask, wave):
     # Determine the threshold at which we should start looking
     # for cosmicrays. Need to figure out the mean level of the
     # background.
-    text_output = ir.imstatistics(_ff, fields='mean,stddev',
-                                  usigma=2, lsigma=5, nclip=5,
-                                  format=0, Stdout=1)
-    values = text_output[0].split()
-    mean = float(values[0])
-    stddev = float(values[1])
+    ff_img, ff_hdr = fits.getdata(_ff, header=True)
+    mean, median, stddev = stats.sigma_clipped_stats(ff_img,
+                                                     sigma_upper=2, sigma_lower=5,
+                                                     iters=5)
 
-    gain = 4.0
-    tmp = ir.hselect(_ff, 'SAMPMODE,MULTISAM', 'yes', Stdout=1)
-    tmp2 = tmp[0].split()
-    sampmode = int(tmp2[0])
-    multisam = int(tmp2[1])
+    # Get the instrument gain
+    gain = instrument.get_gain()
+
+    sampmode = ff_hdr[instrument.hdr_keys['sampmode']]
+    numreads = ff_hdr[instrument.hdr_keys['nfowler']]
+    
     if sampmode == 2:
         readnoise = 60
     else:
-        readnoise = 15.0 * (16.0 / multisam)**0.5
-
+        readnoise = 15.0 * (16.0 / numreads)**0.5
 
     from jlu.util import cosmics
-    img, hdr = fits.getdata(_ff, header=True)
-    c = cosmics.cosmicsimage(img, gain=gain, readnoise=readnoise,
+    c = cosmics.cosmicsimage(ff_img, gain=gain, readnoise=readnoise,
                              sigclip=10, sigfrac=0.5, objlim=5.0)
     c.run(maxiter=3)
-    fits.writeto(_ff_cr, c.cleanarray, hdr,
+    fits.writeto(_ff_cr, c.cleanarray, ff_hdr,
                    clobber=True, output_verify=outputVerify)
-    fits.writeto(_mask, np.where(c.mask==True, 1, 0), hdr,
+    fits.writeto(_mask, np.where(c.mask==True, 1, 0), ff_hdr,
                    clobber=True, output_verify=outputVerify)
 
-def clean_persistance(_n, _pers):
+    return
+
+def clean_persistance(_n, _pers, instrument=instruments.default_inst):
     """
     Make masks of the persistance to be used in combining the images
     later on.
@@ -1559,7 +1582,7 @@ def clean_persistance(_n, _pers):
     img = fits_f[0].data
 
     # Define the high pixels
-    persPixels = where(img > 12000)
+    persPixels = where(img > instrument.get_saturation_level())
 
     # Set saturated pixels to 0, good pixels to 1
     fits_f[0].data[persPixels] = 0
@@ -1572,12 +1595,15 @@ def clean_persistance(_n, _pers):
 def clean_bkgsubtract(_ff_f, _bp):
     """Do additional background subtraction of any excess background
     flux. This isn't strictly necessary since it just removes a constant."""
+    # Open the image for processing.
+    fits_f = fits.open(_ff_f)
+
     # Calculate mean and STD for science image
-    text = ir.imstatistics(_ff_f, fields='mean,stddev', nclip=20,
-                           lsigma=10, usigma=1, format=0, Stdout=1)
-    vals = text[0].split()
-    sci_mean = float(vals[0])
-    sci_stddev = float(vals[1])
+    tmp_stats = stats.sigma_clipped_stats(fits_f[0].data,
+                                          sigma_upper=1, sigma_lower=10,
+                                          iters=5)
+    sci_mean = tmp_stats[0]
+    sci_stddev = tmp_stats[2]
 
     # Excess background flux at (mean - 2*std)
     bkg = sci_mean - (2.0 * sci_stddev)
@@ -1585,7 +1611,6 @@ def clean_bkgsubtract(_ff_f, _bp):
     #      (sci_mean, sci_stddev, bkg, _ff_f)
 
     # Open old, subtract BKG
-    fits_f = fits.open(_ff_f)
 
     # Find really bad pixels
     idx = np.where(fits_f[0].data < (sci_mean - 10*sci_stddev))
@@ -1602,7 +1627,8 @@ def clean_bkgsubtract(_ff_f, _bp):
     # Return the background we subtracted off
     return bkg
 
-def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
+def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
+                  instrument=instruments.default_inst, check_loc=True):
     """Make the *.coo file for this science image. Use the difference
     between the AOTSX/Y keywords from a reference image and each science
     image to tell how the positions of the two frames are related.
@@ -1611,8 +1637,6 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     @type _ce: string
     @param _cc: Name of the output header modified image.
     @type _cc: string
-    @param root: Integer root of this file number
-    @type root: int
     @param refSrc: Array with the X/Y positions of the reference source.
         This will be put into the image header and the *.coo file.
     @type refSrc: array of floats with length=2 [x, y]
@@ -1623,56 +1647,63 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     @type aotsxyRef: array of floats with length=2 [x, y]
     @param radecRef: The RA/DEC header values from the reference image.
     @type radecRef: array of floats with length=2 [x, y]
-    @param clean: The clean directory.
-    @type clean: string
+
+    check_loc (bool):  If True the reference source is recentered for this frame.
+                     Use False if the offsets are large enough to move the reference source off of the image
     """
 
-    hdr = fits.getheader(_ce,ignore_missing_end=True)
+    hdr = fits.getheader(_ce, ignore_missing_end=True)
 
     radec = [float(hdr['RA']), float(hdr['DEC'])]
     aotsxy = nirc2_util.getAotsxy(hdr)
 
     # Determine the image's PA and plate scale
-    phi = nirc2_util.getPA(hdr)
-    scale = nirc2_util.getScale(hdr)
+    phi = instrument.get_position_angle(hdr)
+    scale = instrument.get_plate_scale(hdr)
+
+    # Determine the instrument angle w.r.t. the AO bench.
+    inst_angle = instrument.get_instrument_angle(hdr)
 
     # Calculate the pixel offsets from the reference image
     # We've been using aotsxy2pix, but the keywords are wrong
     # for 07maylgs and 07junlgs
     #d_xy = nirc2_util.radec2pix(radec, phi, scale, radecRef)
-    d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
+    d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef, inst_angle=inst_angle)
 
     # In the new image, find the REF and STRL coords
     xref = refSrc[0] + d_xy[0]
     yref = refSrc[1] + d_xy[1]
     xstr = strSrc[0] + d_xy[0]
     ystr = strSrc[1] + d_xy[1]
+    print('clean_makecoo: xref, yref start = {0:.2f} {1:.2f}'.format(xref, yref))
 
     # re-center stars to get exact coordinates
-    centBox = 12.0
-    text = ir.imcntr(_ce, xref, yref, cbox=centBox, Stdout=1)
-    values = text[0].split()
-    xref = float(values[2])
-    yref = float(values[4])
+    if check_loc:
+        centBox = 12.0
+        text = ir.imcntr(_ce, xref, yref, cbox=centBox, Stdout=1)
+        values = text[0].split()
+        xref = float(values[2])
+        yref = float(values[4])
 
-    text = ir.imcntr(_ce, xstr, ystr, cbox=centBox, Stdout=1)
-    values = text[0].split()
-    xstr = float(values[2])
-    ystr = float(values[4])
+        text = ir.imcntr(_ce, xstr, ystr, cbox=centBox, Stdout=1)
+        values = text[0].split()
+        xstr = float(values[2])
+        ystr = float(values[4])
+        print('clean_makecoo: xref, yref final = {0:.2f} {1:.2f}'.format(xref, yref))
 
     # write reference star x,y to fits header
     fits_f = fits.open(_ce)
-    fits_f[0].header.set('XREF', "%.3f" %xref,
+    fits_f[0].header.set('XREF', "%.3f" % xref,
                           'Cross Corr Reference Src x')
-    fits_f[0].header.set('YREF', "%.3f" %yref,
+    fits_f[0].header.set('YREF', "%.3f" % yref,
                           'Cross Corr Reference Src y')
-    fits_f[0].header.set('XSTREHL', "%.3f" %xstr,
+    fits_f[0].header.set('XSTREHL', "%.3f" % xstr,
                           'Strehl Reference Src x')
-    fits_f[0].header.set('YSTREHL', "%.3f" %ystr,
+    fits_f[0].header.set('YSTREHL', "%.3f" % ystr,
                           'Strehl Reference Src y')
     fits_f[0].writeto(_cc, output_verify=outputVerify)
 
-    file('c'+root+'.coo', 'w').write('%7.2f  %7.2f\n' % (xref, yref))
+    file(_cc.replace('.fits', '.coo'), 'w').write('%7.2f  %7.2f\n' % (xref, yref))
 
     # Make a temporary rotated coo file, in case there are any data sets
     # with various PAs; needed for xregister; remove later
@@ -1684,9 +1715,11 @@ def clean_makecoo(_ce, _cc, root, refSrc, strSrc, aotsxyRef, radecRef, clean):
     xstr_r = xyStr_rot[0]
     ystr_r = xyStr_rot[1]
 
-    file(clean+'c'+root+'.rcoo', 'w').write('%7.2f  %7.2f\n' % (xref_r, yref_r))
+    file(_cc.replace('.fits', '.rcoo'), 'w').write('%7.2f  %7.2f\n' % (xref_r, yref_r))
 
-def mosaic_ref(outFile, cleanDir, roots, diffPA):
+    return
+
+def mosaic_ref(outFile, cleanDir, roots, diffPA, instrument=instruments.default_inst):
     """Calculate an initial guess at the offsets between mosaic frames.
     using the AOTSX/Y keywords from a reference image and each science
     image to tell how the positions of the two frames are related.
@@ -1698,17 +1731,21 @@ def mosaic_ref(outFile, cleanDir, roots, diffPA):
     @param diffPA: 1 = found different PAs so use rot images.
     @type difPA: int
     """
+    
+    # Setup clean file lists.
     if (diffPA == 1):
-	fileNames = [cleanDir + 'r' + root + '.fits' for root in roots]
+        fileNames = instrument.make_filenames(roots, rootDir=cleanDir, prefix='r')
     else:
-	fileNames = [cleanDir + 'c' + root + '.fits' for root in roots]
-
-    hdrRef = fits.getheader(fileNames[0],ignore_missing_end=True)
+        fileNames = instrument.make_filenames(roots, rootDir=cleanDir, prefix='c')
+        
+    hdrRef = fits.getheader(fileNames[0], ignore_missing_end=True)
     aotsxyRef = nirc2_util.getAotsxy(hdrRef)
 
     # Determine the image's PA and plate scale
-    phi = nirc2_util.getPA(hdrRef)
-    scale = nirc2_util.getScale(hdrRef)
+    phi = instrument.get_position_angle(hdrRef)
+    scale = instrument.get_plate_scale(hdrRef)
+    inst_angle = instrument.get_instrument_angle(hdrRef)
+    print('inst_angle = ', inst_angle)
 
     _out = open(outFile, 'w')
 
@@ -1717,23 +1754,24 @@ def mosaic_ref(outFile, cleanDir, roots, diffPA):
     _out.write('%7.2f  %7.2f\n' % (0.0, 0.0))
 
     for rr in range(len(roots)):
-	hdr = fits.getheader(fileNames[rr],ignore_missing_end=True)
-	aotsxy = nirc2_util.getAotsxy(hdr)
+        hdr = fits.getheader(fileNames[rr], ignore_missing_end=True)
+        aotsxy = nirc2_util.getAotsxy(hdr)
 
-	# Calculate the pixel offsets from the reference image
-	# We've been using aotsxy2pix, but the keywords are wrong
-	# for 07maylgs and 07junlgs
-	d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
+        # Calculate the pixel offsets from the reference image
+        # We've been using aotsxy2pix, but the keywords are wrong
+        # for 07maylgs and 07junlgs
+        d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef, inst_angle=inst_angle)
 
-	_out.write('%7.2f  %7.2f\n' % (d_xy[0], d_xy[1]))
+        _out.write('%7.2f  %7.2f\n' % (d_xy[0], d_xy[1]))
 
     _out.close()
 
-
+    return
 
 class Sky(object):
     def __init__(self, sciDir, skyDir, wave, scale=1,
-                 skyfile='', angleOffset=0.0):
+                 skyfile='', angleOffset=0.0,
+                 instrument=instruments.default_inst):
         # Setup some variables we will need later on
         self.sciDir = sciDir
         self.skyDir = skyDir
@@ -1741,6 +1779,8 @@ class Sky(object):
         self.skyFile = skyfile
         self.scale = scale
         self.angleOffset = angleOffset
+
+        self.instrument = instrument
 
         self.defaultSky = skyDir + 'sky_' + wave + '.fits'
 
@@ -1751,7 +1791,7 @@ class Sky(object):
         self.skyName = skyDir + 'sky_scaled.fits'
 
     def __initLp__(self):
-	print('Initializing Lp Sky skyfile=%s' % (self.skyFile))
+        print('Initializing Lp Sky skyfile=%s' % (self.skyFile))
 
         # Read skies from manual sky file (format: raw_science   sky)
         if (self.skyFile):
@@ -1818,14 +1858,19 @@ class Sky(object):
 
         # scale sky to science frame
         if self.scale:
-            text = ir.imstat(_n, fields='mean,stddev', nclip=20,
-                             lsigma=10, usigma=1.0, format=0, Stdout=1)
-            vals = text[0].split()
-            sci_mean = float(vals[0])
-            text = ir.imstat(_sky, fields='mean,stddev', nclip=5,
-                             lsigma=5, usigma=5, format=0, Stdout=1)
-            vals = text[0].split()
-            sky_mean = float(vals[0])
+            n_img = fits.getdata(_n)
+            sci_stats = stats.sigma_clipped_stats(n_img,
+                                                  sigma_upper=1, sigma_lower=10,
+                                                  iters=20)
+            sci_mean = sci_stats[0]
+
+            sky_img = fits.getdata(_sky)
+            sky_stats = stats.sigma_clipped_stats(sky_img,
+                                                  sigma_upper=5, sigma_lower=15,
+                                                  iters=5)
+            sky_mean = sky_stats[0]
+            
+            
             fact = sci_mean/sky_mean
             #print 'scaleSky: factor = %5f  sci_mean = %5f  sky_mean = %5f' % \
             #      (fact, sci_mean, sky_mean)
@@ -1895,14 +1940,15 @@ class Sky(object):
             be subtracted off of the saturation count level.
         @rtype float
         """
-        text_output = ir.imstatistics(sky, fields='mean,stddev',
-                                      usigma=4, lsigma=4, nclip=4,
-                                      format=0, Stdout=1)
-        values = text_output[0].split()
-        sky_mean = float(values[0])
-        sky_stddev = float(values[1])
-        coadds_tmp = ir.hselect(sky, "COADDS", "yes", Stdout=1)
-        coadds = float(coadds_tmp[0])
+        # Read in the FITS file
+        sky_img, sky_hdr = fits.getdata(sky, header=True)
+
+        # Get the sigma-clipped mean and stddev
+        sky_stats = stats.sigma_clipped_stats(sky_img,
+                                              sigma_upper=4, sigma_lower=4,
+                                              iters=4)
+        sky_mean = sky_stats[0]
+        sky_stddev = sky_stats[2]
 
         # -- Log what we did
         if (self.wave == 'lp' or self.wave == 'ms'):
@@ -1919,7 +1965,8 @@ class Sky(object):
 
 
 def mosaic(files, wave, outroot, field=None, outSuffix=None,
-            trim=0, weight=0, fwhm_max=0, submaps=0, fixDAR=True, maskSubmap=False):
+            trim=0, weight=0, fwhm_max=0, submaps=0, fixDAR=True, maskSubmap=False,
+            instrument=instruments.default_inst):
     """Accepts a list of cleaned images and does a weighted combining after
     performing frame selection based on the Strehl and FWHM.
 
@@ -1979,7 +2026,7 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
     util.mkdir(comboDir)
 
     # Make strings out of all the filename roots.
-    roots = [str(f).zfill(4) for f in files]
+    roots = instrument.make_filenames(files, prefix='')
 
     # This is the output root filename
     _out = comboDir + 'mag' + outroot + '_' + wave
@@ -2033,12 +2080,12 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
     # See if all images are at same PA, if not, rotate all to PA = 0
     # temporarily. This needs to be done to get correct shifts.
     print('Calling combine_rotation')
-    diffPA = combine_rotation(cleanDir, roots)
+    diffPA = combine_rotation(cleanDir, roots, instrument=instrument)
 
     # Make a table of initial guesses for the shifts.
     # Use the header keywords AOTSX and AOTSY to get shifts.
     print('Calling mosaic_ref')
-    mosaic_ref(_out + '.init.shifts', cleanDir, roots, diffPA)
+    mosaic_ref(_out + '.init.shifts', cleanDir, roots, diffPA, instrument=instrument)
 
     # Keep record of files that went into this combine
     print('Calling combine_lis')
@@ -2055,12 +2102,12 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
     # Combine all the images together.
     print('Calling mosaic_drizzle')
     combine_drizzle(xysize, cleanDir, roots, _out, weights, shiftsTab,
-                    wave, diffPA, fixDAR=fixDAR)
+                    wave, diffPA, fixDAR=fixDAR, instrument=instrument)
 
     # Now make submaps
     if (submaps > 0):
-    	combine_submaps(xysize, cleanDir, roots, _sub, weights,
-    			shiftsTab, submaps, wave, diffPA,
+        combine_submaps(xysize, cleanDir, roots, _sub, weights,
+                        shiftsTab, submaps, wave, diffPA,
                         fixDAR=fixDAR, mask=maskSubmap)
 
     # Remove *.lis_r file & rotated rcoo files, if any - these
@@ -2071,49 +2118,6 @@ def mosaic(files, wave, outroot, field=None, outSuffix=None,
         _rcoo = cleanDir + 'c' + str(roots[i]) + '.rcoo'
         util.rmall([_rcoo])
 
-def mosiac_ref(coofile, cleanDir, roots, rootDir):
-    """
-    Determine the relative offsets of files in a mosaic using
-    the AOTSX and AOTSY header keywords. Output is written to a
-    coofile.
-
-    @param coofile: The name of the file to write the offsets to.
-    @type coofile: string
-    @param cleanDir: The full path to the clean/ directory.
-    @type cleanDir: string
-    @param roots: List of file numbers for all files in this mosaic.
-    @type roots: list of strings
-    @param rootDir: The full path to the root directory.
-    @type rootDir: string
-    """
-
-    # Read the AOTSX coords from the first file
-    firstFile = rootDir + 'raw/n' + roots[0] + '.fits'
-    hdr1 = fits.getheader(firstFile,ignore_missing_end=True)
-    scaleRef = nirc2_util.getScale(hdr1)
-    aotsxyRef = nirc2_util.getAotsxy(hdr1)
-
-    d_xyRef = nirc2_util.aotsxy2pix(aotsxyRef, scaleRef, aotsxyRef)
-
-    # Write combined *.coo file containing the offsets.
-    _allCoo = file(coofile, 'w')
-    _allCoo.write('%7.2f  %7.2f\n' % (d_xyRef[0], d_xyRef[1]))
-
-    for root in roots:
-        # Compute the relative offsets.
-	_fits = cleanDir + 'c' + root + '.fits'
-        hdr = fits.getheader(_fits,ignore_missing_end=True)
-        aotsxy = nirc2_util.getAotsxy(hdr)
-
-        phi = nirc2_util.getPA(hdr)
-        scale = nirc2_util.getScale(hdr)
-
-        # Calculate the pixel offsets from the reference image
-        d_xy = nirc2_util.aotsxy2pix(aotsxy, scale, aotsxyRef)
-
-        _allCoo.write('%7.2f  %7.2f\n' % (d_xy[0], d_xy[1]))
-
-    _allCoo.close()
 
 def mosaic_register(outroot, refImage, diffPA):
     """
@@ -2187,7 +2191,7 @@ def mosaic_size(shiftsTable, refImage, outroot, subroot, submaps):
 
     orig_img = fits.getdata(refImage)
     orig_size = (orig_img.shape)[0]
-    padd = 8.0
+    padd = int(np.floor(orig_size * 0.02))
 
     xref = x_allShifts[0]
     yref = y_allShifts[0]

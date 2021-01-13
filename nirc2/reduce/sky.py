@@ -1,11 +1,14 @@
 from astropy.io import fits
 from astropy.table import Table
-import os, sys
+from astropy import stats
+import os, sys, shutil
 from . import util
 import numpy as np
 from pyraf import iraf as ir
+from nirc2 import instruments
+import pdb
 
-def makesky(files, nite, wave, skyscale=1):
+def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
     """Make short wavelength (not L-band or longer) skies."""
 
     # Start out in something like '06maylgs1/reduce/kp/'
@@ -24,15 +27,14 @@ def makesky(files, nite, wave, skyscale=1):
 
     util.rmall([skylist, output])
 
-    nn = [skyDir + 'n' + str(i).zfill(4) for i in files]
-    nsc = [skyDir + 'scale' + str(i).zfill(4) for i in files]
-    skies = [rawDir + 'n' + str(i).zfill(4) for i in files]
+    nn = instrument.make_filenames(files, rootDir=skyDir)
+    nsc = instrument.make_filenames(files, rootDir=skyDir, prefix='scale')
+    skies = instrument.make_filenames(files, rootDir=rawDir)
 
     for ii in range(len(nn)):
-        ir.imdelete(nn[ii])
-        ir.imdelete(nsc[ii])
-        ir.imcopy(skies[ii], nn[ii], verbose="no")
-
+        if os.path.exists(nn[ii]): os.remove(nn[ii])
+        if os.path.exists(nsc[ii]): os.remove(nsc[ii])
+        shutil.copy(skies[ii], nn[ii])
 
     # scale skies to common median
     if skyscale:
@@ -43,15 +45,20 @@ def makesky(files, nite, wave, skyscale=1):
         sky_mean = np.zeros([len(skies)], dtype=float)
 
         for i in range(len(skies)):
-            text = ir.imstat(nn[i], fields='mean', nclip=4, 
-                         lsigma=10, usigma=10, format=0, Stdout=1)
-            sky_mean[i] = float(text[0])
+            # Get the sigma-clipped mean and stddev on the dark
+            img_sky = fits.getdata(nn[i])
+            sky_stats = stats.sigma_clipped_stats(img_sky,
+                                                  sigma=10,
+                                                  iters=4)
+            sky_mean[i] = sky_stats[0]
 
         sky_all = sky_mean.mean()
         sky_scale = sky_all/sky_mean
 
         for i in range(len(skies)):
-            ir.imarith(nn[i], '*', sky_scale[i], nsc[i])
+            _nn = fits.open(nn[i])
+            _nn[0].data *= sky_scale[i]
+            _nn.writeto(nsc[i])
 
 	    skyf = nn[i].split('/')
 	    print(('%s   skymean=%10.2f   skyscale=%10.2f' % 
@@ -74,7 +81,7 @@ def makesky(files, nite, wave, skyscale=1):
 
         #skylist = skyDir + 'n????.fits' 
 
-    ir.imdelete(output)
+    if os.path.exists(output): os.remove(output)
     ir.unlearn('imcombine')
     ir.imcombine.combine = 'median'
     ir.imcombine.reject = 'none'
@@ -84,7 +91,8 @@ def makesky(files, nite, wave, skyscale=1):
     ir.imcombine('@' + skylist, output)
 
 
-def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
+def makesky_lp(files, nite, wave, number=3, rejectHsigma=None,
+                   instrument=instruments.default_inst):
     """Make L' skies by carefully treating the ROTPPOSN angle
     of the K-mirror. Uses 3 skies combined (set by number keyword)."""
 
@@ -97,8 +105,8 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None):
 
     util.mkdir(skyDir)
 
-    raw = [rawDir + 'n' + str(i).zfill(4) for i in files]
-    skies = [skyDir + 'n' + str(i).zfill(4) for i in files]
+    raw = instrument.make_filenames(files, rootDir=rawDir)
+    skies = instrument.make_filenames(files, rootDir=skyDir)
     
     _rawlis = skyDir + 'raw.lis'
     _nlis = skyDir + 'n.lis'
@@ -201,8 +209,8 @@ def makesky_lp2(files, nite, wave):
 
     util.mkdir(skyDir)
 
-    raw = [rawDir + 'n' + str(i).zfill(4) for i in files]
-    skies = [skyDir + 'n' + str(i).zfill(4) for i in files]
+    raw = instrument.make_filenames(files, rootDir=rawDir)
+    skies = instrument.make_filenames(files, rootDir=skyDir)
     
     _rawlis = skyDir + 'raw.lis'
     _nlis = skyDir + 'n.lis'
@@ -297,9 +305,9 @@ def makesky_fromsci(files, nite, wave):
 
     util.rmall([skylist, output])
 
-    nn = [skyDir + 'n' + str(i).zfill(4) for i in files]
-    nsc = [skyDir + 'scale' + str(i).zfill(4) for i in files]
-    skies = [rawDir + 'n' + str(i).zfill(4) for i in files]
+    nn = instrument.make_filenames(files, rootDir=skyDir)
+    nsc = instrument.make_filenames(files, rootDir=skyDir, prefix='scale')
+    skies = instrument.make_filenames(files, rootDir=rawDir)
 
     for ii in range(len(nn)):
         ir.imdelete(nn[ii])
@@ -318,13 +326,13 @@ def makesky_fromsci(files, nite, wave):
     sky_mean = np.zeros([len(skies)], dtype=float)
     sky_std = np.zeros([len(skies)], dtype=float)
 
-    text = ir.imstat("@" + skylist, fields='midpt,stddev', nclip=10, 
-                     lsigma=10, usigma=3, format=0, Stdout=1)
-
     for ii in range(len(nn)):
-        fields = text[ii].split()
-        sky_mean[ii] = float(fields[0])
-        sky_std[ii] = float(fields[1])
+        img_sky = fits.getdata(nn[i])
+        sky_stats = stats.sigma_clipped_stats(img_sky,
+                                              sigma_lower=10, sigma_upper=3,
+                                              iters=10)
+        sky_mean[ii] = sky_stats[0]
+        sky_std[ii] = sky_stats[2]
 
     sky_mean_all = sky_mean.mean()
     sky_std_all = sky_std.mean()
@@ -356,8 +364,8 @@ def makesky_lp_fromsci(files, nite, wave, number=3, rejectHsigma=None):
 
     util.mkdir(skyDir)
 
-    raw = [rawDir + 'n' + str(i).zfill(4) for i in files]
-    skies = [skyDir + 'n' + str(i).zfill(4) for i in files]
+    raw = instrument.make_filenames(files, rootDir=rawDir)
+    skies = instrument.make_filenames(files, rootDir=skyDir)
 
     flatDir = redDir + 'calib/flats/'
     flat = flatDir + 'flat_' + wave + '.fits'
