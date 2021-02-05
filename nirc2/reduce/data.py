@@ -1675,7 +1675,7 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
     yref = refSrc[1] + d_xy[1]
     xstr = strSrc[0] + d_xy[0]
     ystr = strSrc[1] + d_xy[1]
-    print('clean_makecoo: xref, yref start = ', xref, yref)
+    print('clean_makecoo: xref, yref start = {0:.2f} {1:.2f}'.format(xref, yref))
 
     # re-center stars to get exact coordinates
     if check_loc:
@@ -1689,7 +1689,7 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
         values = text[0].split()
         xstr = float(values[2])
         ystr = float(values[4])
-        print('clean_makecoo: xref, yref final = ', xref, yref)
+        print('clean_makecoo: xref, yref final = {0:.2f} {1:.2f}'.format(xref, yref))
 
     # write reference star x,y to fits header
     fits_f = fits.open(_ce)

@@ -128,7 +128,43 @@ class Analysis(object):
         # Set the default magnitude cut for plotPosError
         self.plotPosMagCut = 15.0
         
-
+    def prepStarfinder(self, targetName, targetCoords, psfStars, filterName):
+        """Creates a _psf.list file and saves it in the source_list/ directory."""
+        
+        # Covering possible variable inputs and initializing
+        targetName = targetName.lower()
+        filterName = filterName.capitalize()
+        targetCoords = targetCoords[:]
+        psfListLocation = self.rootDir + 'source_list/' + targetName + '_psf.list'
+        year = date.today().strftime("%Y" + ".0")
+        
+        # Modifying the starlist provided into an astropy table
+        starno = 0
+        for star in psfStars:
+            star[0] = "{:.3f}".format(((star[0] - targetCoords[0]) * (9.942 / 1000) * -1))
+            star[1] = "{:.3f}".format(((star[1] - targetCoords[1]) * (9.942 / 1000)))
+            star.insert(0, "1.000")
+            if starno > 0:
+                star.insert(0, "S" + str(starno).zfill(3))
+            else:
+                star.insert(0, targetName)
+            star.insert(4, "-")
+            star.insert(4, year)
+            star.insert(4, "0.000")
+            star.insert(4, "0.000")
+            starno += 1
+            
+        psfStars = np.array(psfStars)
+        psfStarTable = Table(psfStars, names = ('#Name', 'Kp', 'Xarc',
+                                                      'Yarc', 'Vx', 'Vy',
+                                                      't0', 'Filt', 'PSF?'))
+        
+        ascii.write(psfStarTable, psfListLocation, 
+                    format = 'fixed_width', 
+                    delimiter = '  ', 
+                    bookend = False, 
+                    overwrite = True)
+    
     def analyzeCombo(self):
         self.starfinderCombo()
         self.calibrateCombo()
@@ -338,6 +374,7 @@ class Analysis(object):
             cmd += '-N %s ' % self.calFile
             cmd += '-M %s ' % self.calColumn
             cmd += '-c %d ' % calCamera
+            cmd += '-V '
             if (self.calStars != None) and (len(self.calStars) > 0):
                 cmd += '-S '
                 for cc in range(len(self.calStars)):
@@ -723,7 +760,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
         py.title(starlist)
     
     py.savefig('plotPosError%s.png' % suffix)
-    py.savefig('plotPosError%s.eps' % suffix)
+    #py.savefig('plotPosError%s.eps' % suffix)
 
     ##########
     #
@@ -742,7 +779,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     py.title(starlist)
     
     py.savefig('plotMagError%s.png' % suffix)
-    py.savefig('plotMagError%s.eps' % suffix)
+    #py.savefig('plotMagError%s.eps' % suffix)
 
     ##########
     # 
@@ -756,7 +793,7 @@ def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
     py.ylabel('Number of Stars')
 
     py.savefig('plotNumStars%s.png' % suffix)
-    py.savefig('plotNumStars%s.eps' % suffix)
+    #py.savefig('plotNumStars%s.eps' % suffix)
 
     # Find the peak of the distribution
     maxHist = n.argmax()

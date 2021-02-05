@@ -12,6 +12,8 @@ Unfortunately, there are some legacy IDL functions needed by the
 pipeline (strehl calculator). You will need to add the
 <nirc2_dir>/idl_nirc2 directory to your IDL path.
 
+‘pydrizzle' and ‘multidrizzle' need to be installed too.
+
 ### POST INSTALL NOTES
 
 
