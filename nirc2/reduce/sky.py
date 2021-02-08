@@ -8,16 +8,48 @@ from pyraf import iraf as ir
 from nirc2 import instruments
 import pdb
 
-def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
-    """Make short wavelength (not L-band or longer) skies."""
-
-    # Start out in something like '06maylgs1/reduce/kp/'
+def makesky(files, nite,
+            wave, skyscale=True,
+            raw_dir=None,
+            instrument=instruments.default_inst):
+    """
+    Make short wavelength (not L-band or longer) skies.
+    
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    nite : str
+        Name for night of observation (e.g.: "nite1"), used as suffix
+        inside the reduce sub-directories.
+    wave : str
+        Name for the observation passband (e.g.: "kp")
+    skyscale : bool, default=True
+        Whether or not to scale the sky files to the common median.
+        Turn on for scaling skies before subtraction.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
+    """
+    # Make new directory for the current passband and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
+    # Determine directory locatons
     waveDir = os.getcwd() + '/'
     redDir = util.trimdir(os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir(os.path.abspath(redDir + '../') + '/')
     skyDir = waveDir + 'sky_' + nite + '/'
+    
+    # Set location of raw data
     rawDir = rootDir + 'raw/'
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     util.mkdir(skyDir)
     print('sky dir: ',skyDir)
     print('wave dir: ',waveDir)
@@ -46,7 +78,7 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
 
         for i in range(len(skies)):
             # Get the sigma-clipped mean and stddev on the dark
-            img_sky = fits.getdata(nn[i])
+            img_sky = fits.getdata(nn[i], ignore_missing_end=True)
             sky_stats = stats.sigma_clipped_stats(img_sky,
                                                   sigma=10,
                                                   iters=4)
@@ -56,9 +88,9 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
         sky_scale = sky_all/sky_mean
 
         for i in range(len(skies)):
-            _nn = fits.open(nn[i])
-            _nn[0].data *= sky_scale[i]
-            _nn.writeto(nsc[i])
+            _nn = fits.open(nn[i], ignore_missing_end=True)
+            _nn[0].data = _nn[0].data * sky_scale[i]
+            _nn[0].writeto(nsc[i])
 
 	    skyf = nn[i].split('/')
 	    print(('%s   skymean=%10.2f   skyscale=%10.2f' % 
@@ -89,22 +121,59 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
     ir.imcombine.nhigh = 1
 
     ir.imcombine('@' + skylist, output)
+    
+    # Change back to original directory
+    os.chdir('../')
 
 
 def makesky_lp(files, nite, wave, number=3, rejectHsigma=None,
-                   instrument=instruments.default_inst):
-    """Make L' skies by carefully treating the ROTPPOSN angle
-    of the K-mirror. Uses 3 skies combined (set by number keyword)."""
-
-    # Start out in something like '06maylgs1/reduce/kp/'
+               raw_dir=None,
+               instrument=instruments.default_inst):
+    """
+    Make L' skies by carefully treating the ROTPPOSN angle
+    of the K-mirror. Uses 3 skies combined (set by number keyword).
+    
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    nite : str
+        Name for night of observation (e.g.: "nite1"), used as suffix
+        inside the reduce sub-directories.
+    wave : str
+        Name for the observation passband (e.g.: "lp")
+    number : int, default=3
+        Number of skies to be combined
+    rejectHsigma : int, default:None
+        Flag to pass for rejectHsigma for IRAF imcombine
+        By default, no flags are passed
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
+    """
+    
+    # Make new directory for the current passband and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
+    # Determine directory locatons
     waveDir = os.getcwd() + '/'
     redDir = util.trimdir(os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir(os.path.abspath(redDir + '../') + '/')
     skyDir = waveDir + 'sky_' + nite + '/'
+    
     rawDir = rootDir + 'raw/'
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     util.mkdir(skyDir)
-
+    print('sky dir: ',skyDir)
+    print('wave dir: ',waveDir)
+    
     raw = instrument.make_filenames(files, rootDir=rawDir)
     skies = instrument.make_filenames(files, rootDir=skyDir)
     
@@ -194,6 +263,9 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None,
 	
     f_txt.close()
     f_log.close()
+    
+    # Change back to original directory
+    os.chdir('../')
 
 
 def makesky_lp2(files, nite, wave):

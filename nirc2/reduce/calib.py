@@ -9,20 +9,37 @@ from astropy import stats
 
 module_dir = os.path.dirname(__file__)
 
-def makedark(files, output, instrument=instruments.default_inst):
+def makedark(files, output,
+             raw_dir=None,
+             instrument=instruments.default_inst):
     """
     Make dark image for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a darks/ subdirectory.
-
-    files: integer list of the files. Does not require padded zeros.
-    output: output file name. Include the .fits extension.
+    
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    output : str
+        Output file name. Include the .fits extension.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     redDir = os.getcwd() + '/'  # Reduce directory.
     curDir = redDir + 'calib/'
     darkDir = util.trimdir(curDir + 'darks/')
+    
+    # Set location of raw data
     rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     util.mkdir(curDir)
     util.mkdir(darkDir)
 
@@ -45,27 +62,47 @@ def makedark(files, output, instrument=instruments.default_inst):
 
 
 def makeflat(onFiles, offFiles, output, normalizeFirst=False,
-                 instrument=instruments.default_inst):
+             raw_dir=None,
+             instrument=instruments.default_inst):
     """
     Make flat field image for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a flats/ subdirectory.
-
-    onFiles: integer list of lamps ON files. Does not require padded zeros.
-    offFiles: integer list of lamps OFF files. Does not require padded zeros.
 
     If only twilight flats were taken (as in 05jullgs), use these flats as
     the onFiles, and use 0,0 for offFiles. So the reduce.py file should look
     something like this: onFiles = range(22, 26+1) and offFiles = range(0,0)
     The flat will then be made by doing a median combine using just the
     twilight flats.
-    output: output file name. Include the .fits extension.
+                 
+    Parameters
+    ----------
+    onFiles : list of int
+        Integer list of lamps ON files. Does not require padded zeros.
+    offFiles : list of int
+        Integer list of lamps OFF files. Does not require padded zeros.
+    output : str
+        Output file name. Include the .fits extension.
+    normalizeFirst : bool, default=False
+        If the individual flats should be normalized first,
+        such as in the case of twilight flats.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     redDir = os.getcwd() + '/'
     curDir = redDir + 'calib/'
     flatDir = util.trimdir(curDir + 'flats/')
+    
+    # Set location of raw data
     rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     util.mkdir(curDir)
     util.mkdir(flatDir)
 
@@ -83,7 +120,7 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
     lampsoff = instrument.make_filenames(offFiles, rootDir=rawDir)
     lampsonNorm = instrument.make_filenames(onFiles, rootDir=flatDir + 'norm')
     util.rmall(lampsonNorm)
-
+    
     if (len(offFiles) != 0):
         f_on = open(_onlis, 'w')
         f_on.write('\n'.join(lampson) + '\n')
@@ -160,29 +197,32 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
         ir.normflat(_norm, _out, sample=flatRegion)
 
 def makemask(dark, flat, output, instrument=instruments.default_inst):
-    """Make bad pixel mask for imaging data. Makes a calib/ directory
+    """
+    Make bad pixel mask for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a masks/ subdirectory.
-
-    @param dark: The filename of the dark file (must be in the 
+    
+    Parameters
+    ----------
+    dark : str
+        The filename of the dark file (must be in the
         calib/darks/ directory). This is used to
         construct a hot pixel mask. Use a long (t>20sec) exposure dark.
-    @type dark: str
-    @param flat: The filename of a flat file  (must be in the 
+    flat : str
+        The filename of a flat file  (must be in the
         calib/flats/ directory). This is used to
         construct a dead pixel mask. The flat should be normalized.
-    @type flat: str
-    @param output: output file name. This will be created in the masks/
+    output : str
+        The output file name. This will be created in the masks/
         subdirectory.
-    @type output: str
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     redDir = os.getcwd() + '/'
     calDir = redDir + 'calib/'
     maskDir = util.trimdir(calDir + 'masks/')
     flatDir = util.trimdir(calDir + 'flats/')
     darkDir = util.trimdir(calDir + 'darks/')
-    rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
-    dataDir = util.trimdir(os.path.abspath(redDir + '../..') + '/')
 
     util.mkdir(calDir)
     util.mkdir(maskDir)
@@ -253,15 +293,19 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     run once. This creates a file called nirc2mask.fits or osiris_img_mask.fits
     which is subsequently used throughout the pipeline. The dark should be a long
     integration dark.
-
-    @param dark: The full absolute path to a medianed dark file. This is
+    
+    Parameters
+    ----------
+    dark : str
+        The full absolute path to a medianed dark file. This is
         used to construct a hot pixel mask (4 sigma detection thresh).
-    @type dark: str
-    @param flat: The full absolute path to a medianed flat file. This is
-         used to construct a dead pixel mask.
-    @type flat: str
-    @param outDir: full path to output directory with '/' at the end.
-    @type outDir: str
+    flat : str
+        The full absolute path to a medianed flat file. This is
+        used to construct a dead pixel mask.
+    outDir : str
+        full path to output directory with '/' at the end.
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     _out = outDir + instrument.get_bad_pixel_mask_name()
     _dark = dark

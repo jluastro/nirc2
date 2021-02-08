@@ -42,7 +42,8 @@ outputVerify = 'ignore'
 
 
 def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
-          skyscale=0, skyfile=None, angOff=0.0, fixDAR=True,
+          skyscale=False, skyfile=None, angOff=0.0, fixDAR=True,
+          raw_dir=None, clean_dir=None,
           instrument=instruments.default_inst, check_ref_loc=True):
     """
     Clean near infrared NIRC2 or OSIRIS images.
@@ -60,8 +61,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         sky_nite1/
         sky.fits
 
-    All output files will be put into reduce/../clean/ in the
-    following structure:
+    All output files will be put into clean_dir (if specified, otherwise
+    ../clean/) in the following structure:
     kp/
         c*.fits
         distort/
@@ -73,60 +74,85 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
     <field_><wave> instead of just <wave>. So for instance, for Arches
     field #1 data reduction, you might call clean with: field='arch_f1'.
 
-    @param files: a list of file numbers. Doesn't require zero pad.
-    @type files: integer list
-    @param nite: the nite suffix (e.g. nite1). This is only used inside
-        the reduce sub-directories. For prefixes based on different fields,
-        use the optional 'field' keyword.
-    @type nite: string
-    @param wave: the wavelength suffix (e.g.. kp).
-    @type wave: string
-    @kwparam field: Optional prefix for clean directory and final
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    nite : str
+        Name for night of observation (e.g.: "nite1"), used as suffix
+        inside the reduce sub-directories.
+    wave : str
+        Name for the observation passband (e.g.: "kp"), used as
+        a wavelength suffix
+    field : str, default=None
+        Optional prefix for clean directory and final
         combining. All clean files will be put into <field_><wave>. You
         should also pass the same into combine(). If set to None (default)
         then only wavelength is used.
-    @type field: string
-    @kwparam skyscale: (def = 0) Turn on for scaling skies before subtraction.
-    @type skyscale: 1/0
-    @kwparam skyfile: (def = '') An optional file containing image/sky matches.
-    @type skyfile: string
-    @kwparam angOff: (def = 0) An optional absolute offset in the rotator
+    skyscale : bool, default=False
+        Whether or not to scale the sky files to the common median.
+        Turn on for scaling skies before subtraction.
+    skyfile : str, default=''
+        An optional file containing image/sky matches.
+    angOff : float, default = 0
+        An optional absolute offset in the rotator
         mirror angle for cases (wave='lp') when sky subtraction is done with
-        skies taken at matchin rotator mirror angles.
-    @type angOff: float
-    @kwparam badColumns: (def = None) An array specifying the bad columns (zero-based).
-                Assumes a repeating pattern every 8 columns.
-    @type badColumns: int array
+        skies taken at matching rotator mirror angles.
+    badColumns : int array, default = None
+        An array specifying the bad columns (zero-based).
+        Assumes a repeating pattern every 8 columns.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    clean_dir : str, optional
+        Directory where clean files will be stored. By default,
+        assumes that clean files will be stored in '../clean'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
-
-    # Start out in something like '06maylgs1/reduce/kp/'
-    waveDir = util.getcwd()
-    redDir = os.path.abspath(waveDir + '../') + '/'
-    rootDir = os.path.abspath(redDir + '../') + '/'
-
+    
+    # Make sure directory for current passband exists and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
+    # Determine directory locatons
+    waveDir = os.getcwd() + '/'
+    redDir = util.trimdir(os.path.abspath(waveDir + '../') + '/')
+    rootDir = util.trimdir(os.path.abspath(redDir + '../') + '/')
+    
     sciDir = waveDir + '/sci_' + nite + '/'
     util.mkdir(sciDir)
     ir.cd(sciDir)
 
     # Set location of raw data
     rawDir = rootDir + 'raw/'
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     # Setup the clean directory
     cleanRoot = rootDir + 'clean/'
-    if (field != None):
+    
+    # Check if user has specified a specific clean directory
+    if clean_dir is not None:
+        cleanRoot = util.trimdir(os.path.abspath(clean_dir) + '/')
+    
+    if field is not None:
         clean = cleanRoot + field + '_' + wave + '/'
     else:
         clean = cleanRoot + wave + '/'
+    
     distort = clean + 'distort/'
     weight = clean + 'weight/'
     masks = clean + 'masks/'
-
+    
     util.mkdir(cleanRoot)
     util.mkdir(clean)
     util.mkdir(distort)
     util.mkdir(weight)
     util.mkdir(masks)
-
+    
     try:
         # Setup flat. Try wavelength specific, but if it doesn't
         # exist, then use a global one.
@@ -581,26 +607,55 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
     return [x,y]
 
 
-def calcStrehl(files, wave, field=None, instrument=instruments.default_inst):
-    """Make Strehl and FWHM table on the strehl source for all
+def calcStrehl(files, wave,
+               clean_dir=None, field=None,
+               instrument=instruments.default_inst):
+    """
+    Make Strehl and FWHM table on the strehl source for all
     cleaned files.
 
-    @param cleanDir The 'clean' directory.
-    @type cleanDir string
-    @param roots A list of string root names (e.g. 0001)
-    @type roots list
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    wave : str
+        Name for the observation passband (e.g.: "kp"), used as
+        a wavelength suffix
+    field : str, default=None
+        Optional prefix for clean directory and final
+        combining. All clean files will be put into <field_><wave>. You
+        should also pass the same into combine(). If set to None (default)
+        then only wavelength is used.
+    clean_dir : str, optional
+        Directory where clean files will be stored. By default,
+        assumes that clean files will be stored in '../clean'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
+    
+    # Make sure directory for current passband exists and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
+    # Determine directory locatons
     waveDir = util.getcwd()
     redDir = util.trimdir( os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir( os.path.abspath(redDir + '../') + '/')
-    if (field != None):
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' +field+
-                                                   '_' +wave) + '/')
+    
+    
+    # Setup the clean directory
+    cleanRoot = rootDir + 'clean/'
+    
+    # Check if user has specified a specific clean directory
+    if clean_dir is not None:
+        cleanRoot = util.trimdir(os.path.abspath(clean_dir) + '/')
+    
+    if field is not None:
+        cleanDir = cleanRoot + field + '_' + wave + '/'
     else:
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' + wave) + '/')
-
+        cleanDir = cleanRoot + wave + '/'
+    
+    
     # Make a list of all the images
     clis_file = cleanDir + 'c.lis'
     strehl_file = cleanDir + 'strehl_source.txt'
@@ -640,6 +695,9 @@ def calcStrehl(files, wave, field=None, instrument=instruments.default_inst):
 
         raise RuntimeError('calcStrehl: Strehl widget lost files: ',
                            droppedFiles)
+    
+    # Switch back to parent directory
+    os.chdir('../')
 
 def weight_by_strehl(roots, strehls):
     """
