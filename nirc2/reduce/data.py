@@ -306,6 +306,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # Move back up to the original directory
         #skyObj.close()
         ir.cd('../')
+    
+    # Change back to original directory
+    os.chdir('../')
 
 def clean_get_supermask(_statmask, _supermask, badColumns):
     """
@@ -375,82 +378,115 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave,
 
 
 def clean_lp(files, nite, wave, refSrc, strSrc, angOff, skyfile):
-    """Only here for backwards compatability. You should use clean() instead."""
+    """
+    Only here for backwards compatability.
+    You should use clean() instead.
+    """
     clean(files, nite, wave, refSrc, strSrc,
           angOff=angOff, skyfile=skyfile)
 
 def combine(files, wave, outroot, field=None, outSuffix=None,
-            trim=0, weight=None, fwhm_max=0, submaps=0, fixDAR=True,
-            mask=True, instrument=instruments.default_inst):
-    """Accepts a list of cleaned images and does a weighted combining after
+            trim=False, weight=None, fwhm_max=0, submaps=0,
+            fixDAR=True, mask=True,
+            clean_dir=None, combo_dir=None,
+            instrument=instruments.default_inst):
+    """
+    Accepts a list of cleaned images and does a weighted combining after
     performing frame selection based on the Strehl and FWHM.
-
+    
     Each image must have an associated *.coo file which gives the rough
     position of the reference source.
-
-    @param files: List of integer file numbers to include in combine.
-    @type files: list of int
-    @param wave: Filter of observations (e.g. 'kp', 'lp', 'h')
-    @type wave: string
-    @param outroot: The output root name (e.g. '06jullgs'). The final combined
-        file names will be <outroot>_<field>_<outSuffix>_<wave>.
+    
+    
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files to include in combine. Does not require
+        padded zeros.
+    wave : str
+        Name for the observation passband (e.g.: "kp", "lp", or "h"), used as
+        a wavelength suffix
+    outroot : str
+        The output root name (e.g. '06jullgs'). The final combined file names
+        will be <outroot>_<field>_<outSuffix>_<wave>.
         The <field> and <outSuffix> keywords are optional.
-
+        
         Examples:
         06jullgs_kp for outroot='06jullgs' and wave='kp'
         06jullgs_arch_f1_kp for adding field='arch_f1'
-    @type outroot: string
-    @kwparam field: Optional field name used to get to clean directory and
-        also affects the final output file name.
-    @type field: string
-    @kwparam outSuffix: Optional suffix used to modify final output file name.
-    @type outSuffix: string
-    @kwparam trim: Optional file trimming based on image quality. Default
-        is 0. Set to 1 to turn trimming on.
-    @type trim: 0 or 1
-    @kwparam weight: Optional weighting. Set to 'strehl' to weight by Strehl,
-        as found in strehl_source.txt file. OR set to a file name with the
-        first column being the file name (e.g., c0021.fits) and the second
-        column being the weight. Weights will be renormalized to sum to 1.0.
+    field : str, default=None
+        Optional field name. Used to get to clean directory and also affects
+        the final output file name.
+    outSuffix : str
+        Optional suffix used to modify final output file name.
+        Can use suffix to indicate a night of observation (e.g.: "nite1").
+    trim : bool, default=False
+        Optional file trimming based on image quality. Default
+        is False. Set to True to turn trimming on.
+    weight : str, default=None
+        Optional weighting. Set to 'strehl' to weight by Strehl, as found in
+        strehl_source.txt file.
+        OR set to a file name with the first column being the file name
+        (e.g., c0021.fits) and the second column being the weight. Weights will
+        be renormalized to sum to 1.0.
         Default = None, no weighting.
-    @type weight: string
-    @kwparam fwhm_max: The maximum allowed FWHM for keeping frames when
-        trimming is turned on.
-    @type fwhm_max: int
-    @kwparam submaps: Set to the number of submaps to be made (def=0).
-    @type submaps: int
+    fwhm_max : float, default=0
+        The maximum allowed FWHM for keeping frames when trimming is turned on.
+    submaps : int, default=0
+        Set to the number of submaps to be made (def=0).
+    fixDAR : bool, default=True
+    mask : bool, default=True
+    clean_dir : str, optional
+        Directory where clean files are stored. By default,
+        assumes that clean files are stored in '../clean'
+    combo_dir : str, optional
+        Directory where combo files will be stored. By default,
+        assumes that raw files will be stored in '../combo'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
-    # Start out in something like '06maylgs1/reduce/kp/'
+    
+    # Make sure directory for current passband exists and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
     # Setup some files and directories
     waveDir = util.getcwd()
     redDir = util.trimdir( os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir( os.path.abspath(redDir + '../') + '/')
-
-    if (field != None):
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' +field+
-                                                   '_' +wave) + '/')
+    
+    # Determine clean directory and add field and suffixes to outroot
+    cleanRoot = rootDir + 'clean/'
+    
+    if clean_dir is not None:
+        cleanRoot = util.trimdir(os.path.abspath(clean_dir) + '/')
+    
+    if field is not None:
+        cleanDir = cleanRoot + field + '_' + wave + '/'
         outroot += '_' + field
     else:
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' + wave) + '/')
+        cleanDir = cleanRoot + wave + '/'
+    
     if (outSuffix != None):
         outroot += '_' + outSuffix
-
-    # This is the final output directory
+    
+    # Set up combo directory. This is the final output directory.
     comboDir = rootDir + 'combo/'
+    
+    if combo_dir is not None:
+        comboDir = util.trimdir(os.path.abspath(combo_dir) + '/')
+    
     util.mkdir(comboDir)
 
     # Make strings out of all the filename roots.
-    allroots = instrument.make_filenames(files)
+    allroots = instrument.make_filenames(files, prefix='')
     allroots = [aa.replace('.fits', '') for aa in allroots]
     roots = copy.deepcopy(allroots) # This one will be modified by trimming
 
     # This is the output root filename
     _out = comboDir + 'mag' + outroot + '_' + wave
     _sub = comboDir + 'm' + outroot + '_' + wave
-
-
+    
     ##########
     # Determine if we are going to trim and/or weight the files
     # when combining. If so, then we need to determine the Strehl
@@ -459,8 +495,9 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     ##########
 
     # Load the strehl_source.txt file
-    if (weight is not None) or os.path.exists(os.path.join(cleanDir,'strehl_source.txt')):
-        strehls, fwhm = loadStrehl(cleanDir, roots) 
+    if ((weight is not None) or
+        os.path.exists(os.path.join(cleanDir,'strehl_source.txt'))):
+        strehls, fwhm = loadStrehl(cleanDir, roots)
     else:
         # if the file doesn't exist don't use
         print('combine: the strehl_source file does not exist: '+os.path.join(cleanDir,'strehl_source.txt'))
@@ -469,7 +506,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         strehls = np.zeros(len(roots))-1.0
         fwhm = np.zeros(len(roots)) -1.0
         trim = False
-
+    
 
     # Default weights
     # Create an array with length equal to number of frames used,
@@ -489,7 +526,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     if weight == 'strehl':
         weights = weight_by_strehl(roots, strehls)
 
-    if ((weight != None) and (weight != 'strehl')):
+    if ((weight is not None) and (weight is not 'strehl')):
         # Assume weight is set to a filename
         if not os.path.exists(weight):
             raise ValueError('Weights file does not exist, %s' % weight)
@@ -550,6 +587,9 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     for i in range(len(allroots)):
         _rcoo = cleanDir + 'c' + str(allroots[i]) + '.rcoo'
         util.rmall([_rcoo])
+    
+    # Change back to original directory
+    os.chdir('../')
 
 def rot_img(root, phi, cleanDir):
     """Rotate images to PA=0 if they have a different PA from one
@@ -577,14 +617,21 @@ def rot_img(root, phi, cleanDir):
     return
 
 def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
-    """Queries label.dat for the xy offset from Sgr A* (in arcsec)
+    """
+    Queries label.dat for the xy offset from Sgr A* (in arcsec)
     for the star given as an input
-
-    @param name: name of a star (e.g. 'irs16NE')
-    @type name: string
-
-    @returns pos: x and y offset from Sgr A* in arcsec
-    @rtype pos: float list (2-elements)
+    
+    Parameters
+    ----------
+    name : str
+        Name of a star (e.g. 'irs16NE')
+    label_file : str, default='/Users/jlu/data/gc/source_list/label.dat'
+        Full path of label.dat file to search
+    
+    Returns
+    -------
+    pos : float list (2 elements)
+        x and y offset from Sgr A* in arcsec
     """
 
     # Read in label.dat
@@ -787,7 +834,7 @@ def loadStrehl(cleanDir, roots):
     column5 = MJD (UT)
     """
     _strehl = cleanDir + 'strehl_source.txt'
-
+    
     # Read in file and get strehls and FWHMs
     strehlTable = trim_table_by_name(roots, _strehl)
     strehls = strehlTable['col2']
@@ -806,9 +853,9 @@ def trim_table_by_name(outroots, tableFileName):
     the desired output list of root files names (outroots).
     """
     table = Table.read(tableFileName, format='ascii', header_start=None)
-
+    
     good = np.zeros(len(table), dtype=bool)
-
+    
     for rr in range(len(outroots)):
         for ii in range(len(table)):
             if outroots[rr] in table[ii][0]:
