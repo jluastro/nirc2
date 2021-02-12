@@ -8,6 +8,7 @@ from nirc2.reduce import nirc2_util
 from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
 from nirc2 import instruments
+from nirc2 import strehl
 import subprocess
 import pylab as py
 import pdb
@@ -19,18 +20,37 @@ class Analysis(object):
     and photometric errors via align_rms. 
     """
 
-    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp', 
+    def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp',
+                 clean_dir = None, combo_dir = None,
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis',
-                 instrument=instruments.default_inst,
-                 airopa_mode='legacy', stf_version=None):
-
+                 airopa_mode='single', stf_version=None,
+                 instrument=instruments.default_inst):
+        """
+        Set up Analysis object.
+        
+        Parameters
+        ----------
+        epoch : str
+            Name of the combo epoch
+        rootDir : str, default='/g/lu/data/orion/'
+            Path of the root directory
+        airopa_mode : str, default='single'
+            The airopa mode to use. Available options are 'legacy', 'single',
+            or 'variable'.
+        stf_version : str, default=None
+            If specified, adds a version suffix to the starfinder directory
+            (e.g.: 'v3_1')
+        instrument : instruments object, optional
+            Instrument of data. Default is `instruments.default_inst`
+        """
         # Setup default parameters
         self.type = 'ao'
         self.corrMain = 0.8
         self.corrSub = 0.6
         self.corrClean = 0.7
-        self.airopa_mode = airopa_mode      # can be "legacy", "single", or "variable"
+        # airopa mode can be "legacy", "single", or "variable"
+        self.airopa_mode = airopa_mode
         self.trimfake = 1
         self.stfFlags = ''
 
@@ -83,35 +103,46 @@ class Analysis(object):
             self.imgSuffix = ''
 
         # Setup Directories
+        # Epoch directory
         self.dirEpoch = self.rootDir + self.epoch + self.suffix + '/'
+        
+        # Clean directory
         self.dirClean = self.dirEpoch + 'clean/' + self.filt + '/'
+        if clean_dir is not None:
+            self.dirClean = util.trimdir(os.path.abspath(clean_dir) + '/'
+                                         + self.filt + '/')
+        
         if useDistorted:
             self.dirClean += 'distort/'
-        if stfDir != None:
+        if stfDir is not None:
             self.dirCleanStf = self.dirClean + 'starfinder/' + stfDir + '/'
         else:
             self.dirCleanStf = self.dirClean + 'starfinder/'
         self.dirCleanAln = self.dirCleanStf + 'align/'
-
-        self.dirCombo = self.dirEpoch + 'combo/'
         
+        # Combo directory
+        self.dirCombo = self.dirEpoch + 'combo/'
+        if combo_dir is not None:
+            self.dirCombo = util.trimdir(os.path.abspath(combo_dir) + '/')
+        
+        # Starfinder ddirectory
         starfinder_dir_name = 'starfinder/'
         if stf_version is not None:
             starfinder_dir_name = 'starfinder_{0}/'.format(stf_version)
         
-        if stfDir != None:
+        if stfDir is not None:
             self.dirComboStf = self.dirCombo + starfinder_dir_name + stfDir + '/'
         else:
             self.dirComboStf = self.dirCombo + starfinder_dir_name
         self.dirComboAln = self.dirComboStf + 'align/'
-
+        
         # make the directories if we need to
         if cleanList != None:
             util.mkdir(self.dirCleanStf)
             util.mkdir(self.dirCleanAln)
         util.mkdir(self.dirComboStf)
         util.mkdir(self.dirComboAln)
-
+        
         # Get the list of clean files to work on
         self.cleanList = cleanList
         self.cleanFiles = []
@@ -288,7 +319,38 @@ class Analysis(object):
             # Copy over the PSF starlist that was used (for posterity).
             outPsfs = 'mag%s%s_%s_psf_list.txt' % (self.epoch, self.imgSuffix, self.filt)
             shutil.copyfile(self.starlist, outPsfs)
-
+            
+            # Run the Strehl calculator to calculate Strehl on StarFinder PSFs
+            # Need list of PSFs file and coo files associated with each PSF file
+            psf_file_list = []
+            
+            cur_psf_file = epoch_file_root + '_psf.fits'
+            cur_coo_file = epoch_file_root + '_psf.coo'
+            
+            psf_img, psf_hdr = fits.getdata(cur_psf_file, header=True)
+            (psf_y_size, psf_x_size) = psf_img.shape
+            
+            psf_x_coord = psf_x_size/2.0
+            psf_y_coord = psf_y_size/2.0
+            
+            coo_output = ' {0:.3f}   {1:.3f}'.format(psf_x_coord, psf_y_coord)
+            
+            psf_file_list.append(cur_psf_file)
+            with open(cur_coo_file, 'w') as out_coo_file:
+                out_coo_file.write(coo_output)
+            
+            for cur_sub_index in range(self.numSubMaps):
+                cur_sub_str = str(cur_sub_index + 1)
+                cur_psf_file = epoch_sub_root + '_' + cur_sub_str + '_psf.fits'
+                cur_coo_file = epoch_sub_root + '_' + cur_sub_str + '_psf.coo'
+                
+                psf_file_list.append(cur_psf_file)
+                with open(cur_coo_file, 'w') as out_coo_file:
+                    out_coo_file.write(coo_output)
+            
+            strehl.calc_strehl(psf_file_list, 'stf_psf_strehl.txt',
+                               instrument=self.instrument)
+            
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
@@ -636,7 +698,7 @@ class Analysis(object):
         except:
             os.chdir(self.dirStart)
             raise
-    
+
 
 def plotPosError(starlist, raw=False, suffix='', radius=4, magCutOff=15.0,
                  title=True):
