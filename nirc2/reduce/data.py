@@ -441,7 +441,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         assumes that clean files are stored in '../clean'
     combo_dir : str, optional
         Directory where combo files will be stored. By default,
-        assumes that raw files will be stored in '../combo'
+        assumes that combo files will be stored in '../combo'
     instrument : instruments object, optional
         Instrument of data. Default is `instruments.default_inst`
     """

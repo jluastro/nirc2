@@ -22,6 +22,7 @@ class Analysis(object):
 
     def __init__(self, epoch, rootDir='/g/lu/data/orion/', filt='kp',
                  clean_dir = None, combo_dir = None,
+                 combo_stf_dir = None,
                  epochDirSuffix=None, imgSuffix=None, stfDir=None,
                  useDistorted=False, cleanList='c.lis',
                  airopa_mode='single', stf_version=None,
@@ -35,6 +36,17 @@ class Analysis(object):
             Name of the combo epoch
         rootDir : str, default='/g/lu/data/orion/'
             Path of the root directory
+        filt : str, default='kp'
+            Name of the filter of reduction
+        clean_dir : str, optional
+            Directory where clean files are stored. By default,
+            assumes that clean files are stored in '../clean'
+        combo_dir : str, optional
+            Directory where combo files are stored. By default,
+            assumes that combo files are stored in '../combo'
+        combo_stf_dir : str, optional
+            Directory where starfinder files will be stored. By default,
+            starfinder output is stored in 'combo/starfinder/'
         airopa_mode : str, default='single'
             The airopa mode to use. Available options are 'legacy', 'single',
             or 'variable'.
@@ -125,7 +137,7 @@ class Analysis(object):
         if combo_dir is not None:
             self.dirCombo = util.trimdir(os.path.abspath(combo_dir) + '/')
         
-        # Starfinder ddirectory
+        # Starfinder directory
         starfinder_dir_name = 'starfinder/'
         if stf_version is not None:
             starfinder_dir_name = 'starfinder_{0}/'.format(stf_version)
@@ -134,6 +146,16 @@ class Analysis(object):
             self.dirComboStf = self.dirCombo + starfinder_dir_name + stfDir + '/'
         else:
             self.dirComboStf = self.dirCombo + starfinder_dir_name
+        
+        if combo_stf_dir is not None:
+            self.dirComboStf = util.trimdir(os.path.abspath(combo_stf_dir)
+                                            + '/')
+            if stfDir is not None:
+                self.dirComboStf = self.dirComboStf + starfinder_dir_name + stfDir + '/'
+            else:
+                self.dirComboStf = self.dirComboStf + starfinder_dir_name
+        
+        
         self.dirComboAln = self.dirComboStf + 'align/'
         
         # make the directories if we need to
