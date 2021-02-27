@@ -16,6 +16,7 @@ from . import dar
 from . import bfixpix
 import subprocess
 import copy
+import shutil
 
 module_dir = os.path.dirname(__file__)
 
@@ -388,7 +389,7 @@ def clean_lp(files, nite, wave, refSrc, strSrc, angOff, skyfile):
 def combine(files, wave, outroot, field=None, outSuffix=None,
             trim=False, weight=None, fwhm_max=0, submaps=0,
             fixDAR=True, mask=True,
-            clean_dir=None, combo_dir=None,
+            clean_dirs=None, combo_dir=None,
             instrument=instruments.default_inst):
     """
     Accepts a list of cleaned images and does a weighted combining after
@@ -436,9 +437,10 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         Set to the number of submaps to be made (def=0).
     fixDAR : bool, default=True
     mask : bool, default=True
-    clean_dir : str, optional
-        Directory where clean files are stored. By default,
-        assumes that clean files are stored in '../clean'
+    clean_dirs : list of str, optional
+        List of directories where clean files are stored. Needs to be same
+        length as files list. If not specified, by default assumes that
+        clean files are stored in '../clean'.
     combo_dir : str, optional
         Directory where combo files will be stored. By default,
         assumes that combo files will be stored in '../combo'
@@ -458,14 +460,32 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     # Determine clean directory and add field and suffixes to outroot
     cleanRoot = rootDir + 'clean/'
     
-    if clean_dir is not None:
-        cleanRoot = util.trimdir(os.path.abspath(clean_dir) + '/')
-    
     if field is not None:
         cleanDir = cleanRoot + field + '_' + wave + '/'
         outroot += '_' + field
     else:
         cleanDir = cleanRoot + wave + '/'
+    
+    # If clean directories are specified for each file,
+    # first tack on the field and wave to each path
+    if clean_dirs is not None:
+        # If incorrect number of clean directories specified, raise ValueError
+        if len(clean_dirs) is not len(files):
+            err_str = 'Length of clean_dirs needs to match number of files, '
+            err_str += str(len(files))
+            
+            raise ValueError(err_str)
+        
+        # Tack on field and wave to each path
+        for clean_dir_index in range(len(clean_dirs)):
+            cleanRoot = util.trimdir(
+                            os.path.abspath(clean_dirs[clean_dir_index] + '/'))
+            
+            if field is not None:
+                clean_dirs[clean_dir_index] = cleanRoot + '/' + field +\
+                                              '_' + wave + '/'
+            else:
+                clean_dirs[clean_dir_index] = cleanRoot + '/' + wave + '/'
     
     if (outSuffix != None):
         outroot += '_' + outSuffix
@@ -477,12 +497,107 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         comboDir = util.trimdir(os.path.abspath(combo_dir) + '/')
     
     util.mkdir(comboDir)
-
+    
+    
     # Make strings out of all the filename roots.
     allroots = instrument.make_filenames(files, prefix='')
     allroots = [aa.replace('.fits', '') for aa in allroots]
+    
+    
+    # If clean directories were specified for each file, copy over
+    # clean files to a common clean directory into new combo directory
+    if clean_dirs is not None:
+        # Save and make new clean directory, inside the new combo directory
+        cleanDir = comboDir + 'clean/'
+        
+        field_wave_suffix = ''
+        
+        if field is not None:
+            field_wave_suffix = field + '_' + wave + '/'
+        else:
+            field_wave_suffix = wave + '/'
+        
+        cleanDir += field_wave_suffix
+        
+        util.mkdir(cleanDir)
+        util.mkdir(cleanDir + 'distort/')
+        util.mkdir(cleanDir + 'masks/')
+        util.mkdir(cleanDir + 'weight/')
+        
+        # Determine all unique clean directories, which we'll be sourcing from
+        (unique_clean_dirs,
+         unique_clean_dirs_index) = np.unique(clean_dirs, return_inverse=True)
+        
+        data_sources_file = open(cleanDir + 'data_sources.txt', 'w')
+        
+        # Go through each clean file and copy over the data files
+        for cur_file_index in range(len(files)):
+            cur_file_root = allroots[cur_file_index]
+            
+            source_clean_dir = unique_clean_dirs[
+                unique_clean_dirs_index[cur_file_index]]
+            source_file_root = cur_file_root
+            
+            # Change first digit of file names to be index of clean dir
+            # i.e.: unique 1000s place digit for each night going into combo
+            allroots[cur_file_index] =\
+                str(unique_clean_dirs_index[cur_file_index]) + cur_file_root[1:]
+            
+            dest_clean_dir = cleanDir
+            dest_file_root = allroots[cur_file_index]
+            
+            # Copy data files
+            shutil.copy(source_clean_dir + 'c' + source_file_root + '.fits',
+                        dest_clean_dir + 'c' + dest_file_root + '.fits')
+            
+            shutil.copy(source_clean_dir + 'c' + source_file_root + '.max',
+                        dest_clean_dir + 'c' + dest_file_root + '.max')
+            
+            shutil.copy(source_clean_dir + 'c' + source_file_root + '.coo',
+                        dest_clean_dir + 'c' + dest_file_root + '.coo')
+            
+            shutil.copy(source_clean_dir + 'distort/cd' + source_file_root + '.fits',
+                        dest_clean_dir + 'distort/cd' + dest_file_root + '.fits')
+            
+            shutil.copy(source_clean_dir + 'masks/mask' + source_file_root + '.fits',
+                        dest_clean_dir + 'masks/mask' + dest_file_root + '.fits')
+            
+            shutil.copy(source_clean_dir + 'weight/wgt' + source_file_root + '.fits',
+                        dest_clean_dir + 'weight/wgt' + dest_file_root + '.fits')
+            
+            # Append file to text list of data sources
+            out_line = '{0} from {1}\n'.format('c' + dest_file_root + '.fits',
+                                               source_clean_dir)
+            data_sources_file.write(out_line)
+        
+        data_sources_file.close()
+        
+        # Copy over strehl source list
+        # Need to rename file names in list to new names
+        shutil.copy(unique_clean_dirs[0] + 'strehl_source.txt',
+                    cleanDir + 'strehl_source.txt')
+        
+        if len(unique_clean_dirs) > 1:
+            out_strehl_file = open(cleanDir + 'strehl_source.txt', 'a')
+            
+            # Go through each clean directory's strehl_source file
+            for cur_clean_dir_index in range(1, len(unique_clean_dirs)):
+                with open(unique_clean_dirs[cur_clean_dir_index] +
+                          'strehl_source.txt', 'r') as in_strehl_file:
+                    for line in in_strehl_file:
+                        print(line)
+                        if line[0] == '#':
+                            continue
+                        
+                        # Correct file names and write to overall strehl file
+                        out_strehl_file.write(line.replace('c0',
+                            'c' + str(cur_clean_dir_index), 1))
+            
+            out_strehl_file.close()
+    
+    # Make a deep copy of all the root filenames    
     roots = copy.deepcopy(allroots) # This one will be modified by trimming
-
+    
     # This is the output root filename
     _out = comboDir + 'mag' + outroot + '_' + wave
     _sub = comboDir + 'm' + outroot + '_' + wave
