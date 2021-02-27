@@ -528,6 +528,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         (unique_clean_dirs,
          unique_clean_dirs_index) = np.unique(clean_dirs, return_inverse=True)
         
+        c_lis_file = open(cleanDir + 'c.lis', 'w')
         data_sources_file = open(cleanDir + 'data_sources.txt', 'w')
         
         # Go through each clean file and copy over the data files
@@ -565,11 +566,14 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
             shutil.copy(source_clean_dir + 'weight/wgt' + source_file_root + '.fits',
                         dest_clean_dir + 'weight/wgt' + dest_file_root + '.fits')
             
-            # Append file to text list of data sources
+            # Append file to c.lis and text list of data sources
+            c_lis_file.write(dest_clean_dir + 'c' + dest_file_root + '.fits\n')
+            
             out_line = '{0} from {1}\n'.format('c' + dest_file_root + '.fits',
                                                source_clean_dir)
             data_sources_file.write(out_line)
         
+        c_lis_file.close()
         data_sources_file.close()
         
         # Copy over strehl source list
