@@ -569,35 +569,41 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
             # Append file to c.lis and text list of data sources
             c_lis_file.write(dest_clean_dir + 'c' + dest_file_root + '.fits\n')
             
-            out_line = '{0} from {1}\n'.format('c' + dest_file_root + '.fits',
-                                               source_clean_dir)
+            out_line = '{0} from {1}{2}\n'.format('c' + dest_file_root + '.fits',
+                                                  source_clean_dir,
+                                                  source_file_root + '.fits')
             data_sources_file.write(out_line)
         
         c_lis_file.close()
         data_sources_file.close()
         
-        # Copy over strehl source list
-        # Need to rename file names in list to new names
-        shutil.copy(unique_clean_dirs[0] + 'strehl_source.txt',
-                    cleanDir + 'strehl_source.txt')
+        # Copy over strehl source list(s) from clean directories
         
-        if len(unique_clean_dirs) > 1:
-            out_strehl_file = open(cleanDir + 'strehl_source.txt', 'a')
+        # Need to rename file names in list to new names
+        out_strehl_file = open(cleanDir + 'strehl_source.txt', 'w')
+        
+        # Go through each clean directory's strehl_source file
+        for cur_clean_dir_index in range(0, len(unique_clean_dirs)):
             
-            # Go through each clean directory's strehl_source file
-            for cur_clean_dir_index in range(1, len(unique_clean_dirs)):
-                with open(unique_clean_dirs[cur_clean_dir_index] +
-                          'strehl_source.txt', 'r') as in_strehl_file:
-                    for line in in_strehl_file:
-                        print(line)
-                        if line[0] == '#':
-                            continue
-                        
-                        # Correct file names and write to overall strehl file
-                        out_strehl_file.write(line.replace('c0',
-                            'c' + str(cur_clean_dir_index), 1))
-            
-            out_strehl_file.close()
+            # Open existing Strehl file in clean directory
+            with open(unique_clean_dirs[cur_clean_dir_index] +
+                      'strehl_source.txt', 'r') as in_strehl_file:
+                
+                for line in in_strehl_file:
+                    # Check for header line
+                    if line[0] == '#':
+                        # Don't skip header if it is first clean directory
+                        if cur_clean_dir_index == 0:
+                            out_strehl_file.write(line)
+                            
+                        # Otherwise skip to next line
+                        continue
+                    
+                    # Correct file names and write to overall strehl file
+                    corrected_line = 'c' + str(cur_clean_dir_index) + line[2:]
+                    out_strehl_file.write(corrected_line)
+        
+        out_strehl_file.close()
     
     # Make a deep copy of all the root filenames    
     roots = copy.deepcopy(allroots) # This one will be modified by trimming
@@ -899,6 +905,7 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
     """
     # Trim level (fwhm) can be passed in or determined
     # dynamically.
+    
     if (fwhm_max == 0):
         # Determine the minimum FWHM
         idx = np.where(fwhm > 0)
@@ -930,10 +937,10 @@ def readWeightsFile(roots, weightFile):
     weightsTable = trim_table_by_name(roots, weightFile)
 
     weights = weightsTable['col2']
-
+    
     # Renormalize so that weights add up to 1.0
     weights /= weights.sum()
-
+    
     # Double check that we have the same number of
     # lines in the weightsTable as files.
     if (len(weights) != len(roots)):
@@ -958,7 +965,7 @@ def loadStrehl(cleanDir, roots):
     strehlTable = trim_table_by_name(roots, _strehl)
     strehls = strehlTable['col2']
     fwhm = strehlTable['col4']
-
+    
     # Double check that we have the same number of
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
