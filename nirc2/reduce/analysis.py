@@ -50,8 +50,10 @@ class Analysis(object):
             self.calColumn = self.mapFilter2Cal['kp']
         elif 'J' in filt:
             self.calColumn = 'K_o2'
-        else: # case for Maser mosaic, deep mosaic
+        elif filt in self.mapFilter2Cal: # case for Maser mosaic, deep mosaic
             self.calColumn = self.mapFilter2Cal[filt]
+        else:                           #default to kp if filt not in mapFilter2Cal.  Consider other solution to deal with unexpected filt
+            self.calColumn = self.mapFilter2Cal['kp']
         self.calCooStar = 'irs16C'
         
         self.cooStar = 'irs16C'
