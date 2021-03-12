@@ -154,6 +154,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
     util.mkdir(weight)
     util.mkdir(masks)
     
+    # Open a text file to document sources of data files
+    data_sources_file = open(clean + 'data_sources.txt', 'w')
+    
     try:
         # Setup flat. Try wavelength specific, but if it doesn't
         # exist, then use a global one.
@@ -218,6 +221,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             _dlog_tmp = instrument.make_filenames([f], prefix='driz')[0]
             _dlog = _dlog_tmp.replace('.fits', '.log')
             
+            out_line = '{0} from {1}\n'.format(_cc, _raw)
+            data_sources_file.write(out_line)
 
             # Clean up if these files previously existed
             util.rmall([_cp, _ss, _ff, _ff_f, _ff_s, _bp, _cd, _ce, _cc,
@@ -225,7 +230,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Copy the raw file to local directory ###
             ir.imcopy(_raw, _cp, verbose='no')
-
+            
             ### Make persistance mask ###
             # - Checked images, this doesn't appear to be a large effect.
             #clean_persistance(_cp, _pers, instrument=instrument)
@@ -303,6 +308,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             # This just closes out any sky logging files.
             #skyObj.close()
+        data_sources_file.close()
     finally:
         # Move back up to the original directory
         #skyObj.close()

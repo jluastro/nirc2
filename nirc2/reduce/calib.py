@@ -42,13 +42,23 @@ def makedark(files, output,
     
     util.mkdir(curDir)
     util.mkdir(darkDir)
-
+    
     _out = darkDir + output
     _outlis = darkDir + 'dark.lis'
     util.rmall([_out, _outlis])
 
     darks = instrument.make_filenames(files, rootDir=rawDir)
-
+    
+    # Write out the sources of the dark files
+    data_sources_file = open(redDir + 'data_sources.txt', 'a')
+    data_sources_file.write('---\n# Dark Files\n')
+    
+    for cur_file in darks:
+        out_line = '{0}\n'.format(cur_file)
+        data_sources_file.write(out_line)
+    
+    data_sources_file.close()
+    
     f_on = open(_outlis, 'w')
     f_on.write('\n'.join(darks) + '\n')
     f_on.close()
@@ -120,6 +130,21 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
     lampsoff = instrument.make_filenames(offFiles, rootDir=rawDir)
     lampsonNorm = instrument.make_filenames(onFiles, rootDir=flatDir + 'norm')
     util.rmall(lampsonNorm)
+    
+    # Write out the sources of the dark files
+    data_sources_file = open(redDir + 'data_sources.txt', 'a')
+    
+    data_sources_file.write('---\n# Flat Files: Lamps On\n')
+    for cur_file in lampson:
+        out_line = '{0}\n'.format(cur_file)
+        data_sources_file.write(out_line)
+    
+    data_sources_file.write('---\n# Flat Files: Lamps Off\n')
+    for cur_file in lampsoff:
+        out_line = '{0}\n'.format(cur_file)
+        data_sources_file.write(out_line)
+    
+    data_sources_file.close()
     
     if (len(offFiles) != 0):
         f_on = open(_onlis, 'w')

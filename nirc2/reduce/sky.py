@@ -67,7 +67,17 @@ def makesky(files, nite,
         if os.path.exists(nn[ii]): os.remove(nn[ii])
         if os.path.exists(nsc[ii]): os.remove(nsc[ii])
         shutil.copy(skies[ii], nn[ii])
-
+    
+    # Write out the sources of the dark files
+    data_sources_file = open(redDir + 'data_sources.txt', 'a')
+    data_sources_file.write('---\n# Sky Files ({0})\n'.format(wave))
+    
+    for cur_file in skies:
+        out_line = '{0}\n'.format(cur_file)
+        data_sources_file.write(out_line)
+    
+    data_sources_file.close()
+    
     # scale skies to common median
     if skyscale:
         _skylog = skyDir + 'sky_scale.log'
