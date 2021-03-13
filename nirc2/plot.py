@@ -4,13 +4,14 @@ import numpy as np
 import pylab as plt
 from matplotlib.colors import LogNorm
 from matplotlib.pyplot import savefig, close
+import pdb
 
-def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
+def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995, filt='kp', outdir='./'):
     '''
     Plot the psfs of your star list over the combo image and saves the figure.
 
-    Designed for path structure 'user_root/source_list/target_psf.list'
-                                '               /combo/', etc.
+    Designed for path structure '<user_root>source_list/target_psf.list'
+                                '<user_root><epoch>/combo/', etc.
     user_root should include '/' at the end.
 
     Args:
@@ -29,7 +30,7 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
 
     label_file = root + 'source_list/' + target +'_psf.list'
     t = Table.read(label_file, format='ascii')
-    fits_root = root + epoch + '/combo/mag' + epoch + '_' + target + '_kp'
+    fits_root = root + epoch + '/combo/mag' + epoch + '_' + target + '_' + filt
     img = fits.getdata(fits_root + '.fits')
 
     coo_coords = Table.read(fits_root + '.coo', format='ascii')
@@ -46,7 +47,12 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
     fig = plt.figure(figsize=(10,10))
     plt.clf()
     plt.imshow(img, cmap='afmhot', norm=LogNorm(vmin=0.01, vmax=100000))
-    plt.plot(t['xpix'], t['ypix'], 'ko', mfc='none', mec='black', ms=10)
+
+    isSec = np.where(t['PSF?'] != 1)[0]
+    isPsf = np.where(t['PSF?'] == 1)[0]
+    
+    plt.plot(t['xpix'][isPsf], t['ypix'][isPsf], 'ko', mfc='none', mec='black', ms=10)
+    plt.plot(t['xpix'][isSec], t['ypix'][isSec], 'go', mfc='none', mec='green', ms=10)
 
     for ii in range(len(t)):
         plt.text(t['xpix'][ii], t['ypix'][ii], t['Name'][ii])
@@ -54,8 +60,7 @@ def plotpsf(epoch, target, user_root, coo_star='psf_000', scale=0.00995):
     plt.xlim(0, 1150)
     plt.ylim(0, 1150)
 
-    outex = root+epoch+'/'+epoch+'_'+target
-    fig.savefig(outex+'.png')
-    close()
+    outex = outdir + 'plotpsf_' + epoch + '_' + target + '_' + filt + '.png'
+    fig.savefig(outex)
 
-    return(outroot, coo_coords)
+    return (outex, coo_coords)
