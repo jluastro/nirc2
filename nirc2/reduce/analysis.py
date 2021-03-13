@@ -46,7 +46,7 @@ class Analysis(object):
             assumes that combo files are stored in '../combo'
         combo_stf_dir : str, optional
             Directory where starfinder files will be stored. By default,
-            starfinder output is stored in 'combo/starfinder/'
+            starfinder output is stored in '../combo/starfinder/'
         airopa_mode : str, default='single'
             The airopa mode to use. Available options are 'legacy', 'single',
             or 'variable'.
@@ -310,6 +310,9 @@ class Analysis(object):
             subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
             tmp = subp.communicate()
             
+            # Write data_sources file
+            data_sources_file = open(self.dirComboStf + '/data_sources.txt', 'w')
+            data_sources_file.write('---\n# Starfinder run on image files\n')
             
             # Copy over the starfinder FITS files to the current directory
             epoch_file_root = 'mag{0}_{1}'.format(self.epoch, self.filt)
@@ -322,6 +325,11 @@ class Analysis(object):
                             epoch_file_root + '_res.fits')
             shutil.copyfile(self.dirCombo + epoch_file_root + '_stars.fits',
                             epoch_file_root + '_stars.fits')
+            
+            out_line = '{0} from {1}{2}\n'.format(epoch_file_root + '.fits',
+                                                  self.dirCombo,
+                                                  epoch_file_root + '.fits')
+            data_sources_file.write(out_line)
             
             # Copy over submap starfinder FITS files to the current directory
             epoch_sub_root = 'm{0}_{1}'.format(self.epoch, self.filt)
@@ -337,10 +345,19 @@ class Analysis(object):
                                 epoch_sub_root + '_' + cur_sub_str + '_res.fits')
                 shutil.copyfile(self.dirCombo + epoch_sub_root + '_' + cur_sub_str + '_stars.fits',
                                 epoch_sub_root + '_' + cur_sub_str + '_stars.fits')
+                
+                out_line = '{0} from {1}{2}\n'.format(epoch_sub_root + '_' + cur_sub_str + '.fits',
+                                                      self.dirCombo,
+                                                      epoch_sub_root + '_' + cur_sub_str + '.fits')
+                data_sources_file.write(out_line)
+            
+            # Close data_sources file
+            data_sources_file.close()
             
             # Copy over the PSF starlist that was used (for posterity).
             outPsfs = 'mag%s%s_%s_psf_list.txt' % (self.epoch, self.imgSuffix, self.filt)
             shutil.copyfile(self.starlist, outPsfs)
+            
             
             # Run the Strehl calculator to calculate Strehl on StarFinder PSFs
             # Need list of PSFs file and coo files associated with each PSF file
