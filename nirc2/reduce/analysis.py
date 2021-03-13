@@ -50,8 +50,10 @@ class Analysis(object):
             self.calColumn = self.mapFilter2Cal['kp']
         elif 'J' in filt:
             self.calColumn = 'K_o2'
-        else: # case for Maser mosaic, deep mosaic
+        elif filt in self.mapFilter2Cal: # case for Maser mosaic, deep mosaic
             self.calColumn = self.mapFilter2Cal[filt]
+        else:                           #default to kp if filt not in mapFilter2Cal.  Consider other solution to deal with unexpected filt
+            self.calColumn = self.mapFilter2Cal['kp']
         self.calCooStar = 'irs16C'
         
         self.cooStar = 'irs16C'
@@ -305,6 +307,52 @@ class Analysis(object):
             outPsfs = 'c_%s_%s_psf_list.txt' % (self.epoch, self.filt)
             shutil.copyfile(self.starlist, outPsfs)
             
+            os.chdir(self.dirStart)
+        except:
+            os.chdir(self.dirStart)
+            raise
+
+    def starfinderCleanLoop(self):
+        try:
+            print('CLEAN starfinder loop')
+            os.chdir(self.dirCleanStf)
+
+            for i, filename in enumerate(self.cleanFiles):
+                # Write an IDL batch file
+                fileIDLbatch = filename + '_idlbatch'
+                fileIDLlog = fileIDLbatch + '.log'
+                util.rmall([fileIDLlog, fileIDLbatch])
+
+                _batch = open(fileIDLbatch, 'w')
+                _batch.write("find_stf, ")
+                _batch.write("'" + self.dirClean + filename + ".fits', ")
+                _batch.write("[" + str(self.corrClean) + "], ")
+                if self.airopa_mode =='single':
+                    _batch.write("aoopt=0, ")
+                elif self.airopa_mode == 'legacy':
+                    _batch.write("/legacy, ")
+                elif self.airopa_mode == 'variable':
+                    _batch.write("/aoopt, ")
+
+                # Support for arbitrary starfinder flags.
+                _batch.write(self.stfFlags)
+
+                _batch.write("starlist='" + self.starlist + "', ")
+                _batch.write("cooStar='" + self.cooStar + "'")          #no trailing comma for final parameter
+
+                _batch.write("\n")
+                _batch.write("exit\n")
+                _batch.close()
+                
+                cmd = 'idl < ' + fileIDLbatch + ' >& ' + fileIDLlog
+                #os.system(cmd)
+                print('Running', cmd)
+                subp = subprocess.Popen(cmd, shell=True, executable="/bin/tcsh")
+                tmp = subp.communicate()
+            
+            # Copy over the PSF starlist that was used (for posterity).
+            outPsfs = 'c_%s_%s_psf_list.txt' % (self.epoch, self.filt)
+            shutil.copyfile(self.starlist, outPsfs)
             os.chdir(self.dirStart)
         except:
             os.chdir(self.dirStart)
