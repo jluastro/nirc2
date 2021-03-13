@@ -416,7 +416,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     util.mkdir(comboDir)
 
     # Make strings out of all the filename roots.
-    allroots = instrument.make_filenames(files)
+    allroots = instrument.make_filenames(files, prefix='')
     allroots = [aa.replace('.fits', '') for aa in allroots]
     roots = copy.deepcopy(allroots) # This one will be modified by trimming
 
@@ -685,6 +685,10 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
 
     # Pull out those we want to include in the combining
     keep = np.where((fwhm <= fwhm_max) & (fwhm > 0))[0]
+    if len(keep) == 0:
+        raise RuntimeError('trim_on_fwhm: fwhm_max cut returned no valid frames: ',
+                           (fwhm_max, fwhm))
+        
     strehls = strehls[keep]
     fwhm = fwhm[keep]
     roots = [roots[i] for i in keep]
@@ -739,6 +743,7 @@ def loadStrehl(cleanDir, roots):
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
         print('Wrong number of lines in  ' + _strehl)
+        pdb.set_trace()
 
     return (strehls, fwhm)
 

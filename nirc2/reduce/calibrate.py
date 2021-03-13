@@ -592,7 +592,7 @@ def find_cal_stars(calibs, stars, options):
         else:
             # For the fainter stars, use a smaller search radius:
             idx = np.where((dr < options.searchRadius/2) & (dm < options.searchMag))[0]
-        
+
         # Default is not found
         index[c] = -1
 
