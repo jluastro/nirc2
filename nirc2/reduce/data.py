@@ -476,7 +476,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     # first tack on the field and wave to each path
     if clean_dirs is not None:
         # If incorrect number of clean directories specified, raise ValueError
-        if len(clean_dirs) is not len(files):
+        if len(clean_dirs) != len(files):
             err_str = 'Length of clean_dirs needs to match number of files, '
             err_str += str(len(files))
             
