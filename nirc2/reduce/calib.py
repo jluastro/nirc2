@@ -283,7 +283,7 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     # Clip out the very hot pixels.
     hi = dark_mean + (15.0 * dark_stddev)
     hot = img_dk > hi
-    print('Found %d hot pixels' % (hot.sum()))
+    print(('Found %d hot pixels' % (hot.sum())))
 
     ##########
     # Make dead pixel mask
@@ -300,7 +300,7 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     hi = flat_mean + (15.0 * flat_stddev)
 
     dead = np.logical_or(img_fl > hi, img_fl < lo)
-    print('Found %d dead pixels' % (dead.sum()))
+    print(('Found %d dead pixels' % (dead.sum())))
 
     # Combine into a final supermask
     new_file = fits.open(_flat)
@@ -374,15 +374,13 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     dStdvs = np.zeros(lenDarks, dtype=float)
 
     for ii in range(lenDarks):
-	(dMeans[ii], dStdvs[ii]) = printStats(frame, tints[ii],
-					      samps[ii], reads[ii])
-	dStdvs[ii] *= np.sqrt(3)
-
-	frame += 3
+        (dMeans[ii], dStdvs[ii]) = printStats(frame, tints[ii],samps[ii], reads[ii])
+        dStdvs[ii] *= np.sqrt(3)
+        frame += 3
 
     # Calculate the readnoise
     rdnoise = dStdvs * 4.0 * np.sqrt(reads) / (np.sqrt(2.0))
-    print('READNOISE per read: ', rdnoise)
+    print(('READNOISE per read: ', rdnoise))
 
 
     ##########
@@ -399,12 +397,12 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     _out.write('--------  -----  ---------  ---------  ----  ------\n')
 
     for ii in range(lenDarks):
-	print('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
-
+        print(('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
+               (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii])))
+        
     for ii in range(lenDarks):
-	_out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
+        _out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
+                   (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
 
     _out.close()
 
