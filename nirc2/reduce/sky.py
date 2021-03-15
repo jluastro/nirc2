@@ -8,6 +8,7 @@ import numpy as np
 from pyraf import iraf as ir
 from nirc2 import instruments
 import pdb
+import astropy
 
 def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
     """Make short wavelength (not L-band or longer) skies."""
@@ -48,9 +49,14 @@ def makesky(files, nite, wave, skyscale=1, instrument=instruments.default_inst):
         for i in range(len(skies)):
             # Get the sigma-clipped mean and stddev on the dark
             img_sky = fits.getdata(nn[i])
-            sky_stats = stats.sigma_clipped_stats(img_sky,
-                                                  sigma=10,
-                                                  iters=4)
+            if float(astropy.__version__) < 3.0:
+                sky_stats = stats.sigma_clipped_stats(img_dk,
+                                                       sigma=3,
+                                                       iters=4)
+            else:
+                sky_stats = stats.sigma_clipped_stats(img_sky,
+                                                      sigma=10,
+                                                      maxiters=4)
             sky_mean[i] = sky_stats[0]
 
         sky_all = sky_mean.mean()
@@ -329,9 +335,14 @@ def makesky_fromsci(files, nite, wave):
 
     for ii in range(len(nn)):
         img_sky = fits.getdata(nn[i])
-        sky_stats = stats.sigma_clipped_stats(img_sky,
-                                              sigma_lower=10, sigma_upper=3,
-                                              iters=10)
+        if float(astropy.__version__) < 3.0:
+            sky_stats = stats.sigma_clipped_stats(img_sky,
+                                                  sigma_lower=10, sigma_upper=3,
+                                                  iters=10)
+        else:
+            sky_stats = stats.sigma_clipped_stats(img_sky,
+                                                  sigma_lower=10, sigma_upper=3,
+                                                  maxiters=10)
         sky_mean[ii] = sky_stats[0]
         sky_std[ii] = sky_stats[2]
 

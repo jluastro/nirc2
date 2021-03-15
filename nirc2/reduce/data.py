@@ -43,7 +43,8 @@ outputVerify = 'ignore'
 
 def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
           skyscale=0, skyfile=None, angOff=0.0, fixDAR=True,
-          instrument=instruments.default_inst, check_ref_loc=True):
+          instrument=instruments.default_inst, check_ref_loc=True,
+          cent_box=12):
     """
     Clean near infrared NIRC2 or OSIRIS images.
 
@@ -97,6 +98,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
     @kwparam badColumns: (def = None) An array specifying the bad columns (zero-based).
                 Assumes a repeating pattern every 8 columns.
     @type badColumns: int array
+    @kwparam cent_box: (def = 12) the box to use for better centroiding the reference star
+    @type cent_box: int
     """
 
     # Start out in something like '06maylgs1/reduce/kp/'
@@ -258,7 +261,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             phi = instrument.get_position_angle(hdr)
 
             clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
-                          instrument=instrument, check_loc=check_ref_loc)
+                          instrument=instrument, check_loc=check_ref_loc,
+                          cent_box=cent_box)
 
             ### Move to the clean directory ###
             util.rmall([clean + _cc, clean + _coo, clean + _rcoo,
@@ -280,7 +284,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         # Move back up to the original directory
         #skyObj.close()
         ir.cd('../')
-
+        
 def clean_get_supermask(_statmask, _supermask, badColumns):
     """
     Create temporary mask for each individual image that will contain the
@@ -416,7 +420,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     util.mkdir(comboDir)
 
     # Make strings out of all the filename roots.
-    allroots = instrument.make_filenames(files, prefix='')
+    allroots = instrument.make_filenames(files)
     allroots = [aa.replace('.fits', '') for aa in allroots]
     roots = copy.deepcopy(allroots) # This one will be modified by trimming
 
@@ -685,10 +689,6 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
 
     # Pull out those we want to include in the combining
     keep = np.where((fwhm <= fwhm_max) & (fwhm > 0))[0]
-    if len(keep) == 0:
-        raise RuntimeError('trim_on_fwhm: fwhm_max cut returned no valid frames: ',
-                           (fwhm_max, fwhm))
-        
     strehls = strehls[keep]
     fwhm = fwhm[keep]
     roots = [roots[i] for i in keep]
@@ -743,7 +743,6 @@ def loadStrehl(cleanDir, roots):
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
         print('Wrong number of lines in  ' + _strehl)
-        pdb.set_trace()
 
     return (strehls, fwhm)
 
@@ -1633,7 +1632,8 @@ def clean_bkgsubtract(_ff_f, _bp):
     return bkg
 
 def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
-                  instrument=instruments.default_inst, check_loc=True):
+                  instrument=instruments.default_inst, check_loc=True,
+                  update_fits=True,cent_box=12):
     """Make the *.coo file for this science image. Use the difference
     between the AOTSX/Y keywords from a reference image and each science
     image to tell how the positions of the two frames are related.
@@ -1655,6 +1655,8 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     check_loc (bool):  If True the reference source is recentered for this frame.
                      Use False if the offsets are large enough to move the reference source off of the image
+    update_fits : update the fits files with the reference pixel values
+    cent_box : box size to center the source (default: 12)
     """
 
     hdr = fits.getheader(_ce, ignore_missing_end=True)
@@ -1684,29 +1686,30 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     # re-center stars to get exact coordinates
     if check_loc:
-        centBox = 12.0
-        text = ir.imcntr(_ce, xref, yref, cbox=centBox, Stdout=1)
+
+        text = ir.imcntr(_ce, xref, yref, cbox=cent_box, Stdout=1)
         values = text[0].split()
         xref = float(values[2])
         yref = float(values[4])
 
-        text = ir.imcntr(_ce, xstr, ystr, cbox=centBox, Stdout=1)
+        text = ir.imcntr(_ce, xstr, ystr, cbox=cent_box, Stdout=1)
         values = text[0].split()
         xstr = float(values[2])
         ystr = float(values[4])
         print('clean_makecoo: xref, yref final = {0:.2f} {1:.2f}'.format(xref, yref))
 
     # write reference star x,y to fits header
-    fits_f = fits.open(_ce)
-    fits_f[0].header.set('XREF', "%.3f" % xref,
-                          'Cross Corr Reference Src x')
-    fits_f[0].header.set('YREF', "%.3f" % yref,
-                          'Cross Corr Reference Src y')
-    fits_f[0].header.set('XSTREHL', "%.3f" % xstr,
-                          'Strehl Reference Src x')
-    fits_f[0].header.set('YSTREHL', "%.3f" % ystr,
-                          'Strehl Reference Src y')
-    fits_f[0].writeto(_cc, output_verify=outputVerify)
+    if update_fits:
+        fits_f = fits.open(_ce)
+        fits_f[0].header.set('XREF', "%.3f" % xref,
+                             'Cross Corr Reference Src x')
+        fits_f[0].header.set('YREF', "%.3f" % yref,
+                             'Cross Corr Reference Src y')
+        fits_f[0].header.set('XSTREHL', "%.3f" % xstr,
+                             'Strehl Reference Src x')
+        fits_f[0].header.set('YSTREHL', "%.3f" % ystr,
+                             'Strehl Reference Src y')
+        fits_f[0].writeto(_cc, output_verify=outputVerify)
 
     file(_cc.replace('.fits', '.coo'), 'w').write('%7.2f  %7.2f\n' % (xref, yref))
 
