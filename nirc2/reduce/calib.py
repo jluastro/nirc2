@@ -51,7 +51,8 @@ def makedark(files, output,
     
     # Write out the sources of the dark files
     data_sources_file = open(redDir + 'data_sources.txt', 'a')
-    data_sources_file.write('---\n# Dark Files\n')
+    data_sources_file.write(
+        '---\n# Dark Files for {0} \n'.format(output))
     
     for cur_file in darks:
         out_line = '{0}\n'.format(cur_file)
@@ -134,12 +135,14 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
     # Write out the sources of the dark files
     data_sources_file = open(redDir + 'data_sources.txt', 'a')
     
-    data_sources_file.write('---\n# Flat Files: Lamps On\n')
+    data_sources_file.write(
+        '---\n# Flat Files for {0}, Lamps On\n'.format(output))
     for cur_file in lampson:
         out_line = '{0}\n'.format(cur_file)
         data_sources_file.write(out_line)
     
-    data_sources_file.write('---\n# Flat Files: Lamps Off\n')
+    data_sources_file.write(
+        '---\n# Flat Files for {0}, Lamps Off\n'.format(output))
     for cur_file in lampsoff:
         out_line = '{0}\n'.format(cur_file)
         data_sources_file.write(out_line)
