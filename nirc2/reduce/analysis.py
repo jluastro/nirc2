@@ -1,4 +1,4 @@
-import os, shutil
+
 from nirc2.reduce import util
 from astropy.table import Table
 import numpy as np
