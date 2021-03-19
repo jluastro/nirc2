@@ -6,6 +6,7 @@ from . import util
 import numpy as np
 from pyraf import iraf as ir
 from nirc2 import instruments
+from datetime import datetime
 import pdb
 
 def makesky(files, nite,
@@ -73,7 +74,7 @@ def makesky(files, nite,
     data_sources_file.write('---\n# Sky Files ({0})\n'.format(wave))
     
     for cur_file in skies:
-        out_line = '{0}\n'.format(cur_file)
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
         data_sources_file.write(out_line)
     
     data_sources_file.close()

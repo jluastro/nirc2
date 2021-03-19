@@ -17,6 +17,7 @@ from . import bfixpix
 import subprocess
 import copy
 import shutil
+from datetime import datetime
 
 module_dir = os.path.dirname(__file__)
 
@@ -221,7 +222,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             _dlog_tmp = instrument.make_filenames([f], prefix='driz')[0]
             _dlog = _dlog_tmp.replace('.fits', '.log')
             
-            out_line = '{0} from {1}\n'.format(_cc, _raw)
+            out_line = '{0} from {1} ({2})\n'.format(_cc, _raw,
+                                                     datetime.now())
             data_sources_file.write(out_line)
 
             # Clean up if these files previously existed
@@ -575,9 +577,10 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
             # Append file to c.lis and text list of data sources
             c_lis_file.write(dest_clean_dir + 'c' + dest_file_root + '.fits\n')
             
-            out_line = '{0} from {1}{2}\n'.format('c' + dest_file_root + '.fits',
-                                                  source_clean_dir,
-                                                  source_file_root + '.fits')
+            out_line = '{0} from {1}{2} ({3})\n'.format(
+                'c' + dest_file_root + '.fits',
+                source_clean_dir, source_file_root + '.fits',
+                datetime.now())
             data_sources_file.write(out_line)
         
         c_lis_file.close()

@@ -6,6 +6,7 @@ from pyraf import iraf as ir
 from nirc2 import instruments
 import numpy as np
 from astropy import stats
+from datetime import datetime
 
 module_dir = os.path.dirname(__file__)
 
@@ -55,7 +56,7 @@ def makedark(files, output,
         '---\n# Dark Files for {0} \n'.format(output))
     
     for cur_file in darks:
-        out_line = '{0}\n'.format(cur_file)
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
         data_sources_file.write(out_line)
     
     data_sources_file.close()
@@ -138,13 +139,13 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
     data_sources_file.write(
         '---\n# Flat Files for {0}, Lamps On\n'.format(output))
     for cur_file in lampson:
-        out_line = '{0}\n'.format(cur_file)
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
         data_sources_file.write(out_line)
     
     data_sources_file.write(
         '---\n# Flat Files for {0}, Lamps Off\n'.format(output))
     for cur_file in lampsoff:
-        out_line = '{0}\n'.format(cur_file)
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
         data_sources_file.write(out_line)
     
     data_sources_file.close()

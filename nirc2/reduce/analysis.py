@@ -9,6 +9,7 @@ from nirc2.reduce import calibrate
 from nirc2.reduce import align_rms
 from nirc2 import instruments
 from nirc2 import strehl
+from datetime import datetime
 import subprocess
 import pylab as py
 import pdb
@@ -326,9 +327,9 @@ class Analysis(object):
             shutil.copyfile(self.dirCombo + epoch_file_root + '_stars.fits',
                             epoch_file_root + '_stars.fits')
             
-            out_line = '{0} from {1}{2}\n'.format(epoch_file_root + '.fits',
-                                                  self.dirCombo,
-                                                  epoch_file_root + '.fits')
+            out_line = '{0} from {1}{2} ({3})\n'.format(
+                epoch_file_root + '.fits', self.dirCombo,
+                epoch_file_root + '.fits', datetime.now())
             data_sources_file.write(out_line)
             
             # Copy over submap starfinder FITS files to the current directory
@@ -346,9 +347,10 @@ class Analysis(object):
                 shutil.copyfile(self.dirCombo + epoch_sub_root + '_' + cur_sub_str + '_stars.fits',
                                 epoch_sub_root + '_' + cur_sub_str + '_stars.fits')
                 
-                out_line = '{0} from {1}{2}\n'.format(epoch_sub_root + '_' + cur_sub_str + '.fits',
-                                                      self.dirCombo,
-                                                      epoch_sub_root + '_' + cur_sub_str + '.fits')
+                out_line = '{0} from {1}{2} ({3})\n'.format(
+                    epoch_sub_root + '_' + cur_sub_str + '.fits', self.dirCombo,
+                    epoch_sub_root + '_' + cur_sub_str + '.fits',
+                    datetime.now())
                 data_sources_file.write(out_line)
             
             # Close data_sources file
