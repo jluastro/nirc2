@@ -579,7 +579,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
             
             out_line = '{0} from {1}{2} ({3})\n'.format(
                 'c' + dest_file_root + '.fits',
-                source_clean_dir, source_file_root + '.fits',
+                source_clean_dir, 'c' + source_file_root + '.fits',
                 datetime.now())
             data_sources_file.write(out_line)
         
