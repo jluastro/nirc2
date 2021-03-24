@@ -69,7 +69,7 @@ def makesky(files, nite,
         if os.path.exists(nsc[ii]): os.remove(nsc[ii])
         shutil.copy(skies[ii], nn[ii])
     
-    # Write out the sources of the dark files
+    # Write out the sources of the sky files
     data_sources_file = open(redDir + 'data_sources.txt', 'a')
     data_sources_file.write('---\n# Sky Files ({0})\n'.format(wave))
     
@@ -188,6 +188,17 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None,
     raw = instrument.make_filenames(files, rootDir=rawDir)
     skies = instrument.make_filenames(files, rootDir=skyDir)
     
+    # Write out the sources of the sky files
+    data_sources_file = open(redDir + 'data_sources.txt', 'a')
+    data_sources_file.write('---\n# Sky Files ({0})\n'.format(wave))
+    
+    for cur_file in skies:
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
+        data_sources_file.write(out_line)
+    
+    data_sources_file.close()
+    
+    
     _rawlis = skyDir + 'raw.lis'
     _nlis = skyDir + 'n.lis'
     _skyRot = skyDir + 'skyRot.txt'
@@ -219,7 +230,7 @@ def makesky_lp(files, nite, wave, number=3, rejectHsigma=None,
 
     f_log = open(_log, 'w')
     f_txt = open(_txt, 'w')
-
+    
     # Skip the first and last since we are going to 
     # average every NN files.
     print('makesky_lp: Combining to make skies.')
