@@ -435,7 +435,11 @@ def splitAtmosphereCFHT(year):
         fields = line.split()
 
         month = int(fields[1])
-
+        
+        # Check for wrong month number
+        if not (month > 0 and month <= 12):
+            continue
+        
         _outfile = outfiles[month-1]
         _outfile.write(line)
 
