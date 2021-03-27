@@ -6,6 +6,7 @@ from pyraf import iraf as ir
 from nirc2 import instruments
 import numpy as np
 from astropy import stats
+import astropy
 from datetime import datetime
 
 module_dir = os.path.dirname(__file__)
@@ -271,9 +272,15 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
 
     # Get the sigma-clipped mean and stddev on the dark
     img_dk = fits.getdata(_dark)
-    dark_stats = stats.sigma_clipped_stats(img_dk,
-                                           sigma=3,
-                                           iters=10)
+    if float(astropy.__version__) < 3.0:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               maxiters=10)
+        
     dark_mean = dark_stats[0]
     dark_stddev = dark_stats[2]
 
@@ -285,9 +292,14 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
     # Make dead pixel mask
     ##########
     img_fl = fits.getdata(_flat)
-    flat_stats = stats.sigma_clipped_stats(img_fl,
+    if float(astropy.__version__) < 3.0:
+        flat_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+        flat_stats = stats.sigma_clipped_stats(img_fl,
                                            sigma=3,
-                                           iters=10)
+                                           maxiters=10)
     flat_mean = flat_stats[0]
     flat_stddev = flat_stats[2]
 
@@ -347,24 +359,35 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     ##########
     # Get the sigma-clipped mean and stddev on the dark
     img_dk = fits.getdata(_dark)
-    dark_stats = stats.sigma_clipped_stats(img_dk,
-                                           sigma=3,
-                                           iters=10)
+    if float(astropy.__version__) < 3.0:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                            sigma=3,
+                                               maxiters=10)
     dark_mean = dark_stats[0]
     dark_stddev = dark_stats[2]
 
     # Clip out the very hot pixels.
     hi = dark_mean + (15.0 * dark_stddev)
     hot = img_dk > hi
-    print('Found %d hot pixels' % (hot.sum()))
+    print(('Found %d hot pixels' % (hot.sum())))
 
     ##########
     # Make dead pixel mask
     ##########
     img_fl = fits.getdata(_flat)
-    flat_stats = stats.sigma_clipped_stats(img_fl,
-                                           sigma=3,
-                                           iters=10)
+    if float(astropy.__version__) < 3.0:
+        flat_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+    
+        flat_stats = stats.sigma_clipped_stats(img_fl,
+                                               sigma=3,
+                                               maxiters=10)
     flat_mean = flat_stats[0]
     flat_stddev = flat_stats[2]
 
@@ -373,7 +396,7 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     hi = flat_mean + (15.0 * flat_stddev)
 
     dead = np.logical_or(img_fl > hi, img_fl < lo)
-    print('Found %d dead pixels' % (dead.sum()))
+    print(('Found %d dead pixels' % (dead.sum())))
 
     # Combine into a final supermask
     new_file = fits.open(_flat)
@@ -411,9 +434,14 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
 
         # Get the sigma-clipped mean and stddev on the dark
         img_dk = fits.getdata(darkDir + fileName)
-        dark_stats = stats.sigma_clipped_stats(img_dk,
-                                               sigma=3,
-                                               iters=10)
+        if float(astropy.__version__) < 3.0:
+            dark_stats = stats.sigma_clipped_stats(img_dk,
+                                                   sigma=3,
+                                                   iters=10)
+        else:        
+            dark_stats = stats.sigma_clipped_stats(img_dk,
+                                                   sigma=3,
+                                                   maxiters=10)
 
         darkMean = dark_stats[0]
         darkStdv = dark_stats[2]
@@ -447,15 +475,13 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     dStdvs = np.zeros(lenDarks, dtype=float)
 
     for ii in range(lenDarks):
-	(dMeans[ii], dStdvs[ii]) = printStats(frame, tints[ii],
-					      samps[ii], reads[ii])
-	dStdvs[ii] *= np.sqrt(3)
-
-	frame += 3
+        (dMeans[ii], dStdvs[ii]) = printStats(frame, tints[ii],samps[ii], reads[ii])
+        dStdvs[ii] *= np.sqrt(3)
+        frame += 3
 
     # Calculate the readnoise
     rdnoise = dStdvs * 4.0 * np.sqrt(reads) / (np.sqrt(2.0))
-    print('READNOISE per read: ', rdnoise)
+    print(('READNOISE per read: ', rdnoise))
 
 
     ##########
@@ -472,12 +498,12 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     _out.write('--------  -----  ---------  ---------  ----  ------\n')
 
     for ii in range(lenDarks):
-	print('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
-
+        print(('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
+               (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii])))
+        
     for ii in range(lenDarks):
-	_out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
+        _out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
+                   (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
 
     _out.close()
 

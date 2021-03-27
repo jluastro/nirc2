@@ -250,11 +250,17 @@ class OSIRIS(Instrument):
                      'Kp-sHex': 2.12,
                      'Kn3': 2.12,
                      'Hbb': 1.65,
+                     'Hbb-LAnn':1.65,
+                     'Hn3': 1.635,
+                     'Hcont':1.5832,
                      'BrGamma':2.169,
                      'BrGamma-sAnn':2.169
                          }
-        
-        return wave_dict[filt_name]
+        if filt_name not in wave_dict.keys():
+            print('NO information available on this filter' + filt_name)
+            return 2.12
+        else:
+            return wave_dict[filt_name]
     
     def get_gain(self, hdr):
         return hdr['DETGAIN']

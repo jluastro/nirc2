@@ -22,7 +22,10 @@ from astropy_helpers.version_helpers import generate_version_py
 
 # Get some values from the setup.cfg
 from distutils import config
-conf = config.ConfigParser()
+try:
+    conf = config.ConfigParser()
+except:
+    conf = config.RawConfigParser()
 conf.read(['setup.cfg'])
 metadata = dict(conf.items('metadata'))
 
@@ -116,5 +119,6 @@ setup(name=PACKAGENAME,
       zip_safe=False,
       use_2to3=True,
       entry_points=entry_points,
+      include_package_data=True,
       **package_info
 )

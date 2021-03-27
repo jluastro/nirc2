@@ -37,7 +37,14 @@ def get_atm_conditions(year):
     _atm.close()
     
     root = module_dir + '/weather/'
-    atmfile = open(root + 'cfht-wx.' + yearStr + '.dat','w')
+
+    if type(atm) == bytes:
+        # this is for python 3
+        atmfile = open(root + 'cfht-wx.' + yearStr + '.dat','wb')
+    else:
+        atmfile = open(root + 'cfht-wx.' + yearStr + '.dat','w')
+
+
     atmfile.write(atm)
     atmfile.close()
 
