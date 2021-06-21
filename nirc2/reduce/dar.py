@@ -37,7 +37,14 @@ def get_atm_conditions(year):
     _atm.close()
     
     root = module_dir + '/weather/'
-    atmfile = open(root + 'cfht-wx.' + yearStr + '.dat','w')
+
+    if type(atm) == bytes:
+        # this is for python 3
+        atmfile = open(root + 'cfht-wx.' + yearStr + '.dat','wb')
+    else:
+        atmfile = open(root + 'cfht-wx.' + yearStr + '.dat','w')
+
+
     atmfile.write(atm)
     atmfile.close()
 
@@ -428,7 +435,11 @@ def splitAtmosphereCFHT(year):
         fields = line.split()
 
         month = int(fields[1])
-
+        
+        # Check for wrong month number
+        if not (month > 0 and month <= 12):
+            continue
+        
         _outfile = outfiles[month-1]
         _outfile.write(line)
 

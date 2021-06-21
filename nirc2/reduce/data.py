@@ -16,6 +16,8 @@ from . import dar
 from . import bfixpix
 import subprocess
 import copy
+import shutil
+from datetime import datetime
 
 module_dir = os.path.dirname(__file__)
 
@@ -42,7 +44,8 @@ outputVerify = 'ignore'
 
 
 def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
-          skyscale=0, skyfile=None, angOff=0.0, fixDAR=True,
+          skyscale=False, skyfile=None, angOff=0.0, fixDAR=True,
+          raw_dir=None, clean_dir=None,
           instrument=instruments.default_inst, check_ref_loc=True):
     """
     Clean near infrared NIRC2 or OSIRIS images.
@@ -60,8 +63,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
         sky_nite1/
         sky.fits
 
-    All output files will be put into reduce/../clean/ in the
-    following structure:
+    All output files will be put into clean_dir (if specified, otherwise
+    ../clean/) in the following structure:
     kp/
         c*.fits
         distort/
@@ -73,60 +76,90 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
     <field_><wave> instead of just <wave>. So for instance, for Arches
     field #1 data reduction, you might call clean with: field='arch_f1'.
 
-    @param files: a list of file numbers. Doesn't require zero pad.
-    @type files: integer list
-    @param nite: the nite suffix (e.g. nite1). This is only used inside
-        the reduce sub-directories. For prefixes based on different fields,
-        use the optional 'field' keyword.
-    @type nite: string
-    @param wave: the wavelength suffix (e.g.. kp).
-    @type wave: string
-    @kwparam field: Optional prefix for clean directory and final
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    nite : str
+        Name for night of observation (e.g.: "nite1"), used as suffix
+        inside the reduce sub-directories.
+    wave : str
+        Name for the observation passband (e.g.: "kp"), used as
+        a wavelength suffix
+    field : str, default=None
+        Optional prefix for clean directory and final
         combining. All clean files will be put into <field_><wave>. You
         should also pass the same into combine(). If set to None (default)
         then only wavelength is used.
-    @type field: string
-    @kwparam skyscale: (def = 0) Turn on for scaling skies before subtraction.
-    @type skyscale: 1/0
-    @kwparam skyfile: (def = '') An optional file containing image/sky matches.
-    @type skyfile: string
-    @kwparam angOff: (def = 0) An optional absolute offset in the rotator
+    skyscale : bool, default=False
+        Whether or not to scale the sky files to the common median.
+        Turn on for scaling skies before subtraction.
+    skyfile : str, default=''
+        An optional file containing image/sky matches.
+    angOff : float, default = 0
+        An optional absolute offset in the rotator
         mirror angle for cases (wave='lp') when sky subtraction is done with
-        skies taken at matchin rotator mirror angles.
-    @type angOff: float
-    @kwparam badColumns: (def = None) An array specifying the bad columns (zero-based).
-                Assumes a repeating pattern every 8 columns.
-    @type badColumns: int array
+        skies taken at matching rotator mirror angles.
+    cent_box: int (def = 12) 
+        the box to use for better centroiding the reference star
+    badColumns : int array, default = None
+        An array specifying the bad columns (zero-based).
+        Assumes a repeating pattern every 8 columns.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    clean_dir : str, optional
+        Directory where clean files will be stored. By default,
+        assumes that clean files will be stored in '../clean'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
-
-    # Start out in something like '06maylgs1/reduce/kp/'
-    waveDir = util.getcwd()
-    redDir = os.path.abspath(waveDir + '../') + '/'
-    rootDir = os.path.abspath(redDir + '../') + '/'
-
+    
+    # Make sure directory for current passband exists and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
+    # Determine directory locatons
+    waveDir = os.getcwd() + '/'
+    redDir = util.trimdir(os.path.abspath(waveDir + '../') + '/')
+    rootDir = util.trimdir(os.path.abspath(redDir + '../') + '/')
+    
     sciDir = waveDir + '/sci_' + nite + '/'
     util.mkdir(sciDir)
     ir.cd(sciDir)
 
     # Set location of raw data
     rawDir = rootDir + 'raw/'
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     # Setup the clean directory
     cleanRoot = rootDir + 'clean/'
-    if (field != None):
+    
+    # Check if user has specified a specific clean directory
+    if clean_dir is not None:
+        cleanRoot = util.trimdir(os.path.abspath(clean_dir) + '/')
+    
+    if field is not None:
         clean = cleanRoot + field + '_' + wave + '/'
     else:
         clean = cleanRoot + wave + '/'
+    
     distort = clean + 'distort/'
     weight = clean + 'weight/'
     masks = clean + 'masks/'
-
+    
     util.mkdir(cleanRoot)
     util.mkdir(clean)
     util.mkdir(distort)
     util.mkdir(weight)
     util.mkdir(masks)
-
+    
+    # Open a text file to document sources of data files
+    data_sources_file = open(clean + 'data_sources.txt', 'w')
+    
     try:
         # Setup flat. Try wavelength specific, but if it doesn't
         # exist, then use a global one.
@@ -191,6 +224,9 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             _dlog_tmp = instrument.make_filenames([f], prefix='driz')[0]
             _dlog = _dlog_tmp.replace('.fits', '.log')
             
+            out_line = '{0} from {1} ({2})\n'.format(_cc, _raw,
+                                                     datetime.now())
+            data_sources_file.write(out_line)
 
             # Clean up if these files previously existed
             util.rmall([_cp, _ss, _ff, _ff_f, _ff_s, _bp, _cd, _ce, _cc,
@@ -198,7 +234,7 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             ### Copy the raw file to local directory ###
             ir.imcopy(_raw, _cp, verbose='no')
-
+            
             ### Make persistance mask ###
             # - Checked images, this doesn't appear to be a large effect.
             #clean_persistance(_cp, _pers, instrument=instrument)
@@ -258,7 +294,8 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
             phi = instrument.get_position_angle(hdr)
 
             clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
-                          instrument=instrument, check_loc=check_ref_loc)
+                          instrument=instrument, check_loc=check_ref_loc,
+                          cent_box=cent_box)
 
             ### Move to the clean directory ###
             util.rmall([clean + _cc, clean + _coo, clean + _rcoo,
@@ -276,10 +313,14 @@ def clean(files, nite, wave, refSrc, strSrc, badColumns=None, field=None,
 
             # This just closes out any sky logging files.
             #skyObj.close()
+        data_sources_file.close()
     finally:
         # Move back up to the original directory
         #skyObj.close()
         ir.cd('../')
+
+    # Change back to original directory
+    os.chdir('../')
 
 def clean_get_supermask(_statmask, _supermask, badColumns):
     """
@@ -349,82 +390,240 @@ def clean_makemask(_mask, _mask_cosmic, _mask_static, wave,
 
 
 def clean_lp(files, nite, wave, refSrc, strSrc, angOff, skyfile):
-    """Only here for backwards compatability. You should use clean() instead."""
+    """
+    Only here for backwards compatability.
+    You should use clean() instead.
+    """
     clean(files, nite, wave, refSrc, strSrc,
           angOff=angOff, skyfile=skyfile)
 
 def combine(files, wave, outroot, field=None, outSuffix=None,
-            trim=0, weight=None, fwhm_max=0, submaps=0, fixDAR=True,
-            mask=True, instrument=instruments.default_inst):
-    """Accepts a list of cleaned images and does a weighted combining after
+            trim=False, weight=None, fwhm_max=0, submaps=0,
+            fixDAR=True, mask=True,
+            clean_dirs=None, combo_dir=None,
+            instrument=instruments.default_inst):
+    """
+    Accepts a list of cleaned images and does a weighted combining after
     performing frame selection based on the Strehl and FWHM.
-
+    
     Each image must have an associated *.coo file which gives the rough
     position of the reference source.
-
-    @param files: List of integer file numbers to include in combine.
-    @type files: list of int
-    @param wave: Filter of observations (e.g. 'kp', 'lp', 'h')
-    @type wave: string
-    @param outroot: The output root name (e.g. '06jullgs'). The final combined
-        file names will be <outroot>_<field>_<outSuffix>_<wave>.
+    
+    
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files to include in combine. Does not require
+        padded zeros.
+    wave : str
+        Name for the observation passband (e.g.: "kp", "lp", or "h"), used as
+        a wavelength suffix
+    outroot : str
+        The output root name (e.g. '06jullgs'). The final combined file names
+        will be <outroot>_<field>_<outSuffix>_<wave>.
         The <field> and <outSuffix> keywords are optional.
-
+        
         Examples:
         06jullgs_kp for outroot='06jullgs' and wave='kp'
         06jullgs_arch_f1_kp for adding field='arch_f1'
-    @type outroot: string
-    @kwparam field: Optional field name used to get to clean directory and
-        also affects the final output file name.
-    @type field: string
-    @kwparam outSuffix: Optional suffix used to modify final output file name.
-    @type outSuffix: string
-    @kwparam trim: Optional file trimming based on image quality. Default
-        is 0. Set to 1 to turn trimming on.
-    @type trim: 0 or 1
-    @kwparam weight: Optional weighting. Set to 'strehl' to weight by Strehl,
-        as found in strehl_source.txt file. OR set to a file name with the
-        first column being the file name (e.g., c0021.fits) and the second
-        column being the weight. Weights will be renormalized to sum to 1.0.
+    field : str, default=None
+        Optional field name. Used to get to clean directory and also affects
+        the final output file name.
+    outSuffix : str
+        Optional suffix used to modify final output file name.
+        Can use suffix to indicate a night of observation (e.g.: "nite1").
+    trim : bool, default=False
+        Optional file trimming based on image quality. Default
+        is False. Set to True to turn trimming on.
+    weight : str, default=None
+        Optional weighting. Set to 'strehl' to weight by Strehl, as found in
+        strehl_source.txt file.
+        OR set to a file name with the first column being the file name
+        (e.g., c0021.fits) and the second column being the weight. Weights will
+        be renormalized to sum to 1.0.
         Default = None, no weighting.
-    @type weight: string
-    @kwparam fwhm_max: The maximum allowed FWHM for keeping frames when
-        trimming is turned on.
-    @type fwhm_max: int
-    @kwparam submaps: Set to the number of submaps to be made (def=0).
-    @type submaps: int
+    fwhm_max : float, default=0
+        The maximum allowed FWHM for keeping frames when trimming is turned on.
+    submaps : int, default=0
+        Set to the number of submaps to be made (def=0).
+    fixDAR : bool, default=True
+    mask : bool, default=True
+    clean_dirs : list of str, optional
+        List of directories where clean files are stored. Needs to be same
+        length as files list. If not specified, by default assumes that
+        clean files are stored in '../clean'.
+    combo_dir : str, optional
+        Directory where combo files will be stored. By default,
+        assumes that combo files will be stored in '../combo'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
-    # Start out in something like '06maylgs1/reduce/kp/'
+    
+    # Make sure directory for current passband exists and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
     # Setup some files and directories
     waveDir = util.getcwd()
     redDir = util.trimdir( os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir( os.path.abspath(redDir + '../') + '/')
-
-    if (field != None):
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' +field+
-                                                   '_' +wave) + '/')
+    
+    # Determine clean directory and add field and suffixes to outroot
+    cleanRoot = rootDir + 'clean/'
+    
+    if field is not None:
+        cleanDir = cleanRoot + field + '_' + wave + '/'
         outroot += '_' + field
     else:
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' + wave) + '/')
+        cleanDir = cleanRoot + wave + '/'
+    
+    # If clean directories are specified for each file,
+    # first tack on the field and wave to each path
+    if clean_dirs is not None:
+        # If incorrect number of clean directories specified, raise ValueError
+        if len(clean_dirs) != len(files):
+            err_str = 'Length of clean_dirs needs to match number of files, '
+            err_str += str(len(files))
+            
+            raise ValueError(err_str)
+        
+        # Tack on field and wave to each path
+        for clean_dir_index in range(len(clean_dirs)):
+            cleanRoot = util.trimdir(
+                            os.path.abspath(clean_dirs[clean_dir_index] + '/'))
+            
+            if field is not None:
+                clean_dirs[clean_dir_index] = cleanRoot + '/' + field +\
+                                              '_' + wave + '/'
+            else:
+                clean_dirs[clean_dir_index] = cleanRoot + '/' + wave + '/'
+    
     if (outSuffix != None):
         outroot += '_' + outSuffix
-
-    # This is the final output directory
+    
+    # Set up combo directory. This is the final output directory.
     comboDir = rootDir + 'combo/'
+    
+    if combo_dir is not None:
+        comboDir = util.trimdir(os.path.abspath(combo_dir) + '/')
+    
     util.mkdir(comboDir)
-
+    
+    
     # Make strings out of all the filename roots.
-    allroots = instrument.make_filenames(files, prefix='')
+    allroots = instrument.make_filenames(files)
     allroots = [aa.replace('.fits', '') for aa in allroots]
+    
+    
+    # If clean directories were specified for each file, copy over
+    # clean files to a common clean directory into new combo directory
+    if clean_dirs is not None:
+        # Save and make new clean directory, inside the new combo directory
+        cleanDir = comboDir + 'clean/'
+        
+        field_wave_suffix = ''
+        
+        if field is not None:
+            field_wave_suffix = field + '_' + wave + '/'
+        else:
+            field_wave_suffix = wave + '/'
+        
+        cleanDir += field_wave_suffix
+        
+        util.mkdir(cleanDir)
+        util.mkdir(cleanDir + 'distort/')
+        util.mkdir(cleanDir + 'masks/')
+        util.mkdir(cleanDir + 'weight/')
+        
+        # Determine all unique clean directories, which we'll be sourcing from
+        (unique_clean_dirs,
+         unique_clean_dirs_index) = np.unique(clean_dirs, return_inverse=True)
+        
+        c_lis_file = open(cleanDir + 'c.lis', 'w')
+        data_sources_file = open(cleanDir + 'data_sources.txt', 'w')
+        
+        # Go through each clean file and copy over the data files
+        for cur_file_index in range(len(files)):
+            cur_file_root = allroots[cur_file_index]
+            
+            source_clean_dir = unique_clean_dirs[
+                unique_clean_dirs_index[cur_file_index]]
+            source_file_root = cur_file_root
+            
+            # Change first digit of file names to be index of clean dir
+            # i.e.: unique 1000s place digit for each night going into combo
+            allroots[cur_file_index] =\
+                str(unique_clean_dirs_index[cur_file_index]) + cur_file_root[1:]
+            
+            dest_clean_dir = cleanDir
+            dest_file_root = allroots[cur_file_index]
+            
+            # Copy data files
+            shutil.copy(source_clean_dir + 'c' + source_file_root + '.fits',
+                        dest_clean_dir + 'c' + dest_file_root + '.fits')
+            
+            shutil.copy(source_clean_dir + 'c' + source_file_root + '.max',
+                        dest_clean_dir + 'c' + dest_file_root + '.max')
+            
+            shutil.copy(source_clean_dir + 'c' + source_file_root + '.coo',
+                        dest_clean_dir + 'c' + dest_file_root + '.coo')
+            
+            shutil.copy(source_clean_dir + 'distort/cd' + source_file_root + '.fits',
+                        dest_clean_dir + 'distort/cd' + dest_file_root + '.fits')
+            
+            shutil.copy(source_clean_dir + 'masks/mask' + source_file_root + '.fits',
+                        dest_clean_dir + 'masks/mask' + dest_file_root + '.fits')
+            
+            shutil.copy(source_clean_dir + 'weight/wgt' + source_file_root + '.fits',
+                        dest_clean_dir + 'weight/wgt' + dest_file_root + '.fits')
+            
+            # Append file to c.lis and text list of data sources
+            c_lis_file.write(dest_clean_dir + 'c' + dest_file_root + '.fits\n')
+            
+            out_line = '{0} from {1}{2} ({3})\n'.format(
+                'c' + dest_file_root + '.fits',
+                source_clean_dir, 'c' + source_file_root + '.fits',
+                datetime.now())
+            data_sources_file.write(out_line)
+        
+        c_lis_file.close()
+        data_sources_file.close()
+        
+        # Copy over strehl source list(s) from clean directories
+        
+        # Need to rename file names in list to new names
+        out_strehl_file = open(cleanDir + 'strehl_source.txt', 'w')
+        
+        # Go through each clean directory's strehl_source file
+        for cur_clean_dir_index in range(0, len(unique_clean_dirs)):
+            
+            # Open existing Strehl file in clean directory
+            with open(unique_clean_dirs[cur_clean_dir_index] +
+                      'strehl_source.txt', 'r') as in_strehl_file:
+                
+                for line in in_strehl_file:
+                    # Check for header line
+                    if line[0] == '#':
+                        # Don't skip header if it is first clean directory
+                        if cur_clean_dir_index == 0:
+                            out_strehl_file.write(line)
+                            
+                        # Otherwise skip to next line
+                        continue
+                    
+                    # Correct file names and write to overall strehl file
+                    corrected_line = 'c' + str(cur_clean_dir_index) + line[2:]
+                    out_strehl_file.write(corrected_line)
+        
+        out_strehl_file.close()
+    
+    # Make a deep copy of all the root filenames    
     roots = copy.deepcopy(allroots) # This one will be modified by trimming
-
+    
     # This is the output root filename
     _out = comboDir + 'mag' + outroot + '_' + wave
     _sub = comboDir + 'm' + outroot + '_' + wave
-
-
+    
     ##########
     # Determine if we are going to trim and/or weight the files
     # when combining. If so, then we need to determine the Strehl
@@ -433,8 +632,9 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     ##########
 
     # Load the strehl_source.txt file
-    if (weight is not None) or os.path.exists(os.path.join(cleanDir,'strehl_source.txt')):
-        strehls, fwhm = loadStrehl(cleanDir, roots) 
+    if ((weight is not None) or
+        os.path.exists(os.path.join(cleanDir,'strehl_source.txt'))):
+        strehls, fwhm = loadStrehl(cleanDir, roots)
     else:
         # if the file doesn't exist don't use
         print('combine: the strehl_source file does not exist: '+os.path.join(cleanDir,'strehl_source.txt'))
@@ -443,7 +643,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
         strehls = np.zeros(len(roots))-1.0
         fwhm = np.zeros(len(roots)) -1.0
         trim = False
-
+    
 
     # Default weights
     # Create an array with length equal to number of frames used,
@@ -463,7 +663,7 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     if weight == 'strehl':
         weights = weight_by_strehl(roots, strehls)
 
-    if ((weight != None) and (weight != 'strehl')):
+    if ((weight is not None) and (weight is not 'strehl')):
         # Assume weight is set to a filename
         if not os.path.exists(weight):
             raise ValueError('Weights file does not exist, %s' % weight)
@@ -524,6 +724,9 @@ def combine(files, wave, outroot, field=None, outSuffix=None,
     for i in range(len(allroots)):
         _rcoo = cleanDir + 'c' + str(allroots[i]) + '.rcoo'
         util.rmall([_rcoo])
+    
+    # Change back to original directory
+    os.chdir('../')
 
 def rot_img(root, phi, cleanDir):
     """Rotate images to PA=0 if they have a different PA from one
@@ -551,14 +754,21 @@ def rot_img(root, phi, cleanDir):
     return
 
 def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
-    """Queries label.dat for the xy offset from Sgr A* (in arcsec)
+    """
+    Queries label.dat for the xy offset from Sgr A* (in arcsec)
     for the star given as an input
-
-    @param name: name of a star (e.g. 'irs16NE')
-    @type name: string
-
-    @returns pos: x and y offset from Sgr A* in arcsec
-    @rtype pos: float list (2-elements)
+    
+    Parameters
+    ----------
+    name : str
+        Name of a star (e.g. 'irs16NE')
+    label_file : str, default='/Users/jlu/data/gc/source_list/label.dat'
+        Full path of label.dat file to search
+    
+    Returns
+    -------
+    pos : float list (2 elements)
+        x and y offset from Sgr A* in arcsec
     """
 
     # Read in label.dat
@@ -581,26 +791,55 @@ def gcSourceXY(name, label_file='/Users/jlu/data/gc/source_list/label.dat'):
     return [x,y]
 
 
-def calcStrehl(files, wave, field=None, instrument=instruments.default_inst):
-    """Make Strehl and FWHM table on the strehl source for all
+def calcStrehl(files, wave,
+               clean_dir=None, field=None,
+               instrument=instruments.default_inst):
+    """
+    Make Strehl and FWHM table on the strehl source for all
     cleaned files.
 
-    @param cleanDir The 'clean' directory.
-    @type cleanDir string
-    @param roots A list of string root names (e.g. 0001)
-    @type roots list
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    wave : str
+        Name for the observation passband (e.g.: "kp"), used as
+        a wavelength suffix
+    field : str, default=None
+        Optional prefix for clean directory and final
+        combining. All clean files will be put into <field_><wave>. You
+        should also pass the same into combine(). If set to None (default)
+        then only wavelength is used.
+    clean_dir : str, optional
+        Directory where clean files will be stored. By default,
+        assumes that clean files will be stored in '../clean'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
+    
+    # Make sure directory for current passband exists and switch into it
+    util.mkdir(wave)
+    os.chdir(wave)
+    
+    # Determine directory locatons
     waveDir = util.getcwd()
     redDir = util.trimdir( os.path.abspath(waveDir + '../') + '/')
     rootDir = util.trimdir( os.path.abspath(redDir + '../') + '/')
-    if (field != None):
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' +field+
-                                                   '_' +wave) + '/')
+    
+    
+    # Setup the clean directory
+    cleanRoot = rootDir + 'clean/'
+    
+    # Check if user has specified a specific clean directory
+    if clean_dir is not None:
+        cleanRoot = util.trimdir(os.path.abspath(clean_dir) + '/')
+    
+    if field is not None:
+        cleanDir = cleanRoot + field + '_' + wave + '/'
     else:
-        cleanDir = util.trimdir( os.path.abspath(rootDir +
-                                                   'clean/' + wave) + '/')
-
+        cleanDir = cleanRoot + wave + '/'
+    
+    
     # Make a list of all the images
     clis_file = cleanDir + 'c.lis'
     strehl_file = cleanDir + 'strehl_source.txt'
@@ -640,6 +879,9 @@ def calcStrehl(files, wave, field=None, instrument=instruments.default_inst):
 
         raise RuntimeError('calcStrehl: Strehl widget lost files: ',
                            droppedFiles)
+    
+    # Switch back to parent directory
+    os.chdir('../')
 
 def weight_by_strehl(roots, strehls):
     """
@@ -675,6 +917,7 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
     """
     # Trim level (fwhm) can be passed in or determined
     # dynamically.
+    
     if (fwhm_max == 0):
         # Determine the minimum FWHM
         idx = np.where(fwhm > 0)
@@ -685,10 +928,6 @@ def trim_on_fwhm(roots, strehls, fwhm, fwhm_max=0):
 
     # Pull out those we want to include in the combining
     keep = np.where((fwhm <= fwhm_max) & (fwhm > 0))[0]
-    if len(keep) == 0:
-        raise RuntimeError('trim_on_fwhm: fwhm_max cut returned no valid frames: ',
-                           (fwhm_max, fwhm))
-        
     strehls = strehls[keep]
     fwhm = fwhm[keep]
     roots = [roots[i] for i in keep]
@@ -710,10 +949,10 @@ def readWeightsFile(roots, weightFile):
     weightsTable = trim_table_by_name(roots, weightFile)
 
     weights = weightsTable['col2']
-
+    
     # Renormalize so that weights add up to 1.0
     weights /= weights.sum()
-
+    
     # Double check that we have the same number of
     # lines in the weightsTable as files.
     if (len(weights) != len(roots)):
@@ -733,17 +972,16 @@ def loadStrehl(cleanDir, roots):
     column5 = MJD (UT)
     """
     _strehl = cleanDir + 'strehl_source.txt'
-
+    
     # Read in file and get strehls and FWHMs
     strehlTable = trim_table_by_name(roots, _strehl)
     strehls = strehlTable['col2']
     fwhm = strehlTable['col4']
-
+    
     # Double check that we have the same number of
     # lines in the strehlTable as files.
     if (len(strehls) != len(roots)):
         print('Wrong number of lines in  ' + _strehl)
-        pdb.set_trace()
 
     return (strehls, fwhm)
 
@@ -753,9 +991,9 @@ def trim_table_by_name(outroots, tableFileName):
     the desired output list of root files names (outroots).
     """
     table = Table.read(tableFileName, format='ascii', header_start=None)
-
+    
     good = np.zeros(len(table), dtype=bool)
-
+    
     for rr in range(len(outroots)):
         for ii in range(len(table)):
             if outroots[rr] in table[ii][0]:
@@ -1633,7 +1871,8 @@ def clean_bkgsubtract(_ff_f, _bp):
     return bkg
 
 def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
-                  instrument=instruments.default_inst, check_loc=True):
+                  instrument=instruments.default_inst, check_loc=True,
+                  update_fits=True,cent_box=12):
     """Make the *.coo file for this science image. Use the difference
     between the AOTSX/Y keywords from a reference image and each science
     image to tell how the positions of the two frames are related.
@@ -1655,6 +1894,8 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     check_loc (bool):  If True the reference source is recentered for this frame.
                      Use False if the offsets are large enough to move the reference source off of the image
+    update_fits : update the fits files with the reference pixel values
+    cent_box : box size to center the source (default: 12)
     """
 
     hdr = fits.getheader(_ce, ignore_missing_end=True)
@@ -1684,29 +1925,30 @@ def clean_makecoo(_ce, _cc, refSrc, strSrc, aotsxyRef, radecRef,
 
     # re-center stars to get exact coordinates
     if check_loc:
-        centBox = 12.0
-        text = ir.imcntr(_ce, xref, yref, cbox=centBox, Stdout=1)
+
+        text = ir.imcntr(_ce, xref, yref, cbox=cent_box, Stdout=1)
         values = text[0].split()
         xref = float(values[2])
         yref = float(values[4])
 
-        text = ir.imcntr(_ce, xstr, ystr, cbox=centBox, Stdout=1)
+        text = ir.imcntr(_ce, xstr, ystr, cbox=cent_box, Stdout=1)
         values = text[0].split()
         xstr = float(values[2])
         ystr = float(values[4])
         print('clean_makecoo: xref, yref final = {0:.2f} {1:.2f}'.format(xref, yref))
 
     # write reference star x,y to fits header
-    fits_f = fits.open(_ce)
-    fits_f[0].header.set('XREF', "%.3f" % xref,
-                          'Cross Corr Reference Src x')
-    fits_f[0].header.set('YREF', "%.3f" % yref,
-                          'Cross Corr Reference Src y')
-    fits_f[0].header.set('XSTREHL', "%.3f" % xstr,
-                          'Strehl Reference Src x')
-    fits_f[0].header.set('YSTREHL', "%.3f" % ystr,
-                          'Strehl Reference Src y')
-    fits_f[0].writeto(_cc, output_verify=outputVerify)
+    if update_fits:
+        fits_f = fits.open(_ce)
+        fits_f[0].header.set('XREF', "%.3f" % xref,
+                             'Cross Corr Reference Src x')
+        fits_f[0].header.set('YREF', "%.3f" % yref,
+                             'Cross Corr Reference Src y')
+        fits_f[0].header.set('XSTREHL', "%.3f" % xstr,
+                             'Strehl Reference Src x')
+        fits_f[0].header.set('YSTREHL', "%.3f" % ystr,
+                             'Strehl Reference Src y')
+        fits_f[0].writeto(_cc, output_verify=outputVerify)
 
     file(_cc.replace('.fits', '.coo'), 'w').write('%7.2f  %7.2f\n' % (xref, yref))
 

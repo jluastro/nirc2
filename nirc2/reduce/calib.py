@@ -6,32 +6,62 @@ from pyraf import iraf as ir
 from nirc2 import instruments
 import numpy as np
 from astropy import stats
+import astropy
+from datetime import datetime
 
 module_dir = os.path.dirname(__file__)
 
-def makedark(files, output, instrument=instruments.default_inst):
+def makedark(files, output,
+             raw_dir=None,
+             instrument=instruments.default_inst):
     """
     Make dark image for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a darks/ subdirectory.
-
-    files: integer list of the files. Does not require padded zeros.
-    output: output file name. Include the .fits extension.
+    
+    Parameters
+    ----------
+    files : list of int
+        Integer list of the files. Does not require padded zeros.
+    output : str
+        Output file name. Include the .fits extension.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     redDir = os.getcwd() + '/'  # Reduce directory.
     curDir = redDir + 'calib/'
     darkDir = util.trimdir(curDir + 'darks/')
+    
+    # Set location of raw data
     rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     util.mkdir(curDir)
     util.mkdir(darkDir)
-
+    
     _out = darkDir + output
     _outlis = darkDir + 'dark.lis'
     util.rmall([_out, _outlis])
 
     darks = instrument.make_filenames(files, rootDir=rawDir)
-
+    
+    # Write out the sources of the dark files
+    data_sources_file = open(redDir + 'data_sources.txt', 'a')
+    data_sources_file.write(
+        '---\n# Dark Files for {0} \n'.format(output))
+    
+    for cur_file in darks:
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
+        data_sources_file.write(out_line)
+    
+    data_sources_file.close()
+    
     f_on = open(_outlis, 'w')
     f_on.write('\n'.join(darks) + '\n')
     f_on.close()
@@ -45,27 +75,47 @@ def makedark(files, output, instrument=instruments.default_inst):
 
 
 def makeflat(onFiles, offFiles, output, normalizeFirst=False,
-                 instrument=instruments.default_inst):
+             raw_dir=None,
+             instrument=instruments.default_inst):
     """
     Make flat field image for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a flats/ subdirectory.
-
-    onFiles: integer list of lamps ON files. Does not require padded zeros.
-    offFiles: integer list of lamps OFF files. Does not require padded zeros.
 
     If only twilight flats were taken (as in 05jullgs), use these flats as
     the onFiles, and use 0,0 for offFiles. So the reduce.py file should look
     something like this: onFiles = range(22, 26+1) and offFiles = range(0,0)
     The flat will then be made by doing a median combine using just the
     twilight flats.
-    output: output file name. Include the .fits extension.
+                 
+    Parameters
+    ----------
+    onFiles : list of int
+        Integer list of lamps ON files. Does not require padded zeros.
+    offFiles : list of int
+        Integer list of lamps OFF files. Does not require padded zeros.
+    output : str
+        Output file name. Include the .fits extension.
+    normalizeFirst : bool, default=False
+        If the individual flats should be normalized first,
+        such as in the case of twilight flats.
+    raw_dir : str, optional
+        Directory where raw files are stored. By default,
+        assumes that raw files are stored in '../raw'
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     redDir = os.getcwd() + '/'
     curDir = redDir + 'calib/'
     flatDir = util.trimdir(curDir + 'flats/')
+    
+    # Set location of raw data
     rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
-
+    
+    # Check if user has specified a specific raw directory
+    if raw_dir is not None:
+        rawDir = util.trimdir(os.path.abspath(raw_dir) + '/')
+    
     util.mkdir(curDir)
     util.mkdir(flatDir)
 
@@ -83,7 +133,24 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
     lampsoff = instrument.make_filenames(offFiles, rootDir=rawDir)
     lampsonNorm = instrument.make_filenames(onFiles, rootDir=flatDir + 'norm')
     util.rmall(lampsonNorm)
-
+    
+    # Write out the sources of the dark files
+    data_sources_file = open(redDir + 'data_sources.txt', 'a')
+    
+    data_sources_file.write(
+        '---\n# Flat Files for {0}, Lamps On\n'.format(output))
+    for cur_file in lampson:
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
+        data_sources_file.write(out_line)
+    
+    data_sources_file.write(
+        '---\n# Flat Files for {0}, Lamps Off\n'.format(output))
+    for cur_file in lampsoff:
+        out_line = '{0} ({1})\n'.format(cur_file, datetime.now())
+        data_sources_file.write(out_line)
+    
+    data_sources_file.close()
+    
     if (len(offFiles) != 0):
         f_on = open(_onlis, 'w')
         f_on.write('\n'.join(lampson) + '\n')
@@ -160,29 +227,32 @@ def makeflat(onFiles, offFiles, output, normalizeFirst=False,
         ir.normflat(_norm, _out, sample=flatRegion)
 
 def makemask(dark, flat, output, instrument=instruments.default_inst):
-    """Make bad pixel mask for imaging data. Makes a calib/ directory
+    """
+    Make bad pixel mask for imaging data. Makes a calib/ directory
     and stores all output there. All output and temporary files
     will be created in a masks/ subdirectory.
-
-    @param dark: The filename of the dark file (must be in the 
+    
+    Parameters
+    ----------
+    dark : str
+        The filename of the dark file (must be in the
         calib/darks/ directory). This is used to
         construct a hot pixel mask. Use a long (t>20sec) exposure dark.
-    @type dark: str
-    @param flat: The filename of a flat file  (must be in the 
+    flat : str
+        The filename of a flat file  (must be in the
         calib/flats/ directory). This is used to
         construct a dead pixel mask. The flat should be normalized.
-    @type flat: str
-    @param output: output file name. This will be created in the masks/
+    output : str
+        The output file name. This will be created in the masks/
         subdirectory.
-    @type output: str
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     redDir = os.getcwd() + '/'
     calDir = redDir + 'calib/'
     maskDir = util.trimdir(calDir + 'masks/')
     flatDir = util.trimdir(calDir + 'flats/')
     darkDir = util.trimdir(calDir + 'darks/')
-    rawDir = util.trimdir(os.path.abspath(redDir + '../raw') + '/')
-    dataDir = util.trimdir(os.path.abspath(redDir + '../..') + '/')
 
     util.mkdir(calDir)
     util.mkdir(maskDir)
@@ -202,9 +272,15 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
 
     # Get the sigma-clipped mean and stddev on the dark
     img_dk = fits.getdata(_dark)
-    dark_stats = stats.sigma_clipped_stats(img_dk,
-                                           sigma=3,
-                                           iters=10)
+    if float(astropy.__version__) < 3.0:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               maxiters=10)
+        
     dark_mean = dark_stats[0]
     dark_stddev = dark_stats[2]
 
@@ -216,9 +292,14 @@ def makemask(dark, flat, output, instrument=instruments.default_inst):
     # Make dead pixel mask
     ##########
     img_fl = fits.getdata(_flat)
-    flat_stats = stats.sigma_clipped_stats(img_fl,
+    if float(astropy.__version__) < 3.0:
+        flat_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+        flat_stats = stats.sigma_clipped_stats(img_fl,
                                            sigma=3,
-                                           iters=10)
+                                           maxiters=10)
     flat_mean = flat_stats[0]
     flat_stddev = flat_stats[2]
 
@@ -253,15 +334,19 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     run once. This creates a file called nirc2mask.fits or osiris_img_mask.fits
     which is subsequently used throughout the pipeline. The dark should be a long
     integration dark.
-
-    @param dark: The full absolute path to a medianed dark file. This is
+    
+    Parameters
+    ----------
+    dark : str
+        The full absolute path to a medianed dark file. This is
         used to construct a hot pixel mask (4 sigma detection thresh).
-    @type dark: str
-    @param flat: The full absolute path to a medianed flat file. This is
-         used to construct a dead pixel mask.
-    @type flat: str
-    @param outDir: full path to output directory with '/' at the end.
-    @type outDir: str
+    flat : str
+        The full absolute path to a medianed flat file. This is
+        used to construct a dead pixel mask.
+    outDir : str
+        full path to output directory with '/' at the end.
+    instrument : instruments object, optional
+        Instrument of data. Default is `instruments.default_inst`
     """
     _out = outDir + instrument.get_bad_pixel_mask_name()
     _dark = dark
@@ -274,24 +359,35 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     ##########
     # Get the sigma-clipped mean and stddev on the dark
     img_dk = fits.getdata(_dark)
-    dark_stats = stats.sigma_clipped_stats(img_dk,
-                                           sigma=3,
-                                           iters=10)
+    if float(astropy.__version__) < 3.0:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+        dark_stats = stats.sigma_clipped_stats(img_dk,
+                                            sigma=3,
+                                               maxiters=10)
     dark_mean = dark_stats[0]
     dark_stddev = dark_stats[2]
 
     # Clip out the very hot pixels.
     hi = dark_mean + (15.0 * dark_stddev)
     hot = img_dk > hi
-    print('Found %d hot pixels' % (hot.sum()))
+    print(('Found %d hot pixels' % (hot.sum())))
 
     ##########
     # Make dead pixel mask
     ##########
     img_fl = fits.getdata(_flat)
-    flat_stats = stats.sigma_clipped_stats(img_fl,
-                                           sigma=3,
-                                           iters=10)
+    if float(astropy.__version__) < 3.0:
+        flat_stats = stats.sigma_clipped_stats(img_dk,
+                                               sigma=3,
+                                               iters=10)
+    else:
+    
+        flat_stats = stats.sigma_clipped_stats(img_fl,
+                                               sigma=3,
+                                               maxiters=10)
     flat_mean = flat_stats[0]
     flat_stddev = flat_stats[2]
 
@@ -300,7 +396,7 @@ def make_instrument_mask(dark, flat, outDir, instrument=instruments.default_inst
     hi = flat_mean + (15.0 * flat_stddev)
 
     dead = np.logical_or(img_fl > hi, img_fl < lo)
-    print('Found %d dead pixels' % (dead.sum()))
+    print(('Found %d dead pixels' % (dead.sum())))
 
     # Combine into a final supermask
     new_file = fits.open(_flat)
@@ -338,9 +434,14 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
 
         # Get the sigma-clipped mean and stddev on the dark
         img_dk = fits.getdata(darkDir + fileName)
-        dark_stats = stats.sigma_clipped_stats(img_dk,
-                                               sigma=3,
-                                               iters=10)
+        if float(astropy.__version__) < 3.0:
+            dark_stats = stats.sigma_clipped_stats(img_dk,
+                                                   sigma=3,
+                                                   iters=10)
+        else:        
+            dark_stats = stats.sigma_clipped_stats(img_dk,
+                                                   sigma=3,
+                                                   maxiters=10)
 
         darkMean = dark_stats[0]
         darkStdv = dark_stats[2]
@@ -374,15 +475,13 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     dStdvs = np.zeros(lenDarks, dtype=float)
 
     for ii in range(lenDarks):
-	(dMeans[ii], dStdvs[ii]) = printStats(frame, tints[ii],
-					      samps[ii], reads[ii])
-	dStdvs[ii] *= np.sqrt(3)
-
-	frame += 3
+        (dMeans[ii], dStdvs[ii]) = printStats(frame, tints[ii],samps[ii], reads[ii])
+        dStdvs[ii] *= np.sqrt(3)
+        frame += 3
 
     # Calculate the readnoise
     rdnoise = dStdvs * 4.0 * np.sqrt(reads) / (np.sqrt(2.0))
-    print('READNOISE per read: ', rdnoise)
+    print(('READNOISE per read: ', rdnoise))
 
 
     ##########
@@ -399,12 +498,12 @@ def analyzeDarkCalib(firstFrame, skipcombo=False):
     _out.write('--------  -----  ---------  ---------  ----  ------\n')
 
     for ii in range(lenDarks):
-	print('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
-
+        print(('%8d  %5d  %9.1f  %9.1f  %4d  1' % \
+               (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii])))
+        
     for ii in range(lenDarks):
-	_out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
-	    (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
+        _out.write('%8d  %5d  %9.1f  %9.1f  %4d  1\n' % \
+                   (samps[ii], reads[ii], dStdvs[ii], dStdvs[ii] * 4.0, tints[ii]))
 
     _out.close()
 
